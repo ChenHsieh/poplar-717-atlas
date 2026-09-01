@@ -1,0 +1,160 @@
+import { el, clear, fmt } from './core/dom.js';
+import { getGene, loadManifest, loadShard, shardOf, hapLabel } from './core/data.js';
+import { MODULES, byId } from './core/registry.js';
+import { route, start, navigate } from './core/router.js';
+
+const view = () => document.getElementById('view');
+const setView = (node) => { const v = clear(view()); v.append(node); window.scrollTo(0, 0); };
+const loading = (msg = 'Loading…') => setView(el('div', { class: 'empty' }, msg));
+
+/* ---------- search: no index file; the ID resolves its own shard ---------- */
+function initSearch() {
+  const input = document.getElementById('q');
+  const hits = document.getElementById('hits');
+  let seq = 0;
+
+  const close = () => { hits.style.display = 'none'; clear(hits); };
+  input.addEventListener('blur', () => setTimeout(close, 150));
+
+  input.addEventListener('input', async () => {
+    const q = input.value.trim();
+    const mine = ++seq;
+    if (q.length < 3) return close();
+
+    // Complete a partial ID to something that names a shard, e.g. "PtXaTreH.05" -> hap1/Chr05.
+    const probe = /G\d+$/.test(q) ? q : q + 'G000000';
+    const s = shardOf(probe);
+    if (!s) {
+      clear(hits).append(el('a', { href: '#' }, 'Type a gene ID, e.g. PtXaTreH.05G120200'));
+      hits.style.display = 'block';
+      return;
+    }
+    const man = await loadManifest();
+    if (!(`${s.hap}/${s.key}` in man.shards)) { clear(hits).append(el('a', { class: 'muted' }, `No shard for ${s.hap}/${s.key}`)); hits.style.display = 'block'; return; }
+    const shard = await loadShard(s.hap, s.key);
+    if (mine !== seq) return;
+
+    const up = q.toUpperCase();
+    const found = Object.keys(shard).filter((k) => k.toUpperCase().startsWith(up)).sort().slice(0, 25);
+    clear(hits);
+    if (!found.length) hits.append(el('a', { class: 'muted' }, `No gene starts with ${q}`));
+    else found.forEach((id) => hits.append(
+      el('a', { href: '#/gene/' + id, onclick: close }, id,
+        el('span', { class: 'muted' }, `  ${shard[id].chr}:${fmt(shard[id].start)}`))));
+    hits.style.display = 'block';
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { const a = hits.querySelector('a[href^="#/gene/"]'); if (a) { close(); navigate(a.getAttribute('href').slice(1)); } }
+    if (e.key === 'Escape') close();
+  });
+}
+
+function markNav() {
+  const p = location.hash.slice(1) || '/';
+  document.querySelectorAll('header.top nav a').forEach((a) => {
+    const h = a.getAttribute('href').slice(1);
+    a.classList.toggle('on', h === p || (h !== '/' && p.startsWith(h)));
+  });
+}
+addEventListener('hashchange', markNav);
+
+/* ---------- views ---------- */
+route(/^\/$/, async () => {
+  loading();
+  const man = await loadManifest();
+  const s = man.summary;
+  const psRanks = Object.entries(s.ps_rank || {}).map(([k, v]) => [+k, v]).filter(([k]) => k >= 18);
+  const lsg = psRanks.reduce((a, [, v]) => a + v, 0);
+  setView(el('div', {},
+    el('h1', {}, 'Hybrid poplar 717 gene atlas'),
+    el('p', { class: 'sub' },
+      `${fmt(man.n_genes)} genes across two haplotypes of Populus tremula × alba clone 717 (v5.1). `
+      + `Built ${man.built.slice(0, 10)} · tier ${man.tier}.`),
+    el('div', { class: 'stat-row' },
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(man.n_genes)), el('div', { class: 'l' }, 'genes')),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(s.synteny_class?.private_no_ortholog)), el('div', { class: 'l' }, 'private, no ortholog')),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(s.changed)), el('div', { class: 'l' }, 'reclassified vs old panel')),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(lsg)), el('div', { class: 'l' }, 'LSG pool (PS ≥ 18)')),
+    ),
+    el('div', { class: 'card' },
+      el('h2', {}, 'Modules'),
+      el('div', { class: 'kv' }, ...MODULES.flatMap((m) => [
+        el('dt', {}, el('a', { href: `#/module/${m.id}` }, m.label)),
+        el('dd', { class: 'muted' }, `${(m.filters || []).length} filters · gene card`)])),
+      el('p', { class: 'muted', style: 'margin:12px 0 0;font-size:12px' },
+        'Phylostratigraphy, duplication and expression modules are queued — see TODO.md.'),
+    ),
+    el('div', { class: 'card' },
+      el('h2', {}, 'Try a gene'),
+      el('div', { class: 'kv' },
+        el('dt', {}, el('a', { href: '#/gene/PtXaTreH.05G120200' }, 'PtXaTreH.05G120200')),
+        el('dd', { class: 'muted' }, 'LSG4.5g — PS18 Populus, drought candidate'),
+        el('dt', {}, el('a', { href: '#/gene/PtXaAlbH.14G133000' }, 'PtXaAlbH.14G133000')),
+        el('dd', { class: 'muted' }, 'LSG1.14g — salicoid-WGD LEA ohnolog'),
+        el('dt', {}, el('a', { href: '#/gene/PtXaTreH.10G125100' }, 'PtXaTreH.10G125100')),
+        el('dd', { class: 'muted' }, 'LSG2.10g — PS1 conserved-gene comparator')),
+    ),
+  ));
+  markNav();
+});
+
+route(/^\/gene\/(.+)$/, async (id) => {
+  loading(`Loading ${id}…`);
+  const g = await getGene(id);
+  if (!g) return setView(el('div', { class: 'empty' },
+    el('h2', {}, 'No such gene'), el('p', { class: 'mono' }, id),
+    el('p', { class: 'muted' }, 'IDs look like PtXaTreH.05G120200 (HAP1) or PtXaAlbH.14G133000 (HAP2).')));
+
+  const kb = ((g.end - g.start) / 1000).toFixed(2);
+  const cards = el('div', { class: 'cards' },
+    el('div', { class: 'card' },
+      el('h2', {}, 'Location', el('span', { class: 'tag' }, 'v5.1')),
+      el('dl', { class: 'kv' },
+        el('dt', {}, 'Haplotype'), el('dd', {}, hapLabel(g.hap)),
+        el('dt', {}, 'Position'), el('dd', { class: 'mono' }, `${g.chr}:${fmt(g.start)}–${fmt(g.end)}`),
+        el('dt', {}, 'Strand'), el('dd', {}, g.strand
+          ? el('span', {}, el('span', { class: 'mono' }, g.strand), ' ', el('span', { class: 'muted' }, g.strand === '+' ? 'forward' : 'reverse'))
+          : el('span', { class: 'muted' }, 'unknown')),
+        el('dt', {}, 'Span'), el('dd', {}, `${kb} kb`))));
+
+  for (const m of MODULES) {
+    if (!m.geneCard) continue;
+    const c = m.geneCard(g);
+    if (c) cards.append(c);
+  }
+  // Phylostratigraphy has no module file yet; surface the data the build already ships.
+  if (g.ps) {
+    cards.append(el('div', { class: 'card' },
+      el('h2', {}, 'Phylostratigraphy', el('span', { class: 'tag' }, 'genEra')),
+      el('dl', { class: 'kv' },
+        el('dt', {}, 'Stratum'), el('dd', {}, g.ps.name || el('span', { class: 'muted' }, 'unplaced')),
+        el('dt', {}, 'Rank'), el('dd', {}, g.ps.rank == null ? el('span', { class: 'muted' }, 'NA — genEra could not place this gene') : `PS${g.ps.rank} of 19`),
+        el('dt', {}, 'Taxonomic representativeness'), el('dd', {}, g.ps.tr == null ? '—' : g.ps.tr + '%'),
+        el('dt', {}, 'LSG pool'), el('dd', {}, g.ps.lsg ? el('strong', {}, 'yes (PS ≥ 18)') : el('span', { class: 'muted' }, 'no'))),
+      el('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' }, 'Full module queued — see TODO.md.')));
+  }
+
+  setView(el('div', {},
+    el('h1', { class: 'mono' }, g.id),
+    el('p', { class: 'sub' }, `${hapLabel(g.hap)} · ${g.chr} · ${kb} kb`),
+    cards));
+  markNav();
+});
+
+route(/^\/module\/(.+)$/, async (id) => {
+  const m = byId(id);
+  if (!m || !m.overview) return setView(el('div', { class: 'empty' }, el('h2', {}, 'No such module'), el('p', { class: 'mono' }, id)));
+  loading();
+  setView(m.overview(await loadManifest()));
+  markNav();
+});
+
+/* ---------- boot ---------- */
+(function boot() {
+  const nav = document.querySelector('header.top nav');
+  MODULES.forEach((m) => nav.append(el('a', { href: `#/module/${m.id}` }, m.label)));
+  initSearch();
+  start();
+  markNav();
+})();

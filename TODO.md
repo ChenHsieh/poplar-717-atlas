@@ -4,10 +4,11 @@ Ordered. Each line is a shippable increment.
 
 - [x] **1 — repo + data build.** `build_data.py`, gene-ID→shard convention asserted against
       the annotation, 39 shards / 63,960 genes / 23 MB, `--tier full|public` flag.
-- [ ] **2 — site shell.** Hash router, data loader with cache, module registry, `GeneSet` store.
-- [ ] **3 — module: synteny.** 5-way class, n_genomes_in_og, orthogroup, HAP1↔HAP2 syntelog,
+- [x] **2 — site shell.** Hash router, data loader with cache, module registry, `GeneSet` store.
+- [x] **3 — module: synteny.** 5-way class, n_genomes_in_og, orthogroup, HAP1↔HAP2 syntelog,
       old-vs-new diff + DIAMOND-sensitivity stability.
-- [ ] **4 — module: phylostratigraphy.** genEra PS rank/stratum, LSG pool (PS≥18), unplaced
+- [ ] **4 — module: phylostratigraphy.** (a read-only card already ships on the gene page;
+      this promotes it to a real module with its own overview + filters) genEra PS rank/stratum, LSG pool (PS≥18), unplaced
       genes (50 with rank NA), founder events. First charts — load the `dataviz` skill first.
 - [ ] **5 — browse / query builder + gene-set cart + TSV export.** The cross-module payoff.
       Needs a virtualized table for 63,960 rows.

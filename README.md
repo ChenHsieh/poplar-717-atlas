@@ -30,12 +30,31 @@ convention. The same rule is mirrored in `site/js/core/data.js`; the two must ag
 ### Layout
 
 ```
+index.html                shell (site is served from the repo root, for Pages)
 scripts/build_data.py     data build; --tier full|public
+scripts/check.mjs         headless render checks -- run before every commit
 data/genes/{hap}/{chr}.json   sharded gene records
 data/meta/manifest.json   module list, counts, summary stats, per-source sha256
-site/js/core/             router, loader, gene-set store
-site/js/modules/          ONE FILE PER MODULE
+js/core/                  router, loader, gene-set store, dom helper
+js/modules/               ONE FILE PER MODULE
 ```
+
+## Checks
+
+```bash
+python3 -m http.server 8931 --bind 127.0.0.1 &
+node scripts/check.mjs
+```
+
+Renders every view in a headless browser and fails on any console error or missing expected
+content. The site fetches JSON, so `file://` is not a valid test.
+
+## Colour
+
+The five synteny classes use slots 1-5 of a validated categorical palette (worst adjacent
+CVD dE 9.1 light / 8.4 dark; normal-vision 19.6 / 19.3). Three light-mode hues sit under 3:1
+contrast on the surface, so **every class swatch ships with its text label** -- identity is
+never carried by colour alone.
 
 ### Adding a module = one file + one registry line
 

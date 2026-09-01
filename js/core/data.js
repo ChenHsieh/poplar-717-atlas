@@ -1,0 +1,74 @@
+// Data access. The gene ID encodes its own shard, so there is no index file to load.
+//
+// MIRRORS scripts/build_data.py:shard_of() EXACTLY. If you change one, change the other --
+// the build asserts the Python side against the real annotation, so this side is the one
+// that can drift silently.
+
+const CHR_RE = /^PtXa(TreH|AlbH)\.(.+?)G\d+$/;
+const SCAF_RE = /^PtXa(TreH|AlbH)\.T\d+$/;
+
+export function shardOf(geneId) {
+  let m = CHR_RE.exec(geneId);
+  if (m) return { hap: m[1] === 'TreH' ? 'hap1' : 'hap2', key: 'Chr' + m[2] };
+  m = SCAF_RE.exec(geneId);
+  if (m) return { hap: m[1] === 'TreH' ? 'hap1' : 'hap2', key: 'scaffolds' };
+  return null;
+}
+
+export const hapLabel = (h) => (h === 'hap1' ? 'HAP1 (TreH)' : 'HAP2 (AlbH)');
+
+const cache = new Map();
+const inflight = new Map();
+
+async function fetchJSON(path) {
+  if (cache.has(path)) return cache.get(path);
+  if (inflight.has(path)) return inflight.get(path);
+  const p = fetch(path)
+    .then((r) => {
+      if (!r.ok) throw new Error(`${r.status} ${path}`);
+      return r.json();
+    })
+    .then((j) => {
+      cache.set(path, j);
+      inflight.delete(path);
+      return j;
+    })
+    .catch((e) => {
+      inflight.delete(path);
+      throw e;
+    });
+  inflight.set(path, p);
+  return p;
+}
+
+export const loadShard = (hap, key) => fetchJSON(`data/genes/${hap}/${key}.json`);
+export const loadManifest = () => fetchJSON('data/meta/manifest.json');
+
+/** One gene, one fetch. Returns null for an ID that does not exist.
+ *  Checks the manifest's shard list first so a malformed ID (Chr99) resolves to "not found"
+ *  without firing a request that 404s -- the manifest is already cached by the shell. */
+export async function getGene(geneId) {
+  const s = shardOf(geneId);
+  if (!s) return null;
+  const man = await loadManifest();
+  if (!(`${s.hap}/${s.key}` in man.shards)) return null;
+  const shard = await loadShard(s.hap, s.key);
+  const g = shard[geneId];
+  return g ? { ...g, hap: s.hap } : null;
+}
+
+/** The syntelog partner ID in the other haplotype is NOT derivable from the ID -- gene
+ *  numbering is independent per haplotype. Callers must use orthogroup/synteny data. */
+export async function loadAllShards(onProgress) {
+  const man = await loadManifest();
+  const keys = Object.keys(man.shards);
+  const out = [];
+  let done = 0;
+  for (const k of keys) {
+    const [hap, key] = k.split('/');
+    const shard = await loadShard(hap, key);
+    for (const id in shard) out.push({ ...shard[id], hap });
+    if (onProgress) onProgress(++done, keys.length);
+  }
+  return out;
+}
