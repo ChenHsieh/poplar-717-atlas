@@ -16,13 +16,13 @@ Ordered. Each line is a shippable increment.
       `synt_ks/syntelog_ks.csv`), paralog pairs, salicoid-WGD ohnologs.
 - [ ] **7 — module: expression.** UNBLOCKED 2026-09-01 — `ms2_genespace/expression/` holds the
       652-sample v3 rerun (supersedes the 531). Design: `docs/EXPRESSION_DESIGN.md`. Sub-steps:
-  - [ ] **7a — data build.** `samples.json`, `studies.json`, expression buckets (250 genes,
+  - [x] **7a — data build.** `samples.json`, `studies.json`, expression buckets (250 genes,
         TPM 2dp), gene-shard summary (`x.t` tissue medians over WT controls, tau, bucket ptr),
         gzipped downloads. Asserts: header equality across matrices, BED coverage, order.
-  - [ ] **7b — study catalogue + study pages.** The community-facing organisation: 28 studies,
+  - [x] **7b — study catalogue + study pages.** The community-facing organisation: 28 studies,
         BioProject → ENA/SRA links, citation/DOI, design factors, sample table with notes.
-  - [ ] **7c — gene card: baseline tissue bars + tau** (single hue, n per bar, table view).
-  - [ ] **7d — full 652-sample profile** grouped study → condition, hover tooltip.
+  - [x] **7c — gene card: baseline tissue bars + tau** (single hue, n per bar, table view).
+  - [x] **7d — full 652-sample profile** grouped study → condition, hover tooltip.
   - [ ] **7e — browse filters** (tau, top tissue, expressed-in) — lands with step 5.
 - [ ] **8 — publish.** DECIDED 2026-09-01: private repo, **public site**. Enable Pages from
       `main` root; keep `noindex` until the chapter is out. The `lsg` private-tier field is moot

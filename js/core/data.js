@@ -72,3 +72,16 @@ export async function loadAllShards(onProgress) {
   }
   return out;
 }
+
+/* ---------- expression ---------- */
+export const loadExprSamples = () => fetchJSON('data/expr/samples.json');
+export const loadExprStudies = () => fetchJSON('data/expr/studies.json');
+export const loadExprBucket = (bucketKey) => fetchJSON(`data/expr/buckets/${bucketKey}.json`);
+
+/** Full 652-sample vector for one gene, fetched on demand (the gene shard only carries the
+ *  tissue-baseline summary, not the vector -- see docs/EXPRESSION_DESIGN.md). */
+export async function loadExprVector(gene) {
+  if (!gene.x) return null;
+  const bucket = await loadExprBucket(gene.x.b);
+  return bucket[gene.id] || null;
+}

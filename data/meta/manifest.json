@@ -1,9 +1,30 @@
 {
  "built": "2026-09-01T18:04:11-0400",
+ "expression": {
+  "bucket_size": 250,
+  "n_bioprojects": 38,
+  "n_buckets": 257,
+  "n_samples": 652,
+  "n_studies": 28,
+  "tau_excludes": [
+   "callus"
+  ],
+  "tissue_wt_control_n": {
+   "bark": 38,
+   "bud": 5,
+   "callus": 1,
+   "catkin": 4,
+   "leaf": 77,
+   "root": 27,
+   "stem": 2,
+   "xylem": 59
+  }
+ },
  "modules": [
   "core",
   "synteny",
-  "phylostrat"
+  "phylostrat",
+  "expression"
  ],
  "n_genes": 63960,
  "shards": {
@@ -57,6 +78,21 @@
    "bytes": 1467193,
    "mtime": "2026-04-01T06:46:52",
    "sha256": "a2fbfc154eb13ca5"
+  },
+  "/scratch/ch29576/ms2_genespace/expression/COLUMN_LEVEL_sample_metadata.csv": {
+   "bytes": 385517,
+   "mtime": "2026-09-01T19:02:55",
+   "sha256": "2564dbcf4047ef53"
+  },
+  "/scratch/ch29576/ms2_genespace/expression/RUN_LEVEL_supplementary.csv": {
+   "bytes": 417737,
+   "mtime": "2026-09-01T19:04:44",
+   "sha256": "6d4a11ad06f15d21"
+  },
+  "/scratch/ch29576/ms2_genespace/expression/combined_tpm_k21_rounded_20260814_study_sorted.csv": {
+   "bytes": 219374847,
+   "mtime": "2026-09-01T19:03:58",
+   "sha256": "b074774b38845927"
   },
   "/scratch/ch29576/ms2_genespace/incoming/synteny_orthogroups.tsv": {
    "bytes": 87615723,

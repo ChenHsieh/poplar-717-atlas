@@ -1,5 +1,5 @@
 import { el, clear, fmt } from './core/dom.js';
-import { getGene, loadManifest, loadShard, shardOf, hapLabel } from './core/data.js';
+import { getGene, loadManifest, loadShard, shardOf, hapLabel, loadExprStudies } from './core/data.js';
 import { MODULES, byId } from './core/registry.js';
 import { route, start, navigate } from './core/router.js';
 
@@ -146,7 +146,42 @@ route(/^\/module\/(.+)$/, async (id) => {
   const m = byId(id);
   if (!m || !m.overview) return setView(el('div', { class: 'empty' }, el('h2', {}, 'No such module'), el('p', { class: 'mono' }, id)));
   loading();
-  setView(m.overview(await loadManifest()));
+  setView(await m.overview(await loadManifest()));
+  markNav();
+});
+
+route(/^\/study\/(\d+)$/, async (idStr) => {
+  loading();
+  const id = +idStr;
+  const studies = await loadExprStudies();
+  const s = studies[id];
+  if (!s) return setView(el('div', { class: 'empty' }, el('h2', {}, 'No such study'), el('p', {}, `study ${id}`)));
+
+  const factorRow = (label, vals) => (vals && vals.length
+    ? el('span', {}, el('strong', {}, label + ': '), vals.join(', '), '  ')
+    : null);
+
+  setView(el('div', {},
+    el('h1', {}, `Study ${id}`),
+    el('p', { class: 'sub' }, s.bioprojects.map((b) =>
+      el('a', { href: `https://www.ebi.ac.uk/ena/browser/view/${b}`, target: '_blank', rel: 'noopener', class: 'mono' }, b)
+    ).flatMap((a, i) => i ? [', ', a] : [a])),
+    s.flags.includes('prefer_counts_over_tpm') && el('div', { class: 'warn' },
+      'This study\'s single-end fragment length was not individually calibrated. Effective-length ',
+      'inflation is measurable here — prefer est_counts over TPM/FPKM for this study.'),
+    el('div', { class: 'card' },
+      el('h2', {}, 'Design'),
+      el('p', {}, factorRow('Tissue', s.tissues), factorRow('Panel', s.panel_type),
+        factorRow('Genotype', s.genotypes), factorRow('Treatment', s.treatments),
+        factorRow('Growth', s.growth_conditions), factorRow('Additional', s.additional_conditions)),
+      s.citation && el('p', { class: 'muted', style: 'font-size:12.5px;margin-top:10px' }, s.citation),
+      s.doi.length ? el('p', {}, ...s.doi.map((d) => el('a', { href: d, target: '_blank', rel: 'noopener' }, d))) : null),
+    el('div', { class: 'card' },
+      el('h2', {}, `Samples (${s.samples.length})`),
+      el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
+        el('thead', {}, el('tr', {}, el('th', {}, 'Sample label'))),
+        el('tbody', {}, ...s.samples.map((label) => el('tr', {}, el('td', { class: 'mono' }, label))))))),
+  ));
   markNav();
 });
 

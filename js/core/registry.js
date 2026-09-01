@@ -9,6 +9,7 @@
 //
 // Modules MUST NOT import one another. Cross-module interaction goes through geneset.js.
 import synteny from '../modules/synteny.js';
+import expression from '../modules/expression.js';
 
-export const MODULES = [synteny];
+export const MODULES = [synteny, expression];
 export const byId = (id) => MODULES.find((m) => m.id === id);

@@ -47,6 +47,12 @@ await check('gene-hap2', '#/gene/PtXaAlbH.14G133000', { expect: ['HAP2', 'Chr14'
 await check('gene-missing', '#/gene/PtXaTreH.99G999999', { expect: ['No such gene'] });
 await check('module-synteny', '#/module/synteny',
   { expect: ['Class distribution', 'Core syntenic', 'Private', 'Tandem array'] });
+await check('module-expression', '#/module/expression',
+  { expect: ['652', 'Studies', 'WT-control samples per tissue'] });
+await check('study-1', '#/study/1',
+  { expect: ['Study 1', 'PRJEB22956', 'Georgii'] });
+await check('gene-expr-lsg4', '#/gene/PtXaTreH.05G120200',
+  { expect: ['Expression', 'Median TPM', 'catkin', 'Show all 652 samples'], wait: 900 });
 await check('home-dark', '#/', { expect: ['63,960'], theme: 'dark' });
 
 // Search is the one interaction that has no index file behind it -- prove it resolves.
