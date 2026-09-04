@@ -8,8 +8,8 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
 - [x] **2 — site shell.** Hash router, data loader with cache, module registry, `GeneSet` store.
 - [x] **3 — module: synteny.** 5-way class, n_genomes_in_og, orthogroup, HAP1↔HAP2 syntelog,
       old-vs-new diff + DIAMOND-sensitivity stability.
-- [ ] **4 — module: phylostratigraphy.** (a read-only card already ships on the gene page;
-      this promotes it to a real module with its own overview + filters) genEra PS rank/stratum, LSG pool (PS≥18), unplaced
+- [x] **4 — module: phylostratigraphy.** Strata ladder (log-scaled), LSG pool, ambiguity and
+      unplaced flags, gene-family origin + size. genEra PS rank/stratum, LSG pool (PS≥18), unplaced
       genes (50 with rank NA), founder events. First charts — load the `dataviz` skill first.
 - [ ] **5 — browse / query builder + gene-set cart + TSV export.** The cross-module payoff.
       Needs a virtualized table for 63,960 rows.
@@ -37,14 +37,14 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
 
 ## v0.2 — gene page becomes a hub (see docs/ROADMAP.md §5)
 
-- [ ] **9 — allele link.** HAP1↔HAP2 syntelog partner + Ka/Ks into the gene record from
+- [x] **9 — allele link.** HAP1↔HAP2 syntelog partner + Ka/Ks into the gene record from
       `synt_ks/syntelog_ks.csv` (25,931 pairs); card on the gene page linking both ways.
-- [ ] **10 — functional annotation + search.** Pfam / Panther / GO / best-AT hit + defline from
+- [x] **10 — functional annotation + search.** Pfam / Panther / GO / best-AT hit + defline from
       `717Official/annotation/*.annotation_info.txt` (primary transcript only); lazy
       `data/index/search.json`; search box resolves names, domains, AT loci.
-- [ ] **11 — 12-genome presence strip** on the synteny card from `of_genomes`; outbound links to
+- [x] **11 — 12-genome presence strip** on the synteny card from `of_genomes`; outbound links to
       Phytozome (717 v5.1) and PopGenIE / Phytozome P. trichocarpa via the Potri ortholog.
-- [ ] **12 — publish hygiene.** `.nojekyll`; provenance page from `manifest.json`; `LICENSE`,
+- [x] **12 — publish hygiene.** `.nojekyll`; provenance page from `manifest.json`; `LICENSE`,
       `CITATION.cff`; `data_version` in manifest + footer; `CHANGELOG.md`; CI for `check.mjs`.
-- [ ] **13 — archive sources.** `ms2_genespace/{step7_diff_*,tier3_input_v2_*,expression}` and
+- [x] **13 — archive sources.** `ms2_genespace/{step7_diff_*,tier3_input_v2_*,expression}` and
       `synt_ks/` to `/work/cjtlab/` before /scratch purges them.

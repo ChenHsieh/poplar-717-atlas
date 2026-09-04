@@ -11,8 +11,9 @@
 import synteny from '../modules/synteny.js';
 import expression from '../modules/expression.js';
 import annotation from '../modules/annotation.js';
+import phylostrat from '../modules/phylostrat.js';
 import about from '../modules/about.js';
 
 // annotation first: 'what is this gene' should be the top card on a gene page.
-export const MODULES = [annotation, synteny, expression, about];
+export const MODULES = [annotation, synteny, phylostrat, expression, about];
 export const byId = (id) => MODULES.find((m) => m.id === id);

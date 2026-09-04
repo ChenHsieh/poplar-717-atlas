@@ -5,9 +5,12 @@ site footer. A data version changes only when the *contents* of `data/` change.
 
 ## 0.2.0 — 2026-09-04
 
-The gene page becomes a hub.
+The gene page becomes a hub, and phylostratigraphy gets a real module.
 
 **Added**
+- Phylostratigraphy module: log-scaled strata ladder over both haplotypes, the LSG pool
+  (PS ≥ 18), genEra's own ambiguity flags (44 genes) and unplaced genes (50), and each gene's
+  family origin stratum and size. 1,512 of the 1,725 LSG-pool genes are singleton families.
 - Functional annotation per gene: description, best-Arabidopsis hit, Pfam, PANTHER, GO
   (4,862-term shared dictionary). 60,746 of 63,960 genes annotated.
 - HAP1↔HAP2 allele link with Yang–Nielsen Ka/Ks over the 25,931-pair syntelog map;

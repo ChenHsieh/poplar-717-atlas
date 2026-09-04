@@ -64,6 +64,10 @@ await check('gene-annotated', '#/gene/PtXaTreH.01G000300',
 // 27,004 HAP2 genes have annotation but no Pfam (release gap); this gene is one of them.
 await check('gene-hap2-pfam-gap', '#/gene/PtXaAlbH.01G000200',
   { expect: ['Function', 'Domain coverage is thinner on HAP2', 'AT1G55570'], wait: 1000 });
+await check('module-phylostrat', '#/module/phylostrat',
+  { expect: ['Genes per stratum', 'LSG pool', 'ambiguous', 'cellular organisms', 'log-scaled'] });
+await check('gene-ambiguous-ps', '#/gene/PtXaTreH.06G037000',
+  { expect: ['genEra flagged this gene as ambiguous'], wait: 900 });
 await check('module-about', '#/module/about',
   { expect: ['About & provenance', 'Known limitations', 'HAP2 domain annotation is thin', 'Sources'] });
 await check('home-dark', '#/', { expect: ['63,960'], theme: 'dark' });

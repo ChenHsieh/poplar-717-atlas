@@ -42,6 +42,254 @@
   "expression"
  ],
  "n_genes": 63960,
+ "phylostrat": {
+  "by_rank": {
+   "hap1": {
+    "1": 22769,
+    "10": 789,
+    "11": 856,
+    "12": 279,
+    "13": 110,
+    "14": 33,
+    "15": 73,
+    "16": 105,
+    "17": 154,
+    "18": 392,
+    "19": 450,
+    "2": 2422,
+    "3": 507,
+    "4": 519,
+    "5": 381,
+    "6": 1268,
+    "7": 209,
+    "8": 134,
+    "9": 655,
+    "NA": 32
+   },
+   "hap2": {
+    "1": 22538,
+    "10": 746,
+    "11": 859,
+    "12": 276,
+    "13": 113,
+    "14": 30,
+    "15": 61,
+    "16": 100,
+    "17": 171,
+    "18": 454,
+    "19": 429,
+    "2": 2386,
+    "3": 503,
+    "4": 523,
+    "5": 355,
+    "6": 1257,
+    "7": 201,
+    "8": 127,
+    "9": 676,
+    "NA": 18
+   }
+  },
+  "ladder": {
+   "hap1": [
+    {
+     "n": 22769,
+     "name": "cellular organisms",
+     "rank": 1
+    },
+    {
+     "n": 2422,
+     "name": "Eukaryota",
+     "rank": 2
+    },
+    {
+     "n": 507,
+     "name": "Viridiplantae",
+     "rank": 3
+    },
+    {
+     "n": 519,
+     "name": "Streptophyta",
+     "rank": 4
+    },
+    {
+     "n": 381,
+     "name": "Streptophytina",
+     "rank": 5
+    },
+    {
+     "n": 1268,
+     "name": "Embryophyta",
+     "rank": 6
+    },
+    {
+     "n": 209,
+     "name": "Tracheophyta",
+     "rank": 7
+    },
+    {
+     "n": 134,
+     "name": "Euphyllophyta",
+     "rank": 8
+    },
+    {
+     "n": 655,
+     "name": "Spermatophyta",
+     "rank": 9
+    },
+    {
+     "n": 789,
+     "name": "Magnoliopsida",
+     "rank": 10
+    },
+    {
+     "n": 856,
+     "name": "Mesangiospermae",
+     "rank": 11
+    },
+    {
+     "n": 279,
+     "name": "Pentapetalae",
+     "rank": 12
+    },
+    {
+     "n": 110,
+     "name": "rosids",
+     "rank": 13
+    },
+    {
+     "n": 33,
+     "name": "fabids",
+     "rank": 14
+    },
+    {
+     "n": 73,
+     "name": "Malpighiales",
+     "rank": 15
+    },
+    {
+     "n": 105,
+     "name": "Salicaceae",
+     "rank": 16
+    },
+    {
+     "n": 154,
+     "name": "Saliceae",
+     "rank": 17
+    },
+    {
+     "n": 392,
+     "name": "Populus",
+     "rank": 18
+    },
+    {
+     "n": 450,
+     "name": "Populus tremula x Populus alba",
+     "rank": 19
+    }
+   ],
+   "hap2": [
+    {
+     "n": 22538,
+     "name": "cellular organisms",
+     "rank": 1
+    },
+    {
+     "n": 2386,
+     "name": "Eukaryota",
+     "rank": 2
+    },
+    {
+     "n": 503,
+     "name": "Viridiplantae",
+     "rank": 3
+    },
+    {
+     "n": 523,
+     "name": "Streptophyta",
+     "rank": 4
+    },
+    {
+     "n": 355,
+     "name": "Streptophytina",
+     "rank": 5
+    },
+    {
+     "n": 1257,
+     "name": "Embryophyta",
+     "rank": 6
+    },
+    {
+     "n": 201,
+     "name": "Tracheophyta",
+     "rank": 7
+    },
+    {
+     "n": 127,
+     "name": "Euphyllophyta",
+     "rank": 8
+    },
+    {
+     "n": 676,
+     "name": "Spermatophyta",
+     "rank": 9
+    },
+    {
+     "n": 746,
+     "name": "Magnoliopsida",
+     "rank": 10
+    },
+    {
+     "n": 859,
+     "name": "Mesangiospermae",
+     "rank": 11
+    },
+    {
+     "n": 276,
+     "name": "Pentapetalae",
+     "rank": 12
+    },
+    {
+     "n": 113,
+     "name": "rosids",
+     "rank": 13
+    },
+    {
+     "n": 30,
+     "name": "fabids",
+     "rank": 14
+    },
+    {
+     "n": 61,
+     "name": "Malpighiales",
+     "rank": 15
+    },
+    {
+     "n": 100,
+     "name": "Salicaceae",
+     "rank": 16
+    },
+    {
+     "n": 171,
+     "name": "Saliceae",
+     "rank": 17
+    },
+    {
+     "n": 454,
+     "name": "Populus",
+     "rank": 18
+    },
+    {
+     "n": 429,
+     "name": "Populus tremula x Populus alba",
+     "rank": 19
+    }
+   ]
+  },
+  "lsg_rank_min": 18,
+  "n_ambiguous": 44,
+  "n_founder": 63954,
+  "note": "LSG pool = rank >= 18 (PS18 Populus + PS19 hybrid-only), per the chapter definition. PS17 Saliceae is flanking context and is not in the pool."
+ },
  "shards": {
   "hap1/Chr01": 3761,
   "hap1/Chr02": 2172,

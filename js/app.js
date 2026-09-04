@@ -95,7 +95,7 @@ route(/^\/$/, async () => {
         el('dt', {}, el('a', { href: `#/module/${m.id}` }, m.label)),
         el('dd', { class: 'muted' }, `${(m.filters || []).length} filters · gene card`)])),
       el('p', { class: 'muted', style: 'margin:12px 0 0;font-size:12px' },
-        'Phylostratigraphy, duplication and expression modules are queued — see TODO.md.'),
+        'A duplication module (tandem arrays, syntelog dS, salicoid-WGD ohnologs) is queued — see TODO.md.'),
     ),
     el('div', { class: 'card' },
       el('h2', {}, 'Try a gene'),
@@ -135,18 +135,6 @@ route(/^\/gene\/(.+)$/, async (id) => {
     const c = m.geneCard(g);   // an element, or a fragment of several cards
     if (c) cards.append(c);
   }
-  // Phylostratigraphy has no module file yet; surface the data the build already ships.
-  if (g.ps) {
-    cards.append(el('div', { class: 'card' },
-      el('h2', {}, 'Phylostratigraphy', el('span', { class: 'tag' }, 'genEra')),
-      el('dl', { class: 'kv' },
-        el('dt', {}, 'Stratum'), el('dd', {}, g.ps.name || el('span', { class: 'muted' }, 'unplaced')),
-        el('dt', {}, 'Rank'), el('dd', {}, g.ps.rank == null ? el('span', { class: 'muted' }, 'NA — genEra could not place this gene') : `PS${g.ps.rank} of 19`),
-        el('dt', {}, 'Taxonomic representativeness'), el('dd', {}, g.ps.tr == null ? '—' : g.ps.tr + '%'),
-        el('dt', {}, 'LSG pool'), el('dd', {}, g.ps.lsg ? el('strong', {}, 'yes (PS ≥ 18)') : el('span', { class: 'muted' }, 'no'))),
-      el('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' }, 'Full module queued — see TODO.md.')));
-  }
-
   setView(el('div', {},
     el('h1', { class: 'mono' }, g.id),
     el('p', { class: 'sub' }, `${hapLabel(g.hap)} · ${g.chr} · ${kb} kb`),

@@ -105,6 +105,16 @@ table.data tr:hover td { background: var(--panel-2); }
 .scroll-x { overflow-x: auto; }
 
 .bar { height: 9px; border-radius: 2px; background: var(--line-2); position: relative; min-width: 3px; }
+
+/* Labelled bar rows: a label, a proportional track, and the value in a fixed column.
+   Modules may override grid-template-columns inline for longer labels. */
+.barchart { display: grid; gap: 7px; }
+.barrow { display: grid; grid-template-columns: 76px 1fr 52px; align-items: center; gap: 9px; font-size: 12px; }
+.barrow .lbl { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; }
+.barrow .lbl b { color: var(--ink); }
+.bartrack { height: 9px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.barfill { height: 100%; border-radius: 3px; }
+.barrow .val { font-family: var(--mono); text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .empty { text-align: center; padding: 60px 20px; color: var(--ink-2); }
 .warn { border-left: 3px solid var(--c-priv); background: var(--panel-2); padding: 9px 13px;
   border-radius: 0 6px 6px 0; font-size: 12.5px; color: var(--ink-2); margin: 12px 0; }
