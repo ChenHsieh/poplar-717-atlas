@@ -13,18 +13,22 @@ One artifact, two audiences, and they pull differently:
 
 Design principles that stay fixed: **the gene is the primitive; modules are facets; the study is the citation unit; the gene ID encodes its shard; no server, no build step.**
 
-## 2. Where it stands (2026-09-04)
+## 2. Where it stands (2026-09-04, after v0.2)
 
-| layer | state | evidence |
-|---|---|---|
-| Data — synteny | 12-genome GENESPACE, QC PASS, DIAMOND-sensitivity control (Jaccard 0.98) | `ms2_genespace/RUN_LOG.md`, `STEP7_REPORT.md` |
-| Data — phylostratigraphy | genEra rank per gene in every shard; LSG pool 842 + 883 reproduced exactly | `build_data.py` |
-| Data — expression | 652 samples / 28 studies / 38 BioProjects, asserted against the BED gene set | `docs/EXPRESSION_DESIGN.md` |
-| Site | shell, synteny module, expression module (catalogue, study pages, gene profiles), ID-prefix search | `scripts/check.mjs` green |
-| Publishing | repo private; **Pages not enabled** (API 404; plan reads Free); Artifact preview live | this session |
-| Repo | 247 MB data in 299 files; `.git` 87.5 MB after one data commit; no `.nojekyll` | measured |
+| layer | state |
+|---|---|
+| Data — synteny | 12-genome GENESPACE, QC PASS, DIAMOND-sensitivity control (Jaccard 0.98) |
+| Data — phylostratigraphy | genEra rank, ambiguity flags (44), unplaced (50), family origin + size |
+| Data — annotation | 60,746 genes; 4,862-term GO dictionary; 51,862 allele links; 62,385 presence lists |
+| Data — expression | 652 samples / 28 studies / 38 BioProjects |
+| Data — duplication | 1,346 tier-2 paralog pairs with dS (NOT genome-wide); tandem arrays genome-wide |
+| Site | gene hub, 6 modules, free-text search, browse/query builder, gene sets, TSV export, provenance |
+| Integrity | `validate_data.py` (17 checks) + `check.mjs` (16 views + driven query), both in CI |
+| Publishing | repo private; **Pages still not enabled** (API 404, plan reads Free); Artifact preview live |
+| Repo | ~280 MB data, `.git` under 200 MB; `.nojekyll`, LICENSE, CITATION.cff, CHANGELOG in place |
+| Sources | **archived** to `/work/cjtlab/ch29576_ms2/atlas_sources_20260904/` (3.35 GB), safe from purge |
 
-Not built: phylostrat module, duplication, browse/query builder, gene-set cart, functional annotation and search, HAP1↔HAP2 allele link, outbound cross-links, provenance page, data versioning, license, citation.
+All five planned modules ship. What remains is depth, not scaffolding.
 
 ## 3. The gaps that matter, ranked
 
@@ -64,13 +68,19 @@ Each phase ships when `check.mjs` is green, build asserts pass, and one screensh
 
 | release | theme | contents |
 |---|---|---|
-| **v0.2** | Gene page becomes a hub | allele link + Ks · 12-genome presence strip · functional annotation + search · outbound links (Phytozome, PopGenIE via Potri ortholog) · `.nojekyll` · provenance page · LICENSE + CITATION.cff · archive sources to `/work` · Pages when the plan allows |
-| **v0.3** | Query | facet index · browse/query builder · gene-set cart + TSV export · τ / top-tissue filters · phylostrat module (PS chart, LSG browse, unplaced/ambiguous flags, founder events) |
-| **v0.4** | Depth | duplication module (tandem arrays, dS distributions, salicoid-WGD ohnologs) · study sample tables · condition-grouped expression means · ComBat cross-study view after a 63,960-gene rebuild |
-| **v0.5** | Hybrid-specific | ASE module (needs a per-gene table from `ase_analysis/`) · cross-species *P. trichocarpa* xylem (377 samples) via synteny orthologs |
-| **v1.0** | Release | data version + Zenodo DOI · `noindex` removed with the chapter · license live · changelog · docs |
+| ~~v0.2~~ | ~~Gene page becomes a hub~~ | **DONE** — allele link, annotation + search, presence, cross-links, publish hygiene, sources archived |
+| ~~v0.3~~ | ~~Query~~ | **DONE early** — facet index, browse builder, gene sets, TSV export, phylostrat module |
+| **v0.4** | Depth | study sample tables (metadata exists, table is label-only) · condition-grouped expression means · ComBat cross-study view after a 63,960-gene rebuild · tandem-array identity (which genes share an array) · genome-wide paralog scan if the WGD question matters |
+| **v0.5** | Hybrid-specific | ASE module (needs a per-gene table from `ase_analysis/`) · cross-species *P. trichocarpa* xylem (377 samples) via synteny orthologs · allele-level expression once ASE lands |
+| **v1.0** | Release | Zenodo DOI · `noindex` removed with the chapter · CC BY 4.0 activated on the data · docs |
 
-v0.2 is the one to do next: it is mostly data already on disk, and it turns the atlas from "a chapter's tables" into "a place a colleague would open first."
+**v0.2 and v0.3 both shipped on 2026-09-04.** The atlas is now a place a colleague would open
+first: a gene page answers what the gene is, where its allele is, how old it is, which genomes
+have it, where it is expressed, and what it duplicated from — and browse answers the same
+questions across all 63,960 genes at once.
+
+The single highest-value remaining item is not on the list above: **turn Pages on.** Everything
+is built and checked; the site simply is not reachable by anyone but its author.
 
 ## 6. Decisions that are Chen's
 
