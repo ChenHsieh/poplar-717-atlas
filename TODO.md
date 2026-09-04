@@ -1,6 +1,7 @@
 # TODO
 
-Ordered. Each line is a shippable increment.
+Ordered. Each line is a shippable increment. Direction lives in `docs/ROADMAP.md`;
+this file is the task list for the current release (v0.2 — "gene page becomes a hub").
 
 - [x] **1 — repo + data build.** `build_data.py`, gene-ID→shard convention asserted against
       the annotation, 39 shards / 63,960 genes / 23 MB, `--tier full|public` flag.
@@ -33,3 +34,17 @@ Ordered. Each line is a shippable increment.
 - Structure + embeddings module (foldseek, ESM-2) from `data/foldseek/`, `data/embedding_tour/`.
 - Wet-lab phenotype module — **private tier only**, never published.
 - JBrowse-style coordinate view; BLAST box (needs a server, so probably an external link).
+
+## v0.2 — gene page becomes a hub (see docs/ROADMAP.md §5)
+
+- [ ] **9 — allele link.** HAP1↔HAP2 syntelog partner + Ka/Ks into the gene record from
+      `synt_ks/syntelog_ks.csv` (25,931 pairs); card on the gene page linking both ways.
+- [ ] **10 — functional annotation + search.** Pfam / Panther / GO / best-AT hit + defline from
+      `717Official/annotation/*.annotation_info.txt` (primary transcript only); lazy
+      `data/index/search.json`; search box resolves names, domains, AT loci.
+- [ ] **11 — 12-genome presence strip** on the synteny card from `of_genomes`; outbound links to
+      Phytozome (717 v5.1) and PopGenIE / Phytozome P. trichocarpa via the Potri ortholog.
+- [ ] **12 — publish hygiene.** `.nojekyll`; provenance page from `manifest.json`; `LICENSE`,
+      `CITATION.cff`; `data_version` in manifest + footer; `CHANGELOG.md`; CI for `check.mjs`.
+- [ ] **13 — archive sources.** `ms2_genespace/{step7_diff_*,tier3_input_v2_*,expression}` and
+      `synt_ks/` to `/work/cjtlab/` before /scratch purges them.
