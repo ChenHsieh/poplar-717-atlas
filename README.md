@@ -42,12 +42,28 @@ js/modules/               ONE FILE PER MODULE
 ## Checks
 
 ```bash
+python3 scripts/validate_data.py                  # data integrity, no browser needed
 python3 -m http.server 8931 --bind 127.0.0.1 &
-node scripts/check.mjs
+node scripts/check.mjs                            # headless render
 ```
 
-Renders every view in a headless browser and fails on any console error or missing expected
-content. The site fetches JSON, so `file://` is not a valid test.
+`validate_data.py` checks the committed data against itself: the ID→shard rule, expression
+bucket pointers, allele links (existing, cross-haplotype, reciprocal), the absence of the PAML
+omega sentinel, and search postings in range. `check.mjs` renders every view and fails on any
+console error or missing content — the site fetches JSON, so `file://` is not a valid test.
+Both run in CI on every push.
+
+## Build order
+
+The data scripts are **not** independent — the later two patch the shards the first one writes:
+
+```bash
+python3 scripts/build_data.py --tier full     # writes shards (synteny + phylostratigraphy)
+python3 scripts/build_expression.py           # adds x: tissue baseline, tau, bucket pointer
+python3 scripts/build_annotation.py           # adds ann / allele / pres, builds the search index
+```
+
+Running `build_data.py` alone will drop the expression and annotation layers.
 
 ## Colour
 

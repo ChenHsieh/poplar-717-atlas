@@ -1,0 +1,46 @@
+name: checks
+
+# The DATA build runs on Sapelo2 (its sources are cluster-local and not in this repo).
+# CI's job is narrower: prove the committed data and the site still agree.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate data invariants
+        run: python3 scripts/validate_data.py
+
+      - name: Install Playwright Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-audit --no-fund playwright-core@1.62.1
+          npx --yes playwright@1.62.1 install --with-deps chromium
+
+      - name: Serve and run render checks
+        run: |
+          python3 -m http.server 8931 --bind 127.0.0.1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8931/index.html >/dev/null && break
+            sleep 1
+          done
+          CI_CHROME="$(node -e "console.log(require('playwright-core').chromium.executablePath())")" \
+            node scripts/check.mjs
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-shots
+          path: shots/
+          if-no-files-found: ignore

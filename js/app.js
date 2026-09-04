@@ -198,11 +198,22 @@ route(/^\/study\/(\d+)$/, async (idStr) => {
 });
 
 /* ---------- boot ---------- */
-(function boot() {
+(async function boot() {
   const nav = document.querySelector('header.top nav');
   MODULES.filter((m) => m.overview)
     .forEach((m) => nav.append(el('a', { href: `#/module/${m.id}` }, m.label)));
   initSearch();
   start();
   markNav();
+  // Stamp the data version into the footer so a reader can tell which build they are looking at.
+  try {
+    const man = await loadManifest();
+    const f = document.querySelector('footer.bot');
+    if (f && man.data_version) {
+      f.append(el('div', { style: 'margin-top:5px' },
+        `data v${man.data_version}`,
+        man.data_released ? ` · ${man.data_released}` : '',
+        ' · ', el('a', { href: '#/module/about' }, 'provenance')));
+    }
+  } catch { /* footer stamp is cosmetic; never block boot on it */ }
 })();

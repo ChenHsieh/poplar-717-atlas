@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""
+Integrity checks over the COMMITTED data. Runs in CI, where the Sapelo2 source files do not
+exist -- so it checks internal consistency, which is exactly what can rot when a build script
+changes and the data is regenerated.
+
+Every check here has failed, or could plausibly fail silently, in this project's history:
+the ID->shard convention is load-bearing for every gene page; a dangling expression bucket
+pointer would 404 only for the unlucky gene; an allele link to a nonexistent gene would be a
+dead end a reader hits before a maintainer does.
+"""
+import json, os, re, sys
+from collections import Counter
+
+DATA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+CHR_RE = re.compile(r"^PtXa(TreH|AlbH)\.(.+?)G\d+$")
+SCAF_RE = re.compile(r"^PtXa(TreH|AlbH)\.T\d+$")
+
+fails = []
+def check(name, ok, detail=""):
+    print(f"  {'PASS' if ok else 'FAIL'}  {name}{'  — ' + detail if detail else ''}")
+    if not ok:
+        fails.append(name)
+
+def shard_of(gid):
+    m = CHR_RE.match(gid)
+    if m:
+        return ("hap1" if m.group(1) == "TreH" else "hap2"), "Chr" + m.group(2)
+    m = SCAF_RE.match(gid)
+    if m:
+        return ("hap1" if m.group(1) == "TreH" else "hap2"), "scaffolds"
+    return None
+
+def main():
+    man = json.load(open(f"{DATA}/meta/manifest.json"))
+    genes, shard_files = {}, 0
+    for hap in ("hap1", "hap2"):
+        d = f"{DATA}/genes/{hap}"
+        for fn in sorted(os.listdir(d)):
+            shard_files += 1
+            key = fn[:-5]
+            for gid, rec in json.load(open(os.path.join(d, fn))).items():
+                genes[gid] = (hap, key, rec)
+
+    print(f"\nvalidating {len(genes)} genes in {shard_files} shards (data v{man.get('data_version')})\n")
+
+    check("manifest gene count matches shards", man["n_genes"] == len(genes),
+          f"manifest {man['n_genes']} vs {len(genes)}")
+
+    bad = [g for g, (h, k, _) in genes.items() if shard_of(g) != (h, k)]
+    check("every gene ID resolves to the shard it is stored in", not bad,
+          f"{len(bad)} mismatched, e.g. {bad[:3]}" if bad else "the client rule holds for all")
+
+    missing_shard = [k for k in man["shards"] if not os.path.exists(f"{DATA}/genes/{k}.json")]
+    check("every manifest shard exists on disk", not missing_shard, str(missing_shard[:3]))
+
+    # Expression: the bucket pointer must resolve, and the vector must be the right length.
+    n_samples = (man.get("expression") or {}).get("n_samples")
+    buckets, bad_ptr, bad_len = {}, [], []
+    for gid, (_, _, rec) in genes.items():
+        x = rec.get("x")
+        if not x:
+            continue
+        b = x.get("b")
+        if b not in buckets:
+            p = f"{DATA}/expr/buckets/{b}.json"
+            buckets[b] = json.load(open(p)) if os.path.exists(p) else None
+        if buckets[b] is None or gid not in buckets[b]:
+            bad_ptr.append(gid)
+        elif n_samples and len(buckets[b][gid]) != n_samples:
+            bad_len.append(gid)
+    check("every expression bucket pointer resolves", not bad_ptr,
+          f"{len(bad_ptr)} dangling, e.g. {bad_ptr[:3]}" if bad_ptr else f"{len(buckets)} buckets")
+    check(f"every expression vector has {n_samples} values", not bad_len,
+          f"{len(bad_len)} wrong length" if bad_len else "")
+
+    # Allele links must point at a real gene, in the OTHER haplotype, and be reciprocal.
+    dangling = [g for g, (_, _, r) in genes.items()
+                if r.get("allele") and r["allele"]["id"] not in genes]
+    same_hap = [g for g, (h, _, r) in genes.items()
+                if r.get("allele") and r["allele"]["id"] in genes
+                and genes[r["allele"]["id"]][0] == h]
+    nonrecip = [g for g, (_, _, r) in genes.items()
+                if r.get("allele") and r["allele"]["id"] in genes
+                and (genes[r["allele"]["id"]][2].get("allele") or {}).get("id") != g]
+    check("allele links point at existing genes", not dangling, f"{len(dangling)} dangling")
+    check("allele links cross haplotypes", not same_hap, f"{len(same_hap)} same-haplotype")
+    check("allele links are reciprocal", not nonrecip, f"{len(nonrecip)} one-way")
+
+    # The omega sentinel must never reach the data again.
+    w99 = [g for g, (_, _, r) in genes.items()
+           if (r.get("allele") or {}).get("w") is not None and r["allele"]["w"] >= 99]
+    check("no omega >= 99 (PAML 'cannot estimate' sentinel)", not w99, f"{len(w99)} records")
+    wnok = [g for g, (_, _, r) in genes.items()
+            if (a := r.get("allele")) and a.get("w") is not None
+            and (a.get("ks") is None or a.get("ka") is None)]
+    check("no omega reported without both Ka and Ks", not wnok, f"{len(wnok)} records")
+
+    # Search index: postings must index into genes.json, and GO ids must be in the dictionary.
+    idx = json.load(open(f"{DATA}/index/genes.json"))
+    check("genes.json covers every gene", len(idx) == len(genes) and set(idx) == set(genes),
+          f"{len(idx)} ids")
+    terms = json.load(open(f"{DATA}/index/terms.json"))
+    go_vocab = set(terms.get("go", {}))
+    unknown = Counter()
+    for gid, (_, _, rec) in genes.items():
+        for t in (rec.get("ann") or {}).get("go", []):
+            if t not in go_vocab:
+                unknown[t] += 1
+    check("every GO id on a gene is in the term dictionary", not unknown,
+          f"{len(unknown)} unknown ids" if unknown else f"{len(go_vocab)} terms")
+
+    sdir = f"{DATA}/index/search"
+    oob = 0
+    for fn in sorted(os.listdir(sdir)):
+        for tok, ids in json.load(open(os.path.join(sdir, fn))).items():
+            if ids and (ids[0] < 0 or ids[-1] >= len(idx)):
+                oob += 1
+    check("search postings are in range", oob == 0, f"{oob} tokens out of range")
+
+    print()
+    if fails:
+        print(f"{len(fails)} CHECK(S) FAILED: {fails}")
+        return 1
+    print("ALL DATA CHECKS PASSED")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

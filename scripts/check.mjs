@@ -1,14 +1,20 @@
 // Headless render check. Loads real pages over HTTP (the site fetches JSON, so file:// is
 // not a valid test) and fails on any console error or missing expected content.
-import { chromium } from '/scratch/ch29576/tools/webcheck/node_modules/playwright-core/index.mjs';
+import { createRequire } from 'node:module';
+const require_ = createRequire(import.meta.url);
+const { chromium } = process.env.CI_CHROME
+  ? require_('playwright-core')
+  : await import('/scratch/ch29576/tools/webcheck/node_modules/playwright-core/index.mjs');
 import fs from 'fs';
 
 const base = process.argv[2] || 'http://127.0.0.1:8931';
-const outdir = process.argv[3] || '/scratch/ch29576/poplar-717-atlas/shots';
+const outdir = process.argv[3] || 'shots';   // relative, so CI can write it too
 fs.mkdirSync(outdir, { recursive: true });
 
+// Sapelo2 has no bundled browser download, so the path is pinned there; CI passes its own.
+const SAPELO_CHROME = '/scratch/ch29576/tools/webcheck/browsers/chromium-1234/chrome-linux64/chrome';
 const browser = await chromium.launch({
-  executablePath: '/scratch/ch29576/tools/webcheck/browsers/chromium-1234/chrome-linux64/chrome',
+  executablePath: process.env.CI_CHROME || SAPELO_CHROME,
   args: ['--no-sandbox', '--disable-dev-shm-usage'],
 });
 let failures = 0;
@@ -58,6 +64,8 @@ await check('gene-annotated', '#/gene/PtXaTreH.01G000300',
 // 27,004 HAP2 genes have annotation but no Pfam (release gap); this gene is one of them.
 await check('gene-hap2-pfam-gap', '#/gene/PtXaAlbH.01G000200',
   { expect: ['Function', 'Domain coverage is thinner on HAP2', 'AT1G55570'], wait: 1000 });
+await check('module-about', '#/module/about',
+  { expect: ['About & provenance', 'Known limitations', 'HAP2 domain annotation is thin', 'Sources'] });
 await check('home-dark', '#/', { expect: ['63,960'], theme: 'dark' });
 
 // Search is the one interaction that has no index file behind it -- prove it resolves.
