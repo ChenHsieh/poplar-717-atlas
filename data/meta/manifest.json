@@ -1,4 +1,17 @@
 {
+ "annotation": {
+  "go_terms": 4862,
+  "n_allele": 51862,
+  "n_annotated": 60746,
+  "n_presence": 62385,
+  "search_tokens": 35377,
+  "sources": {
+   "best_arabidopsis": "annotation_info.txt (both haplotypes)",
+   "go": "GO/h{1,2}.custom.GO (lab-built, both haplotypes, with term names)",
+   "kaks": "synt_ks/syntelog_ks.csv, Yang-Nielsen (yn_*), 25,931 syntelog pairs",
+   "pfam_panther": "annotation_info.txt for HAP1; parsed from defline.txt for HAP2 because HAP2's annotation_info domain columns are empty in the release"
+  }
+ },
  "built": "2026-09-01T18:04:11-0400",
  "expression": {
   "bucket_size": 250,

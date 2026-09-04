@@ -10,6 +10,8 @@
 // Modules MUST NOT import one another. Cross-module interaction goes through geneset.js.
 import synteny from '../modules/synteny.js';
 import expression from '../modules/expression.js';
+import annotation from '../modules/annotation.js';
 
-export const MODULES = [synteny, expression];
+// annotation first: 'what is this gene' should be the top card on a gene page.
+export const MODULES = [annotation, synteny, expression];
 export const byId = (id) => MODULES.find((m) => m.id === id);

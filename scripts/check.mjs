@@ -53,6 +53,11 @@ await check('study-1', '#/study/1',
   { expect: ['Study 1', 'PRJEB22956', 'Georgii'] });
 await check('gene-expr-lsg4', '#/gene/PtXaTreH.05G120200',
   { expect: ['Expression', 'Median TPM', 'catkin', 'Show all 652 samples'], wait: 900 });
+await check('gene-annotated', '#/gene/PtXaTreH.01G000300',
+  { expect: ['Function', 'Allele', 'Panel presence', 'AT1G55570'], wait: 1000 });
+// 27,004 HAP2 genes have annotation but no Pfam (release gap); this gene is one of them.
+await check('gene-hap2-pfam-gap', '#/gene/PtXaAlbH.01G000200',
+  { expect: ['Function', 'Domain coverage is thinner on HAP2', 'AT1G55570'], wait: 1000 });
 await check('home-dark', '#/', { expect: ['63,960'], theme: 'dark' });
 
 // Search is the one interaction that has no index file behind it -- prove it resolves.
@@ -64,9 +69,20 @@ await p.fill('#q', 'PtXaTreH.05G1202');
 await p.waitForTimeout(900);
 const hits = await p.$$eval('#hits a', (as) => as.map((a) => a.textContent.trim()).slice(0, 3));
 await p.screenshot({ path: `${outdir}/search.png` });
-const searchOk = hits.some((h) => h.includes('PtXaTreH.05G120200')) && !serrs.length;
+let searchOk = hits.some((h) => h.includes('PtXaTreH.05G120200')) && !serrs.length;
+console.log(`\n### search:id  ${searchOk ? 'OK' : 'FAIL'}\n   hits: ${JSON.stringify(hits)}`);
 if (!searchOk) failures++;
-console.log(`\n### search  ${searchOk ? 'OK' : 'FAIL'}\n   hits: ${JSON.stringify(hits)}`);
+
+for (const [label, q, want] of [['keyword', 'dehydrin', null], ['at-locus', 'AT1G55570', null]]) {
+  await p.fill('#q', '');
+  await p.fill('#q', q);
+  await p.waitForTimeout(1100);
+  const h = await p.$$eval('#hits a', (as) => as.map((a) => a.textContent.trim()).slice(0, 3));
+  const ok = h.length > 0 && !h[0].startsWith('Nothing matches') && !serrs.length;
+  if (!ok) failures++;
+  console.log(`### search:${label} "${q}"  ${ok ? 'OK' : 'FAIL'}\n   hits: ${JSON.stringify(h)}`);
+}
+await p.screenshot({ path: `${outdir}/search-text.png` });
 serrs.forEach((e) => console.log('   !! ' + e));
 await p.close();
 

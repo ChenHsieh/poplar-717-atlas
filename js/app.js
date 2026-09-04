@@ -1,5 +1,6 @@
 import { el, clear, fmt } from './core/dom.js';
-import { getGene, loadManifest, loadShard, shardOf, hapLabel, loadExprStudies } from './core/data.js';
+import { getGene, loadManifest, loadShard, shardOf, hapLabel, loadExprStudies,
+         searchGenes } from './core/data.js';
 import { MODULES, byId } from './core/registry.js';
 import { route, start, navigate } from './core/router.js';
 
@@ -21,26 +22,37 @@ function initSearch() {
     const mine = ++seq;
     if (q.length < 3) return close();
 
-    // Complete a partial ID to something that names a shard, e.g. "PtXaTreH.05" -> hap1/Chr05.
+    // Two paths, merged: a gene ID resolves via the shard convention with no index at all;
+    // anything else goes to the token index (descriptions, AT loci, Pfam/PANTHER).
+    const byId = [];
     const probe = /G\d+$/.test(q) ? q : q + 'G000000';
     const s = shardOf(probe);
-    if (!s) {
-      clear(hits).append(el('a', { href: '#' }, 'Type a gene ID, e.g. PtXaTreH.05G120200'));
-      hits.style.display = 'block';
-      return;
+    if (s) {
+      const man = await loadManifest();
+      if (`${s.hap}/${s.key}` in man.shards) {
+        const shard = await loadShard(s.hap, s.key);
+        const up = q.toUpperCase();
+        byId.push(...Object.keys(shard).filter((k) => k.toUpperCase().startsWith(up)).sort().slice(0, 12));
+      }
     }
-    const man = await loadManifest();
-    if (!(`${s.hap}/${s.key}` in man.shards)) { clear(hits).append(el('a', { class: 'muted' }, `No shard for ${s.hap}/${s.key}`)); hits.style.display = 'block'; return; }
-    const shard = await loadShard(s.hap, s.key);
+    const byText = await searchGenes(q, 24);
     if (mine !== seq) return;
 
-    const up = q.toUpperCase();
-    const found = Object.keys(shard).filter((k) => k.toUpperCase().startsWith(up)).sort().slice(0, 25);
+    const seen = new Set();
+    const merged = [...byId, ...byText].filter((id) => !seen.has(id) && seen.add(id)).slice(0, 24);
+
     clear(hits);
-    if (!found.length) hits.append(el('a', { class: 'muted' }, `No gene starts with ${q}`));
-    else found.forEach((id) => hits.append(
-      el('a', { href: '#/gene/' + id, onclick: close }, id,
-        el('span', { class: 'muted' }, `  ${shard[id].chr}:${fmt(shard[id].start)}`))));
+    if (!merged.length) {
+      hits.append(el('a', { class: 'muted' }, `Nothing matches "${q}"`));
+    } else {
+      for (const id of merged) {
+        const g = await getGene(id);
+        const note = g && g.ann && (g.ann.d || g.ann.atd);
+        hits.append(el('a', { href: '#/gene/' + id, onclick: close },
+          el('span', {}, id),
+          note ? el('span', { class: 'muted', style: 'font-family:inherit' }, `  ${note.slice(0, 54)}`) : null));
+      }
+    }
     hits.style.display = 'block';
   });
 
@@ -120,7 +132,7 @@ route(/^\/gene\/(.+)$/, async (id) => {
 
   for (const m of MODULES) {
     if (!m.geneCard) continue;
-    const c = m.geneCard(g);
+    const c = m.geneCard(g);   // an element, or a fragment of several cards
     if (c) cards.append(c);
   }
   // Phylostratigraphy has no module file yet; surface the data the build already ships.
@@ -188,7 +200,8 @@ route(/^\/study\/(\d+)$/, async (idStr) => {
 /* ---------- boot ---------- */
 (function boot() {
   const nav = document.querySelector('header.top nav');
-  MODULES.forEach((m) => nav.append(el('a', { href: `#/module/${m.id}` }, m.label)));
+  MODULES.filter((m) => m.overview)
+    .forEach((m) => nav.append(el('a', { href: `#/module/${m.id}` }, m.label)));
   initSearch();
   start();
   markNav();

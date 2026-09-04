@@ -85,3 +85,34 @@ export async function loadExprVector(gene) {
   const bucket = await loadExprBucket(gene.x.b);
   return bucket[gene.id] || null;
 }
+
+/* ---------- annotation, allele, search ---------- */
+export const loadTerms = () => fetchJSON('data/index/terms.json');
+export const loadGeneIndex = () => fetchJSON('data/index/genes.json');
+/** Token index is sharded by first character so typing fetches one small file. */
+export const loadSearchShard = (c) => fetchJSON(`data/index/search/${c}.json`);
+
+/** Free-text search over descriptions, Arabidopsis loci, Pfam and PANTHER accessions. */
+export async function searchGenes(query, limit = 30) {
+  const q = query.trim().toLowerCase();
+  if (q.length < 3) return [];
+  const c = /[a-z0-9]/.test(q[0]) ? q[0] : '_';
+  let shard, ids;
+  try {
+    [shard, ids] = await Promise.all([loadSearchShard(c), loadGeneIndex()]);
+  } catch {
+    return [];
+  }
+  // Exact token first, then prefix matches, so "kinase" beats "kinase-like".
+  const hits = new Map();
+  const add = (idxs, rank) => idxs.forEach((i) => { if (!hits.has(i)) hits.set(i, rank); });
+  if (shard[q]) add(shard[q], 0);
+  for (const tok in shard) {
+    if (hits.size > limit * 8) break;
+    if (tok !== q && tok.startsWith(q)) add(shard[tok], 1);
+  }
+  return [...hits.entries()]
+    .sort((a, b) => a[1] - b[1] || a[0] - b[0])
+    .slice(0, limit)
+    .map(([i]) => ids[i]);
+}
