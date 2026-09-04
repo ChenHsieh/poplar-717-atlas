@@ -35,6 +35,24 @@
    "xylem": 59
   }
  },
+ "facets": {
+  "bytes": 1808485,
+  "cols": [
+   "hap",
+   "chr",
+   "cls",
+   "ps",
+   "tau",
+   "top",
+   "allele",
+   "at",
+   "changed",
+   "tandem",
+   "npres",
+   "amb"
+  ],
+  "n_rows": 63960
+ },
  "modules": [
   "core",
   "synteny",

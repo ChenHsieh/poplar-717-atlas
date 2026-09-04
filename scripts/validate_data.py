@@ -110,6 +110,35 @@ def main():
     check("every GO id on a gene is in the term dictionary", not unknown,
           f"{len(unknown)} unknown ids" if unknown else f"{len(go_vocab)} terms")
 
+    # Facet index must be row-aligned with genes.json, or browse links to the wrong gene.
+    fac_path = f"{DATA}/index/facets.json"
+    if os.path.exists(fac_path):
+        fac = json.load(open(fac_path))
+        check("facet rows align with genes.json", len(fac["rows"]) == len(idx),
+              f"{len(fac['rows'])} rows vs {len(idx)} genes")
+        ncol = len(fac["cols"])
+        ragged = sum(1 for r in fac["rows"] if len(r) != ncol)
+        check("every facet row has the declared width", ragged == 0, f"{ragged} ragged")
+        ci = fac["cols"].index("cls")
+        vocab_n = len(fac["vocab"]["cls"])
+        oob = sum(1 for r in fac["rows"] if r[ci] >= vocab_n)
+        check("facet class codes are inside the vocabulary", oob == 0, f"{oob} out of range")
+        # Spot-check against the shards: the facet class must equal the gene's class.
+        pi = fac["cols"].index("ps")
+        mism = 0
+        for k in range(0, len(idx), 997):
+            gid = idx[k]
+            r = fac["rows"][k]
+            rec = genes[gid][2]
+            want = (rec.get("syn") or {}).get("cls")
+            got = fac["vocab"]["cls"][r[ci]] if 0 <= r[ci] < vocab_n else None
+            if want != got:
+                mism += 1
+            wps = (rec.get("ps") or {}).get("rank")
+            if (wps if wps is not None else -1) != r[pi]:
+                mism += 1
+        check("facet values match the gene shards (sampled)", mism == 0, f"{mism} mismatches")
+
     sdir = f"{DATA}/index/search"
     oob = 0
     for fn in sorted(os.listdir(sdir)):

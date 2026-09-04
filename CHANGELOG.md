@@ -22,12 +22,22 @@ The gene page becomes a hub, and phylostratigraphy gets a real module.
 - `.nojekyll`, `LICENSE`, `CITATION.cff`, this changelog, a provenance page, and CI
   running the headless render checks.
 
+- Browse / query builder: filter all 63,960 genes across synteny, phylostratigraphy,
+  expression and annotation at once, over a 274 KB facet index rather than the 250 MB of
+  shards. Named gene sets and TSV export. Filtering `private_no_ortholog` ∩ PS ≥ 18 returns
+  923 genes, independently reproducing the step-7 report's LSG-pool figure (275 + 648).
+- `scripts/validate_data.py` grew facet checks, including a sampled cross-check that facet
+  values equal the gene shards they were derived from.
+
 **Corrected**
 - PAML reports `omega = 99.0` where it cannot estimate the ratio — the 716 pairs whose
   Ks is 0. Previously this would have rendered as extreme positive selection. Now nulled,
   with the pair flagged as "identical at synonymous sites".
 - One pair carries `=`/`w` sentinels for Ks and Ka but a numeric omega of 0.0000, which
   displayed as "strong purifying selection". Dropped.
+
+- The facet index encoded "no orthogroup" (0 genomes) as missing data, so 1,575
+  OrthoFinder-unassigned genes displayed as "—" in the browse table instead of "none".
 
 **Known limitation**
 - HAP2 domain coverage is thin: the v5.1 release left HAP2's Pfam/PANTHER/GO columns empty

@@ -3,6 +3,7 @@ import { getGene, loadManifest, loadShard, shardOf, hapLabel, loadExprStudies,
          searchGenes } from './core/data.js';
 import { MODULES, byId } from './core/registry.js';
 import { route, start, navigate } from './core/router.js';
+import { browseView } from './core/browse.js';
 
 const view = () => document.getElementById('view');
 const setView = (node) => { const v = clear(view()); v.append(node); window.scrollTo(0, 0); };
@@ -139,6 +140,12 @@ route(/^\/gene\/(.+)$/, async (id) => {
     el('h1', { class: 'mono' }, g.id),
     el('p', { class: 'sub' }, `${hapLabel(g.hap)} · ${g.chr} · ${kb} kb`),
     cards));
+  markNav();
+});
+
+route(/^\/browse$/, async () => {
+  loading('Loading the gene index…');
+  setView(await browseView());
   markNav();
 });
 

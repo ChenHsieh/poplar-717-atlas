@@ -116,3 +116,30 @@ export async function searchGenes(query, limit = 30) {
     .slice(0, limit)
     .map(([i]) => ids[i]);
 }
+
+/* ---------- facets (browse) ---------- */
+export const loadFacets = () => fetchJSON('data/index/facets.json');
+
+/** Facet rows are positional and share index/genes.json's order. This turns one row into a
+ *  named object so filters read as English rather than as column offsets. */
+export function facetRow(facets, i) {
+  const r = facets.rows[i];
+  const c = facets.cols;
+  const v = facets.vocab;
+  const o = {};
+  for (let k = 0; k < c.length; k++) o[c[k]] = r[k];
+  return {
+    hap: o.hap === 0 ? 'hap1' : 'hap2',
+    chr: v.chr[o.chr] ?? null,
+    cls: v.cls[o.cls] ?? null,
+    ps: o.ps < 0 ? null : o.ps,
+    tau: o.tau < 0 ? null : o.tau / 100,
+    top: v.top[o.top] ?? null,
+    allele: !!o.allele,
+    at: !!o.at,
+    changed: !!o.changed,
+    tandem: !!o.tandem,
+    npres: o.npres,   // 0 means OrthoFinder assigned no orthogroup at all
+    amb: !!o.amb,
+  };
+}

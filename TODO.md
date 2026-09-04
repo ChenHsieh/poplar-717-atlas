@@ -11,8 +11,9 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
 - [x] **4 — module: phylostratigraphy.** Strata ladder (log-scaled), LSG pool, ambiguity and
       unplaced flags, gene-family origin + size. genEra PS rank/stratum, LSG pool (PS≥18), unplaced
       genes (50 with rank NA), founder events. First charts — load the `dataviz` skill first.
-- [ ] **5 — browse / query builder + gene-set cart + TSV export.** The cross-module payoff.
-      Needs a virtualized table for 63,960 rows.
+- [x] **5 — browse / query builder + gene-set cart + TSV export.** Filters over a 274 KB facet
+      index; paginated table; named sets; TSV export. The `private ∩ PS≥18` query returns 923,
+      matching the step-7 report exactly.
 - [ ] **6 — module: duplication.** Tandem arrays, HAP1↔HAP2 dS (25,931 pairs from
       `synt_ks/syntelog_ks.csv`), paralog pairs, salicoid-WGD ohnologs.
 - [ ] **7 — module: expression.** UNBLOCKED 2026-09-01 — `ms2_genespace/expression/` holds the

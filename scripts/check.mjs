@@ -64,6 +64,8 @@ await check('gene-annotated', '#/gene/PtXaTreH.01G000300',
 // 27,004 HAP2 genes have annotation but no Pfam (release gap); this gene is one of them.
 await check('gene-hap2-pfam-gap', '#/gene/PtXaAlbH.01G000200',
   { expect: ['Function', 'Domain coverage is thinner on HAP2', 'AT1G55570'], wait: 1000 });
+await check('browse', '#/browse',
+  { expect: ['Browse', 'Filters', 'Synteny class', '63,960', 'Export TSV', 'Saved sets'], wait: 1400 });
 await check('module-phylostrat', '#/module/phylostrat',
   { expect: ['Genes per stratum', 'LSG pool', 'ambiguous', 'cellular organisms', 'log-scaled'] });
 await check('gene-ambiguous-ps', '#/gene/PtXaTreH.06G037000',
@@ -95,6 +97,33 @@ for (const [label, q, want] of [['keyword', 'dehydrin', null], ['at-locus', 'AT1
   console.log(`### search:${label} "${q}"  ${ok ? 'OK' : 'FAIL'}\n   hits: ${JSON.stringify(h)}`);
 }
 await p.screenshot({ path: `${outdir}/search-text.png` });
+
+// The cross-module query is the whole point of browse -- drive it, don't just render it.
+{
+  const bp = await browser.newPage({ viewport: { width: 1180, height: 1200 } });
+  const berrs = [];
+  bp.on('pageerror', (e) => berrs.push(e.message));
+  bp.on('console', (m) => { if (m.type() === 'error') berrs.push('console: ' + m.text()); });
+  await bp.goto(base + '/#/browse', { waitUntil: 'networkidle' });
+  await bp.waitForTimeout(1500);
+  const readCount = () => bp.$eval('.stat .n', (n) => n.textContent.trim());
+  const all = await readCount();
+  await bp.selectOption('select >> nth=1', 'private_no_ortholog');   // synteny class
+  await bp.waitForTimeout(400);
+  const priv = await readCount();
+  await bp.fill('input[type=number] >> nth=0', '18');                // phylostratum >= 18
+  await bp.waitForTimeout(500);
+  const privLsg = await readCount();
+  await bp.screenshot({ path: `${outdir}/browse-query.png`, fullPage: true });
+  const n = (s) => parseInt(s.replace(/,/g, ''), 10);
+  const ok = n(all) === 63960 && n(priv) > 0 && n(priv) < n(all)
+    && n(privLsg) > 0 && n(privLsg) < n(priv) && !berrs.length;
+  if (!ok) failures++;
+  console.log(`\n### browse:query  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   all=${all}  private=${priv}  private+PS>=18=${privLsg}`);
+  berrs.forEach((e) => console.log('   !! ' + e));
+  await bp.close();
+}
 serrs.forEach((e) => console.log('   !! ' + e));
 await p.close();
 
