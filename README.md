@@ -61,6 +61,9 @@ The data scripts are **not** independent — the later two patch the shards the 
 python3 scripts/build_data.py --tier full     # writes shards (synteny + phylostratigraphy)
 python3 scripts/build_expression.py           # adds x: tissue baseline, tau, bucket pointer
 python3 scripts/build_annotation.py           # adds ann / allele / pres, builds the search index
+python3 scripts/build_phylostrat.py           # adds ps.amb / ps.fnd, the strata ladder
+python3 scripts/build_duplication.py          # adds para: paralog pairs with dS
+python3 scripts/build_facets.py               # LAST -- reads every field above
 ```
 
 Running `build_data.py` alone will drop the expression and annotation layers.

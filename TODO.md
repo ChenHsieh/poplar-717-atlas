@@ -14,8 +14,9 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
 - [x] **5 — browse / query builder + gene-set cart + TSV export.** Filters over a 274 KB facet
       index; paginated table; named sets; TSV export. The `private ∩ PS≥18` query returns 923,
       matching the step-7 report exactly.
-- [ ] **6 — module: duplication.** Tandem arrays, HAP1↔HAP2 dS (25,931 pairs from
-      `synt_ks/syntelog_ks.csv`), paralog pairs, salicoid-WGD ohnologs.
+- [x] **6 — module: duplication.** Tandem arrays (genome-wide) + 1,346 tier-2 paralog pairs
+      with dS. HAP1↔HAP2 dS shipped earlier as the allele card. **No WGD ohnolog call** — none
+      computed, and inferring one from a stratum-selected subset would be invalid.
 - [ ] **7 — module: expression.** UNBLOCKED 2026-09-01 — `ms2_genespace/expression/` holds the
       652-sample v3 rerun (supersedes the 531). Design: `docs/EXPRESSION_DESIGN.md`. Sub-steps:
   - [x] **7a — data build.** `samples.json`, `studies.json`, expression buckets (250 genes,

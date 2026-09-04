@@ -70,6 +70,10 @@ await check('module-phylostrat', '#/module/phylostrat',
   { expect: ['Genes per stratum', 'LSG pool', 'ambiguous', 'cellular organisms', 'log-scaled'] });
 await check('gene-ambiguous-ps', '#/gene/PtXaTreH.06G037000',
   { expect: ['genEra flagged this gene as ambiguous'], wait: 900 });
+await check('module-duplication', '#/module/duplication',
+  { expect: ['Duplication', 'not genome-wide', 'phylostratum', 'No salicoid-WGD ohnolog call'] });
+await check('gene-paralog', '#/gene/PtXaTreH.01G330600',
+  { expect: ['Duplication', 'Paralog pairs'], wait: 900 });
 await check('module-about', '#/module/about',
   { expect: ['About & provenance', 'Known limitations', 'HAP2 domain annotation is thin', 'Sources'] });
 await check('home-dark', '#/', { expect: ['63,960'], theme: 'dark' });

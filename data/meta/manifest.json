@@ -15,6 +15,51 @@
  "built": "2026-09-01T18:04:11-0400",
  "data_released": "2026-09-04",
  "data_version": "0.2.0",
+ "duplication": {
+  "ks_by_rank": {
+   "12": {
+    "max": 2.4277,
+    "med": 0.3121,
+    "min": 0.0093,
+    "n": 581,
+    "q1": 0.1051,
+    "q3": 0.6627
+   },
+   "16": {
+    "max": 1.4941,
+    "med": 0.3643,
+    "min": 0.0138,
+    "n": 92,
+    "q1": 0.2369,
+    "q3": 0.6742
+   },
+   "17": {
+    "max": 2.4502,
+    "med": 0.1159,
+    "min": 0.0031,
+    "n": 351,
+    "q1": 0.0516,
+    "q3": 0.1764
+   },
+   "18": {
+    "max": 1.5018,
+    "med": 0.0621,
+    "min": 0.0031,
+    "n": 244,
+    "q1": 0.0154,
+    "q3": 0.2335
+   }
+  },
+  "n_genes": 643,
+  "n_ks_undefined": 78,
+  "n_pairs": 1346,
+  "n_saturated": 11,
+  "scope": "Chapter tier-2 selection, NOT genome-wide: pairs are concentrated at phylostrata 16-18 with a rank-12 Pentapetalae comparator set. Any Ks distribution here describes that selection, not the genome.",
+  "sources": {
+   "founder": 861,
+   "synteny": 485
+  }
+ },
  "expression": {
   "bucket_size": 250,
   "n_bioprojects": 38,
@@ -57,7 +102,8 @@
   "core",
   "synteny",
   "phylostrat",
-  "expression"
+  "expression",
+  "duplication"
  ],
  "n_genes": 63960,
  "phylostrat": {
