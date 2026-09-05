@@ -1,5 +1,10 @@
 # poplar-717-atlas
 
+> **Picking this up fresh? Read [`docs/HANDOFF.md`](docs/HANDOFF.md) first.**
+> The short version: `scripts/build_data.py` wipes `data/genes/` and the other seven scripts
+> patch it, so always build with `scripts/build_all.sh`. The build only runs on Sapelo2 — the
+> committed `data/` **is** the artifact everywhere else.
+
 Gene atlas for hybrid poplar 717 (*Populus tremula* × *alba*), haplotype-resolved v5.1.
 Static site — no server, no build step, no framework.
 
