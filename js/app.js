@@ -1,6 +1,6 @@
 import { el, clear, fmt } from './core/dom.js';
 import { getGene, loadManifest, loadShard, shardOf, hapLabel, loadExprStudies,
-         searchGenes } from './core/data.js';
+         loadExprSamples, searchGenes } from './core/data.js';
 import { MODULES, byId } from './core/registry.js';
 import { route, start, navigate } from './core/router.js';
 import { browseView } from './core/browse.js';
@@ -168,6 +168,40 @@ route(/^\/study\/(\d+)$/, async (idStr) => {
     ? el('span', {}, el('strong', {}, label + ': '), vals.join(', '), '  ')
     : null);
 
+  // samples.json carries tissue / treatment / genotype / growth / reads / % aligned / notes
+  // per sample; the page used to show only the label, which threw all of it away.
+  const all = await loadExprSamples();
+  const mine = all.filter((x) => x.study === id).sort((a, b) => a.label.localeCompare(b.label));
+  const anyNotes = mine.some((x) => x.notes);
+  const cell = (v) => (v == null || v === '' ? el('span', { class: 'muted' }, '—') : v);
+  const sampleCard = el('div', { class: 'card' },
+    el('h2', {}, `Samples (${mine.length})`),
+    el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
+      el('thead', {}, el('tr', {},
+        el('th', {}, 'Sample'), el('th', {}, 'Tissue'), el('th', {}, 'Treatment'),
+        el('th', {}, 'Genotype'), el('th', {}, 'Growth'), el('th', {}, 'Role'),
+        el('th', {}, 'Layout'), el('th', { class: 'num' }, 'Reads'),
+        el('th', { class: 'num' }, 'Aligned %'),
+        anyNotes ? el('th', {}, 'Notes') : null)),
+      el('tbody', {}, ...mine.map((x) => el('tr', {},
+        el('td', { class: 'mono', style: 'font-size:11.5px' }, x.label),
+        el('td', {}, cell(x.tissue_full || x.tissue)),
+        el('td', {}, cell(x.treatment)),
+        el('td', {}, cell(x.genotype)),
+        el('td', {}, cell(x.growth)),
+        el('td', {}, x.ctrl === 'control'
+          ? el('span', { class: 'badge', style: 'font-size:11px' }, 'control')
+          : el('span', { class: 'muted' }, 'perturbation')),
+        el('td', { class: 'muted', style: 'font-size:11.5px' }, x.layout || '—'),
+        el('td', { class: 'num' }, x.reads == null ? '—' : (x.reads / 1e6).toFixed(1) + 'M'),
+        el('td', { class: 'num' }, x.pct_aligned == null ? '—' : x.pct_aligned.toFixed(1)),
+        anyNotes ? el('td', { class: 'muted', style: 'font-size:11px;max-width:230px' },
+          cell(x.notes)) : null))))),
+    el('p', { class: 'muted', style: 'margin:11px 0 0;font-size:12px' },
+      `${mine.filter((x) => x.ctrl === 'control').length} control, `
+      + `${mine.filter((x) => x.ctrl === 'perturbation').length} perturbation. `
+      + 'Only WT controls contribute to the tissue baselines shown on gene pages.'));
+
   setView(el('div', {},
     el('h1', {}, `Study ${id}`),
     el('p', { class: 'sub' }, s.bioprojects.map((b) =>
@@ -183,11 +217,7 @@ route(/^\/study\/(\d+)$/, async (idStr) => {
         factorRow('Growth', s.growth_conditions), factorRow('Additional', s.additional_conditions)),
       s.citation && el('p', { class: 'muted', style: 'font-size:12.5px;margin-top:10px' }, s.citation),
       s.doi.length ? el('p', {}, ...s.doi.map((d) => el('a', { href: d, target: '_blank', rel: 'noopener' }, d))) : null),
-    el('div', { class: 'card' },
-      el('h2', {}, `Samples (${s.samples.length})`),
-      el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
-        el('thead', {}, el('tr', {}, el('th', {}, 'Sample label'))),
-        el('tbody', {}, ...s.samples.map((label) => el('tr', {}, el('td', { class: 'mono' }, label))))))),
+    sampleCard,
   ));
   markNav();
 });

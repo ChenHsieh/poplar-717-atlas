@@ -34,7 +34,11 @@ async function check(name, hash, { expect = [], theme = null, wait = 700 } = {})
   await p.screenshot({ path: `${outdir}/${name}.png`, fullPage: true });
 
   const text = await p.evaluate(() => document.getElementById('view').innerText);
-  const missing = expect.filter((e) => !text.includes(e));
+  // Case-insensitive: innerText returns RENDERED text, and `table.data th` is
+  // text-transform:uppercase, so a header asserted as "% aligned" arrives as "% ALIGNED".
+  // Styling should not decide whether a content assertion passes.
+  const hay = text.toLowerCase();
+  const missing = expect.filter((e) => !hay.includes(e.toLowerCase()));
   const ok = !errs.length && !missing.length;
   if (!ok) failures++;
   console.log(`\n### ${name}  ${ok ? 'OK' : 'FAIL'}`);
@@ -56,7 +60,14 @@ await check('module-synteny', '#/module/synteny',
 await check('module-expression', '#/module/expression',
   { expect: ['652', 'Studies', 'WT-control samples per tissue'] });
 await check('study-1', '#/study/1',
-  { expect: ['Study 1', 'PRJEB22956', 'Georgii'] });
+  { expect: ['Study 1', 'PRJEB22956', 'Georgii', 'Tissue', 'Aligned %', 'control'], wait: 1000 });
+// Study 29 carries the "prefer counts over TPM" flag (it has no per-sample notes).
+await check('study-29', '#/study/29',
+  { expect: ['Study 29', 'prefer est_counts'], wait: 1000 });
+// Study 10 (Gerttula tension wood) is one of ten studies with per-sample processing notes;
+// its note is the documented below-typical alignment rate, surfaced per row.
+await check('study-10-notes', '#/study/10',
+  { expect: ['Study 10', 'Notes', 'below-typical alignment rate'], wait: 1000 });
 await check('gene-expr-lsg4', '#/gene/PtXaTreH.05G120200',
   { expect: ['Expression', 'Median TPM', 'catkin', 'Show all 652 samples'], wait: 900 });
 await check('gene-annotated', '#/gene/PtXaTreH.01G000300',
