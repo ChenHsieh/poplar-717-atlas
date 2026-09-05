@@ -153,3 +153,6 @@ export function facetRow(facets, i) {
     amb: !!o.amb,
   };
 }
+
+/** Members of a tandem array, from the curated union set. */
+export const loadArrays = () => fetchJSON('data/index/arrays.json');

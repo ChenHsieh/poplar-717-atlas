@@ -59,6 +59,11 @@ function overview(man) {
         el('li', {}, el('strong', {}, 'Expression is raw TPM, not batch-corrected. '),
           'Use it for tissue specificity and per-gene magnitude. Cross-study comparison needs '
           + 'batch handling that this build does not apply.'),
+        el('li', {}, el('strong', {}, 'Duplication calls come from a mirrored repo. '),
+          'The per-gene duplication class is the most current table present in the ms1-dup '
+          + 'mirror; that repo names a v6 master as canonical which is not synced here. The '
+          + 'tandem component is taken from its curated union set, which it says supersedes '
+          + 'the v8 tandem tables. Codes follow its documented legend.'),
         el('li', {}, el('strong', {}, 'Thin tissue baselines. '),
           'Median TPM per tissue rests on 77 leaf and 59 xylem WT-control samples but only 5 bud, '
           + '4 catkin, 2 stem and 1 callus. Every bar carries its n.'))),

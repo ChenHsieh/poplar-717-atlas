@@ -4,6 +4,7 @@
 // chapter's tier-2 selection (phylostrata 16-18 plus a rank-12 comparator), NOT a genome-wide
 // duplication catalog. Tandem-array membership, by contrast, is genome-wide.
 import { el, fmt } from '../core/dom.js';
+import { loadArrays } from '../core/data.js';
 
 const STRATUM = { 12: 'Pentapetalae', 16: 'Salicaceae', 17: 'Saliceae', 18: 'Populus', 19: 'hybrid' };
 
@@ -46,13 +47,41 @@ function geneCard(g) {
     card.append(kv);
   }
 
-  if (inArray) {
+  const td = g.td;
+  if (td) {
+    const kv = el('dl', { class: 'kv' });
+    kv.append(el('dt', {}, 'Tandem array'),
+      el('dd', {}, el('span', { class: 'mono' }, td.aid || '—'),
+        el('span', { class: 'muted' }, `  ${td.n} member${td.n === 1 ? '' : 's'}`),
+        td.age ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+          `age bin ${td.age}${td.ks != null ? ` · array median Ks ${td.ks}` : ''}`) : null));
+    if (td.pseudo || td.removed || td.note) {
+      kv.append(el('dt', {}, 'Curation'),
+        el('dd', {},
+          td.removed ? el('div', {}, el('strong', {}, 'removed from the curated set'),
+            td.why ? el('span', { class: 'muted' }, ` — ${td.why}`) : null) : null,
+          td.pseudo ? el('div', {}, el('span', { class: 'badge' }, 'pseudogene-like')) : null,
+          td.note ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' }, td.note) : null));
+    }
+    const members = el('div', { style: 'margin-top:4px' });
+    kv.append(el('dt', {}, 'Array members'), el('dd', {}, members));
+    if (td.aid) {
+      loadArrays().then((all) => {
+        const ids = all[td.aid] || [];
+        members.append(...ids.map((id, i) => el('span', {},
+          i ? ' · ' : '',
+          id === g.id ? el('strong', { class: 'mono' }, id)
+                      : el('a', { href: `#/gene/${id}`, class: 'mono' }, id))));
+      }).catch(() => members.append(el('span', { class: 'muted' }, 'unavailable')));
+    }
+    card.append(kv);
+  } else if (inArray) {
     card.append(el('dl', { class: 'kv' },
       el('dt', {}, 'Tandem array'),
-      el('dd', {}, el('span', { class: 'badge' }, el('i', { class: 'dot tandem' }), 'array member'),
+      el('dd', {}, el('span', { class: 'badge' }, el('i', { class: 'dot tandem' }), 'array placement'),
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:3px' },
-          'GENESPACE placed this gene as a non-representative member of a tandem array. '
-          + '6,804 genes across both haplotypes carry an array placement.'))));
+          'GENESPACE placed this gene in a tandem array, but it is not in the curated union '
+          + 'tandem set — so no array identity or age is available for it.'))));
   }
 
   if (para && para.length) {
@@ -172,9 +201,11 @@ async function overview(man) {
         el('li', {}, el('strong', {}, 'No genome-wide dS landscape. '),
           `The ${fmt(d.n_pairs)} pairs here were chosen for the chapter's tier-2 analysis. A `
           + 'genome-wide all-by-all paralog scan is a separate computation.'),
-        el('li', {}, el('strong', {}, 'Array identity is not resolved. '),
-          'A gene is flagged as an array member, but which genes share one array is not yet '
-          + 'exposed — that needs the pangene positional grouping.'))),
+        el('li', {}, el('strong', {}, 'Tandem calls come from the curated union set. '),
+          'ms1-dup supersedes its own v8 tandem tables with a hand-curated union of 13,663 '
+          + 'genes in 4,371 arrays, carrying array identity, age bin and the curator\'s '
+          + 'verdict. Genes GENESPACE places in an array but which are absent from that set '
+          + 'are shown without an array id rather than given a synthetic one.'))),
   );
 }
 

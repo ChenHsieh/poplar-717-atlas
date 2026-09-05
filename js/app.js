@@ -180,9 +180,14 @@ route(/^\/gene\/(.+)$/, async (id) => {
     const c = m.geneCard(g);   // an element, or a fragment of several cards
     if (c) cards.append(c);
   }
+  const ord = g.ord || {};
   setView(el('div', {},
     el('h1', { class: 'mono' }, g.id),
     el('p', { class: 'sub' }, `${hapLabel(g.hap)} · ${g.chr} · ${kb} kb`),
+    (ord.p || ord.n) ? el('p', { style: 'margin:-10px 0 16px;font-size:12.5px' },
+      ord.p ? el('a', { href: `#/gene/${ord.p}`, class: 'mono' }, '← ' + ord.p) : null,
+      (ord.p && ord.n) ? el('span', { class: 'muted' }, '   neighbours on the chromosome   ') : null,
+      ord.n ? el('a', { href: `#/gene/${ord.n}`, class: 'mono' }, ord.n + ' →') : null) : null,
     cards));
   markNav();
 });

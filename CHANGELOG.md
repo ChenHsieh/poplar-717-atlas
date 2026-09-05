@@ -25,6 +25,25 @@ HAP1:HAP2 pangene relationship, disorder, and mass-spec evidence.
 - **Organelle-homology warning**: 362 genes have plastid/mito homology, a real false-positive
   source for novel-gene claims.
 
+**Added (batch 2)**
+- **Tandem array identity**: which genes share an array, from ms1-dup's hand-curated union set
+  (13,663 genes, 4,371 arrays) — which that repo explicitly says supersedes its own v8 tandem
+  tables. Carries array size, median Ks, age bin, pseudogene flags and the curator's verdict.
+  This closes the "array identity is not resolved" gap the module used to declare.
+- **Perturbation responsiveness**: median |log2 fold-change| across eligible contrasts
+  (49,289 genes).
+- **Independent tau** from a separate 202-sample panel, shown BESIDE the atlas's own
+  652-sample value rather than replacing it — two panels, two answers, and their agreement is
+  itself informative.
+- **Previous/next gene navigation** along the chromosome, from genomic rank order.
+
+**Not ingested, deliberately**
+- `master_duplication_table_v4.csv` is superseded: it still carries the `W_excluded` category
+  that ms1-dup's own CLAUDE.md says was eliminated in v5. The canonical v6 master is not
+  present in this mirror, so the v8 membership file — whose A/S/T/D/C legend is confirmed by
+  ms1-dup `RESOURCES.md` — is the most current per-gene duplication call available, with the
+  tandem component taken from the union set above.
+
 **Guarded**
 - Duplicate source rows are collapsed only when the columns actually ingested agree. The
   proteomics tables repeat 5,024 genes that are both a `conserved` gene and an LSG's

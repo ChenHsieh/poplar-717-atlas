@@ -179,6 +179,78 @@ def main():
             norg += 1
     cov["organelle homology"] = f"{len(d)} scanned, {norg} with a hit"
 
+    # ---- tandem arrays: the curated UNION set -------------------------------------------
+    # ms1-dup CLAUDE.md: "Canonical TD files (use these, not the v8 TD tables)". The union
+    # contains all 13,048 v8 T-flagged genes plus 615 more, and adds array IDENTITY -- which
+    # genes share an array -- plus each array's median Ks, age bin, and the curator's verdict.
+    d = read_rows(f"{MS1}/data/09_td_pairs/td_union_20260831/union_genes_final.csv", ",")
+    arrays = defaultdict(list)
+    for g, r in d.items():
+        aid = r.get("array_id") or None
+        rec = {"aid": aid, "n": int(num(r.get("array_n")) or 0),
+               "age": r.get("array_age_bin") or None,
+               "status": r.get("array_status") or None}
+        ks = num(r.get("array_median_ks"))
+        if ks is not None:
+            rec["ks"] = round(ks, 4)
+        if str(r.get("removed")).strip().lower() == "true":
+            rec["removed"] = 1
+            rec["why"] = r.get("removal_basis") or None
+        if str(r.get("pseudogene_like")).strip().lower() == "true":
+            rec["pseudo"] = 1
+        note = (r.get("manual_note") or "").strip()
+        if note:
+            rec["note"] = note
+        L[g]["td"] = rec
+        if aid:
+            arrays[aid].append(g)
+    cov["tandem arrays (union set)"] = f"{len(d)} genes in {len(arrays)} arrays"
+
+    # Array membership is written out separately so a gene page can list its neighbours in the
+    # array without every gene record carrying the whole member list.
+    os.makedirs(os.path.join(data, "index"), exist_ok=True)
+    with open(os.path.join(data, "index", "arrays.json"), "w") as fh:
+        json.dump({k: sorted(v) for k, v in arrays.items()}, fh, separators=(",", ":"))
+
+    # ---- perturbation responsiveness ------------------------------------------------------
+    d = read_rows(f"{MS1}/data/54_v8_freeze_20260825/perturbation_per_gene_v8.csv", ",")
+    n_resp = 0
+    for g, r in d.items():
+        v = num(r.get("responsiveness_med_absl2fc"))
+        nc = num(r.get("n_contrasts_eligible"))
+        if v is not None:
+            L[g]["resp"] = {"v": round(v, 3), "n": int(nc) if nc is not None else None}
+            n_resp += 1
+    cov["perturbation responsiveness"] = f"{len(d)} scanned, {n_resp} with a value"
+
+    # ---- independent tau (202 samples) ----------------------------------------------------
+    # Kept BESIDE the atlas's own 652-sample tau, not merged into it: two panels, two answers,
+    # and their agreement is itself informative.
+    d = read_rows(f"{MS1}/outputs/tau_n202_per_gene_all.csv", ",")
+    for g, r in d.items():
+        v = num(r.get("tau"))
+        if v is not None:
+            L[g]["tau202"] = {"t": round(v, 3),
+                              "ok": 1 if str(r.get("eligible")).strip().lower() == "true" else 0}
+    cov["tau (independent, n=202)"] = len(d)
+
+    # ---- genomic rank order (enables previous/next-gene navigation) ------------------------
+    d = read_rows(f"{MS1}/data/29_awgd_misannotation_audit/wgd_class_calibration_20260812/gene_rank_order_20260812.csv",
+                  ",", key="gene")
+    order = defaultdict(list)
+    for g, r in d.items():
+        gr = num(r.get("grank"))
+        if gr is not None:
+            order[(r.get("hap"), r.get("seqid"))].append((int(gr), g))
+    nb_written = 0
+    for _, lst in order.items():
+        lst.sort()
+        for i, (_, g) in enumerate(lst):
+            L[g]["ord"] = {"p": lst[i - 1][1] if i > 0 else None,
+                           "n": lst[i + 1][1] if i < len(lst) - 1 else None}
+            nb_written += 1
+    cov["genomic order"] = f"{len(d)} genes, {nb_written} with neighbours"
+
     print("source coverage:")
     for k, v in cov.items():
         print(f"  {k:<26} {v}")

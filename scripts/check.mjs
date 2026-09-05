@@ -88,6 +88,9 @@ await check('module-duplication', '#/module/duplication',
              'salicoid WGD', 'dispersed'] });
 await check('gene-paralog', '#/gene/PtXaTreH.01G330600',
   { expect: ['Duplication', 'Paralog pairs'], wait: 900 });
+// A curated tandem-array member: array identity, size, age bin and member links.
+await check('gene-tandem-array', '#/gene/PtXaTreH.01G330700',
+  { expect: ['Tandem array', 'Array members', 'neighbours on the chromosome'], wait: 1400 });
 await check('module-protein', '#/module/protein',
   { expect: ['Protein', 'ESMFold', 'pLDDT proxy', 'never pooled', 'peptide'] });
 await check('gene-protein', '#/gene/PtXaTreH.01G000100',

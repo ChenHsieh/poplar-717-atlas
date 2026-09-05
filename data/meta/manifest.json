@@ -103,9 +103,13 @@
    "dup": 63960,
    "gs": 63960,
    "nb": 59486,
+   "ord": 63960,
    "org": 362,
    "pav": 63960,
    "prot": 63945,
+   "resp": 49289,
+   "tau202": 63677,
+   "td": 13663,
    "te": 63829
   },
   "coverage": {
@@ -114,12 +118,16 @@
    "TE distances": 63960,
    "duplication class": 63960,
    "exon/intron counts": 63960,
+   "genomic order": "63960 genes, 63960 with neighbours",
    "neighbour co-expression": 63829,
    "organelle homology": "63960 scanned, 362 with a hit",
+   "perturbation responsiveness": "63960 scanned, 49289 with a value",
    "predicted disorder": 63910,
    "proteomics PXD023826": 57845,
    "proteomics PXD025636": 57845,
-   "proteomics PXD064017": 57845
+   "proteomics PXD064017": 57845,
+   "tandem arrays (union set)": "13663 genes in 4371 arrays",
+   "tau (independent, n=202)": 63960
   },
   "dup_class_dist": {
    "A": 7,
