@@ -27,9 +27,11 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
   - [x] **7c — gene card: baseline tissue bars + tau** (single hue, n per bar, table view).
   - [x] **7d — full 652-sample profile** grouped study → condition, hover tooltip.
   - [ ] **7e — browse filters** (tau, top tissue, expressed-in) — lands with step 5.
-- [ ] **8 — publish.** DECIDED 2026-09-01: private repo, **public site**. Enable Pages from
-      `main` root; keep `noindex` until the chapter is out. The `lsg` private-tier field is moot
-      (rank ≥ 18 is visible anyway) — the tier mechanism stays for wet-lab data only.
+- [x] **8 — publish.** DECIDED 2026-09-01: private repo, **public site**. Pages live from
+      `main` root (verified 2026-09-04: chenhsieh.github.io/poplar-717-atlas/ returns 200,
+      GitHub API reports `status: built`); `noindex` present in index.html. The `lsg`
+      private-tier field is moot (rank ≥ 18 is visible anyway) — the tier mechanism stays for
+      wet-lab data only.
 
 ## Later / ideas
 

@@ -4,9 +4,11 @@ Gene atlas for hybrid poplar 717 (*Populus tremula* × *alba*), haplotype-resolv
 Static site — no server, no build step, no framework.
 
 > **⚠ GitHub Pages is PUBLIC even from a private repository.** There is no auth-gated Pages
-> below GitHub Enterprise. This repo is private and the site is **not deployed**. Before ever
-> enabling Pages, build with `--tier public`, which withholds fields marked private in
-> `FIELD_TIERS` (currently LSG-pool membership — the unpublished candidate list).
+> below GitHub Enterprise. This repo is private, and **the site has been deployed since
+> 2026-09-01** (public, `noindex` until the chapter is out) — built with `--tier public`,
+> which withholds fields marked private in `FIELD_TIERS` (currently LSG-pool membership —
+> the unpublished candidate list). Re-verify the `--tier public` flag was used before any
+> future rebuild that touches `data/`; a `--tier full` build would publish that list.
 
 ## Architecture
 
