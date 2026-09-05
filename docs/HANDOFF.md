@@ -8,11 +8,21 @@ For whoever picks this up next, on any machine. Read this before touching `data/
 those shards.** Run it alone and you get a `data/` directory that looks fine, loads fine, and is
 silently missing eleven layers.
 
+The patchers only ADD keys — they never remove one. So if a layer is dropped from the build
+code, its old values survive in `data/` until a full rebuild wipes the shards. That actually
+happened: two audited-out layers stayed in the published JSON, invisible in the UI but
+downloadable, until a full rebuild purged them.
+
 Never run the build scripts individually. Use:
 
 ```bash
 scripts/build_all.sh        # preflight, then all 8 stages in the only correct order
 ```
+
+It takes about 3 minutes and is deterministic: two consecutive runs produce byte-identical
+output for all 277 gene shards and every index file. Only `manifest.json` changes, by its
+`built` timestamp. So `git status` after a rebuild is a real signal — if a gene shard moved,
+something upstream changed.
 
 **The build only runs on UGA Sapelo2.** Every source lives under `/scratch/ch29576` or
 `/work/cjtlab`. `scripts/preflight.py` checks all 13 source groups and refuses to start

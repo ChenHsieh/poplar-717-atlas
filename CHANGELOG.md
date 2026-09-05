@@ -3,6 +3,26 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## 0.3.3 — 2026-09-05
+
+**Fixed — the audit removals had not actually reached the data**
+The 2026-09-05 audit removed the PAV and n=202-tau layers from the build code and the UI, but
+`build_layers.py` only ever ADDS keys to a shard. The values earlier runs had already written
+stayed in `data/`, so the published JSON was still carrying both — invisible in the interface,
+but present and downloadable. A full ordered rebuild purges them: 0 genes now carry `pav` or
+`tau202`. This is exactly the failure mode `scripts/build_all.sh` now exists to prevent.
+
+**Added**
+- `scripts/build_all.sh` — all eight stages in the only order that yields a complete `data/`.
+- `scripts/preflight.py` — verifies all 13 source groups before anything is written, and stops
+  with an explanation on any machine that is not Sapelo2 rather than half-building.
+- `docs/HANDOFF.md` — what a fresh agent on another machine cannot infer from the code.
+
+**Verified**
+- The build is deterministic: two consecutive full rebuilds produce byte-identical output for
+  all 277 gene shards and every index file. Only `manifest.json` differs, by its `built`
+  timestamp, which is intended.
+
 ## 0.3.2 — 2026-09-05
 
 **Added**
