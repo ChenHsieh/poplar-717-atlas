@@ -74,6 +74,9 @@ await check('gene-expr-lsg4', '#/gene/PtXaTreH.05G120200',
   { expect: ['Expression', 'Median TPM', 'catkin', 'Show all 652 samples'], wait: 900 });
 await check('gene-annotated', '#/gene/PtXaTreH.01G000300',
   { expect: ['Function', 'Allele', 'Panel presence', 'AT1G55570'], wait: 1000 });
+// A gene with a reciprocal 1:1 P. trichocarpa syntenic ortholog (11,490 genes have none).
+await check('gene-crossspecies', '#/gene/PtXaTreH.01G000600',
+  { expect: ['P. trichocarpa ortholog', 'Potri.', 'reciprocal 1:1'], wait: 1000 });
 // 27,004 HAP2 genes have annotation but no Pfam (release gap); this gene is one of them.
 await check('gene-hap2-pfam-gap', '#/gene/PtXaAlbH.01G000200',
   { expect: ['Function', 'Domain coverage is thinner on HAP2', 'AT1G55570'], wait: 1000 });

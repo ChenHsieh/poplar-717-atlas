@@ -3,6 +3,27 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## 0.3.2 — 2026-09-05
+
+**Added**
+- **P. trichocarpa syntenic ortholog** on every gene page, with an outbound Phytozome link —
+  46,141 reciprocal 1:1 pairs, 6,329 flagged ambiguous, 11,490 genes with no syntenic hit.
+  A Potri id is the key that unlocks PopGenIE and Phytozome for someone holding a 717 gene,
+  which is the lookup a community visitor arrives wanting. Derived from this atlas's own
+  GENESPACE run rather than an imported table, so it carries no external staleness risk.
+  Ambiguous relationships keep their multiplicity instead of being resolved by a top hit.
+
+**Fixed during development**
+- Reciprocity was first computed over the pooled gene set, which counted the expected
+  HAP1+HAP2 pairing of a phased diploid as ambiguity and collapsed the 1:1 set to 724 of
+  52,470. Computing it within each haplotype gives 46,141.
+
+**Deferred with a reason**
+- The 377-sample P. trichocarpa xylem expression atlas is NOT joined in. Doing so would place
+  TPMs from a different genome, annotation version and quantification pipeline beside this
+  atlas's own values, inviting a comparison the numbers do not support. The ortholog link
+  above lets a visitor make that jump deliberately, at PopGenIE, where the data belongs.
+
 ## 0.3.1 — 2026-09-05
 
 Data audit. Chen flagged that some Sapelo2 outputs are stale; every ingested layer was

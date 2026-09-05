@@ -55,10 +55,16 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
 
 - [ ] **18 — ComBat cross-study expression view.** Needs a 63,960-gene rebuild first: the
       shipped ComBat-seq matrices are an older 59,599-gene generation with `.1`-suffixed ids.
-- [ ] **19 — allele-specific expression.** `ase_analysis/` holds per-chromosome separated
+- [x] **19 — allele-specific expression. CLOSED, deliberately not built.** Chen did not pursue
+      the analysis; `ase_analysis/` has no per-gene table. Building one would generate a new
+      result from an abandoned analysis and publish it as established. See `docs/DATA_AUDIT.md`.
+- [ ] ~~19-old~~ `ase_analysis/` holds per-chromosome separated
       reads but no per-gene table yet. The most distinctive thing a haplotype-resolved atlas
       could show, and the one major layer still missing.
-- [ ] **20 — cross-species expression.** P. trichocarpa xylem (377 samples, Potri ids) joined
+- [x] **20 — cross-species ortholog SHIPPED; the expression join deliberately not.** 46,141
+      reciprocal 1:1 Potri orthologs with Phytozome links. The 377-sample expression matrix is
+      not merged: different genome, annotation and pipeline.
+- [ ] ~~20-old~~ P. trichocarpa xylem (377 samples, Potri ids) joined
       through the synteny orthogroups.
 - [ ] **21 — chase the canonical v6 duplication master, and the tier1_floor PAV table.** Both
       are named canonical by ms1-dup but absent from the mirror; the atlas ships the best

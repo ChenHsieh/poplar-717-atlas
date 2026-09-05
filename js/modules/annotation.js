@@ -72,6 +72,22 @@ function annotationCard(g) {
       'for this haplotype, so only accessions recoverable from the defline are shown. ',
       'An absent domain here does not mean the gene lacks one — check the HAP1 allele.'));
   }
+  // The P. trichocarpa ortholog is the key that unlocks the wider Populus resources for
+  // someone holding a 717 gene id, so it sits with the other cross-references.
+  if (g.ptri && g.ptri.id) {
+    const one = !!g.ptri.one2one;
+    kv.append(el('dt', {}, 'P. trichocarpa ortholog'),
+      el('dd', {},
+        el('a', { href: PHYTOZOME + g.ptri.id, target: '_blank', rel: 'noopener', class: 'mono' }, g.ptri.id),
+        one ? el('span', { class: 'muted' }, '  reciprocal 1:1')
+            : el('span', { class: 'muted' }, `  ambiguous — ${g.ptri.n ? `${g.ptri.n} syntenic hits` : 'not reciprocal'}`),
+        el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+          one ? 'Syntenic ortholog from this atlas’s own GENESPACE run. Use it to look the gene up in PopGenIE or Phytozome.'
+              : 'Shown for orientation only — the syntenic relationship is not one-to-one, so this is not an ortholog call.')));
+  } else if (g.ptri) {
+    kv.append(el('dt', {}, 'P. trichocarpa ortholog'),
+      el('dd', { class: 'muted' }, 'no syntenic hit'));
+  }
   card.append(el('p', { style: 'margin:12px 0 0;font-size:12px' },
     el('a', { href: PHYTOZOME + g.id, target: '_blank', rel: 'noopener' }, 'View on Phytozome ↗')));
   return card;

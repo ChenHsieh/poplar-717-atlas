@@ -13,8 +13,16 @@
   }
  },
  "built": "2026-09-04T21:30:30-0400",
+ "crossspecies": {
+  "n_ambiguous": 6329,
+  "n_hit": 52470,
+  "n_one2one": 46141,
+  "note": "Only reciprocal 1:1 pairs are presented as orthologs. Ambiguous ones keep their multiplicity rather than being resolved by taking a top hit.",
+  "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
+  "target": "Populus trichocarpa (Potri, v4.1 ids)"
+ },
  "data_released": "2026-09-05",
- "data_version": "0.3.1",
+ "data_version": "0.3.2",
  "duplication": {
   "ks_by_rank": {
    "12": {
