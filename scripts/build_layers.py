@@ -101,33 +101,117 @@ def main():
                        "td": tf(r["has_T_v8"]), "d": tf(r["has_D_v6"])}
     cov["duplication class"] = len(d)
 
-    # ---- TE proximity ------------------------------------------------------------------
-    d = read_rows(f"{MS1}/data/32_te_proximity_threshold/gene_te_distances_all_superfamilies.csv", ",")
-    for g, r in d.items():
-        te = {}
-        for col, name in (("dist_all_TE", "all"), ("dist_DNA", "DNA"), ("dist_LINE", "LINE"),
-                          ("dist_LTR", "LTR"), ("dist_RC", "RC"), ("dist_SINE", "SINE")):
-            v = num(r.get(col))
-            if v is not None:
-                te[name] = int(v)
-        if te:
-            L[g]["te"] = te
-    cov["TE distances"] = len(d)
+    # ---- TE proximity, re-derived from the AUTHORITATIVE repeatmasker annotation --------
+    # The previous source lived in data/32_te_proximity_threshold/, which ms1-dup CLAUDE.md
+    # files under "structural explorations". Rather than serve an exploratory table, the
+    # distance is recomputed here from the v5.1 repeatmasked GFF3 that ships with the genome.
+    ANN = "/work/cjtlab/717Official/annotation"
+    RM = {"hap1": f"{ANN}/PtremulaxPopulusalbaHAP1_717_v5.1.repeatmasked_assembly_v5.0.gff3",
+          "hap2": f"{ANN}/PtremulaxPopulusalbaHAP2_716_v5.1.repeatmasked_assembly_v5.0.gff3"}
+    GFF = {"hap1": f"{ANN}/PtremulaxPopulusalbaHAP1_717_v5.1.gene_exons.gff3",
+           "hap2": f"{ANN}/PtremulaxPopulusalbaHAP2_716_v5.1.gene_exons.gff3"}
+    CLASS_RE = re.compile(r"class=([^;\s]+)")
+    n_te = 0
+    for hap in ("hap1", "hap2"):
+        # TE intervals per chromosome, excluding low-complexity/simple repeats which are not TEs
+        te_by_chr = defaultdict(list)
+        with open(RM[hap]) as fh:
+            for line in fh:
+                if line.startswith("#"):
+                    continue
+                f = line.rstrip("\n").split("\t")
+                if len(f) < 9:
+                    continue
+                m = CLASS_RE.search(f[8])
+                cls = m.group(1) if m else ""
+                if not cls or cls.startswith(("Simple_repeat", "Low_complexity", "Satellite",
+                                              "rRNA", "tRNA", "snRNA", "Unknown")):
+                    continue
+                te_by_chr[f[0]].append((int(f[3]), int(f[4]), cls.split("/")[0]))
+        for c in te_by_chr:
+            te_by_chr[c].sort()
 
-    # ---- gene structure ----------------------------------------------------------------
-    d = read_rows(f"{MS1}/data/goi_case_studies/cross_hap_cases/case10_retroduplication/gene_intron_counts.csv", ",")
-    for g, r in d.items():
-        ex, iv = num(r.get("n_exons")), num(r.get("n_introns"))
-        if ex is not None:
-            L[g]["gs"] = {"ex": int(ex), "in": int(iv) if iv is not None else None}
-    cov["exon/intron counts"] = len(d)
+        # gene spans from the same annotation, so coordinates are on one system
+        genes_hap = []
+        with open(GFF[hap]) as fh:
+            for line in fh:
+                if line.startswith("#"):
+                    continue
+                f = line.rstrip("\n").split("\t")
+                if len(f) < 9 or f[2] != "gene":
+                    continue
+                m = re.search(r"(?:^|;)Name=([^;]+)", f[8]) or re.search(r"(?:^|;)ID=([^;]+)", f[8])
+                if m:
+                    genes_hap.append((f[0], int(f[3]), int(f[4]), m.group(1)))
 
-    # ---- PAV / hemizygosity -------------------------------------------------------------
-    d = read_rows(f"{MS1}/data/PAV_pangene_sweep/poplar_lo_list/hemi_pav_crosstab.csv", ",")
-    for g, r in d.items():
-        L[g]["pav"] = {"rel": r.get("relationship") or None,
-                       "strict": tf(r.get("strict_pav_all"))}
-    cov["PAV / hemizygosity"] = len(d)
+        for chrom, gs, ge, gid in genes_hap:
+            tes = te_by_chr.get(chrom)
+            if not tes:
+                continue
+            best, best_by = None, {}
+            # linear scan is fine: ~30k genes x sorted TEs per chromosome, done once
+            lo, hi = 0, len(tes)
+            while lo < hi:                      # first TE ending at/after the gene start
+                mid = (lo + hi) // 2
+                if tes[mid][1] < gs:
+                    lo = mid + 1
+                else:
+                    hi = mid
+            for k in range(max(0, lo - 40), min(len(tes), lo + 40)):
+                s, e, cls = tes[k]
+                dist = 0 if (s <= ge and e >= gs) else (s - ge if s > ge else gs - e)
+                if best is None or dist < best:
+                    best = dist
+                if cls not in best_by or dist < best_by[cls]:
+                    best_by[cls] = dist
+            if best is not None:
+                rec = {"all": int(best)}
+                for cls, dv in sorted(best_by.items(), key=lambda kv: kv[1])[:4]:
+                    rec[cls] = int(dv)
+                L[gid]["te"] = rec
+                n_te += 1
+    cov["TE distance (re-derived from v5.1 repeatmask GFF3)"] = n_te
+
+    # ---- gene structure, re-derived from the AUTHORITATIVE GFF3 -------------------------
+    # The previous source was an incidental file inside a retroduplication case-study folder,
+    # documented nowhere. Exon counts are a plain fact of the annotation, so take them from it.
+    n_gs = 0
+    for hap in ("hap1", "hap2"):
+        exons = defaultdict(int)
+        primary = {}
+        with open(GFF[hap]) as fh:
+            for line in fh:
+                if line.startswith("#"):
+                    continue
+                f = line.rstrip("\n").split("\t")
+                if len(f) < 9:
+                    continue
+                if f[2] == "mRNA":
+                    m = re.search(r"(?:^|;)ID=([^;]+)", f[8])
+                    g = re.search(r"(?:^|;)Parent=([^;]+)", f[8])
+                    if m and g and "longest=1" in f[8]:
+                        primary[m.group(1)] = g.group(1)
+                elif f[2] == "exon":
+                    pm = re.search(r"(?:^|;)Parent=([^;]+)", f[8])
+                    if pm:
+                        exons[pm.group(1)] += 1
+        for mrna, gene in primary.items():
+            n = exons.get(mrna, 0)
+            # GFF3 IDs carry a ".v5.1" release suffix that Name= does not; Parent= points at
+            # the ID form, so strip it to get the atlas gene id.
+            gene = re.sub(r"\.v5\.1$", "", gene)
+            if n:
+                L[gene]["gs"] = {"ex": n, "in": n - 1}
+                n_gs += 1
+    cov["exon/intron (re-derived from v5.1 GFF3, longest isoform)"] = n_gs
+
+    # ---- PAV / hemizygosity: REMOVED after audit (2026-09-05) --------------------------
+    # hemi_pav_crosstab.csv is the ORTHOGROUP-based PAV call. ms1-dup CLAUDE.md 166:
+    #   "Do NOT use the OG/OrthoFinder PAV call (2,075 / 1,942) -- the canonical PAV call is
+    #    DIAMOND-based `tier1_floor` (805 / 859)."
+    # The ingested table gives 2,356 / 2,117 and carries an `n_ogs` column, so it is that
+    # forbidden family. The canonical tier1_floor table is not present in this mirror, so the
+    # atlas ships NO PAV layer rather than the wrong one.
 
     # ---- disorder ------------------------------------------------------------------------
     d = read_rows(f"{MS2}/analyses/strict_control_audit/results/predicted_disorder_genomewide.tsv", "\t")
@@ -223,33 +307,30 @@ def main():
             n_resp += 1
     cov["perturbation responsiveness"] = f"{len(d)} scanned, {n_resp} with a value"
 
-    # ---- independent tau (202 samples) ----------------------------------------------------
-    # Kept BESIDE the atlas's own 652-sample tau, not merged into it: two panels, two answers,
-    # and their agreement is itself informative.
-    d = read_rows(f"{MS1}/outputs/tau_n202_per_gene_all.csv", ",")
-    for g, r in d.items():
-        v = num(r.get("tau"))
-        if v is not None:
-            L[g]["tau202"] = {"t": round(v, 3),
-                              "ok": 1 if str(r.get("eligible")).strip().lower() == "true" else 0}
-    cov["tau (independent, n=202)"] = len(d)
+    # ---- independent tau: REMOVED after audit (2026-09-05) ------------------------------
+    # tau_n202_per_gene_all.csv is computed on the n=202 atlas panel. ms1-dup CLAUDE.md is
+    # self-contradictory here -- its pitfalls section still says "the current canonical n is
+    # 202" -- but the dated statements win: line 148 "n=202 superseded 2026-08-24" and line 197
+    # "Unchanged and still canonical: v4 n=222 atlas panel". A superseded panel is not a
+    # cross-check, so no tau202 layer ships.
 
-    # ---- genomic rank order (enables previous/next-gene navigation) ------------------------
-    d = read_rows(f"{MS1}/data/29_awgd_misannotation_audit/wgd_class_calibration_20260812/gene_rank_order_20260812.csv",
-                  ",", key="gene")
-    order = defaultdict(list)
-    for g, r in d.items():
-        gr = num(r.get("grank"))
-        if gr is not None:
-            order[(r.get("hap"), r.get("seqid"))].append((int(gr), g))
-    nb_written = 0
-    for _, lst in order.items():
+    # ---- genomic order, computed from the atlas's OWN coordinates -----------------------
+    # The previous source was an incidental file inside an aWGD calibration folder. Order is
+    # just a sort of the coordinates already in every gene record, so derive it here and owe
+    # nothing to an undocumented table.
+    coords = defaultdict(list)
+    for hap in ("hap1", "hap2"):
+        for pth in shard_paths(os.path.join(data, "genes", hap)):
+            for gid, rec in json.load(open(pth)).items():
+                coords[(hap, rec.get("chr"))].append((rec.get("start", 0), gid))
+    n_ord = 0
+    for _, lst in coords.items():
         lst.sort()
-        for i, (_, g) in enumerate(lst):
-            L[g]["ord"] = {"p": lst[i - 1][1] if i > 0 else None,
-                           "n": lst[i + 1][1] if i < len(lst) - 1 else None}
-            nb_written += 1
-    cov["genomic order"] = f"{len(d)} genes, {nb_written} with neighbours"
+        for i2, (_, g) in enumerate(lst):
+            L[g]["ord"] = {"p": lst[i2 - 1][1] if i2 > 0 else None,
+                           "n": lst[i2 + 1][1] if i2 < len(lst) - 1 else None}
+            n_ord += 1
+    cov["genomic order (computed from atlas coordinates)"] = n_ord
 
     print("source coverage:")
     for k, v in cov.items():

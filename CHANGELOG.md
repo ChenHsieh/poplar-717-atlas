@@ -3,6 +3,36 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## 0.3.1 — 2026-09-05
+
+Data audit. Chen flagged that some Sapelo2 outputs are stale; every ingested layer was
+re-checked against what its source repo says about itself. Full verdicts in `docs/DATA_AUDIT.md`.
+
+**Removed**
+- **PAV / hemizygosity.** The available table is the orthogroup-based PAV call that ms1-dup
+  explicitly tells readers not to use (it gives 2,356 / 2,117 and has an `n_ogs` column; the
+  canonical DIAMOND `tier1_floor` figures are 805 / 859). The canonical table is not in the
+  mirror, so the atlas ships no PAV layer rather than the wrong one.
+- **Independent tau (n=202).** Computed on a panel the source repo records as superseded on
+  2026-08-24.
+
+**Replaced with locally derived equivalents** — each was offered by a table with no canonical
+status, sitting in a case-study, calibration or "structural explorations" folder:
+- Exon/intron counts, now from the v5.1 `gene_exons.gff3` (longest isoform).
+- TE distance, now from the v5.1 repeatmasked GFF3, excluding simple and low-complexity repeats.
+- Genomic order, now sorted from the atlas's own coordinates.
+
+**Verified rather than repeated**
+- The "coil is a pLDDT proxy" warning was checked against the table: r = −0.49 for coil vs mean
+  pLDDT across 40,685 genes, against +0.16 for helix. The page now quotes the measured value.
+- ESMFold usage confirmed inside the source's stated safe envelope: it says aggregate
+  `helix_frac` is safe and long-run helix content is not, and the atlas serves only the former.
+
+**Surfaced for Chen**
+- ms1-dup's `CLAUDE.md` contradicts itself on the canonical expression panel: §B says n=202 was
+  superseded by n=222 on 2026-08-24, §D still says "the current canonical n is 202". Line 197
+  breaks the tie for n=222. Worth fixing so the next reader is not misled.
+
 ## 0.3.0 — 2026-09-05
 
 Seven genome-wide computed layers ingested from the MS1 and MS2 analysis repos, and a new

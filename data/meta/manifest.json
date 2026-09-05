@@ -14,7 +14,7 @@
  },
  "built": "2026-09-04T21:30:30-0400",
  "data_released": "2026-09-05",
- "data_version": "0.3.0",
+ "data_version": "0.3.1",
  "duplication": {
   "ks_by_rank": {
    "12": {
@@ -105,20 +105,17 @@
    "nb": 59486,
    "ord": 63960,
    "org": 362,
-   "pav": 63960,
    "prot": 63945,
    "resp": 49289,
-   "tau202": 63677,
    "td": 13663,
-   "te": 63829
+   "te": 63923
   },
   "coverage": {
    "ESMFold structure": 40685,
-   "PAV / hemizygosity": 63960,
-   "TE distances": 63960,
+   "TE distance (re-derived from v5.1 repeatmask GFF3)": 63923,
    "duplication class": 63960,
-   "exon/intron counts": 63960,
-   "genomic order": "63960 genes, 63960 with neighbours",
+   "exon/intron (re-derived from v5.1 GFF3, longest isoform)": 63960,
+   "genomic order (computed from atlas coordinates)": 63960,
    "neighbour co-expression": 63829,
    "organelle homology": "63960 scanned, 362 with a hit",
    "perturbation responsiveness": "63960 scanned, 49289 with a value",
@@ -126,8 +123,7 @@
    "proteomics PXD023826": 57845,
    "proteomics PXD025636": 57845,
    "proteomics PXD064017": 57845,
-   "tandem arrays (union set)": "13663 genes in 4371 arrays",
-   "tau (independent, n=202)": 63960
+   "tandem arrays (union set)": "13663 genes in 4371 arrays"
   },
   "dup_class_dist": {
    "A": 7,

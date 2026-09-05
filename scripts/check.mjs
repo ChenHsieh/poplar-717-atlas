@@ -92,11 +92,13 @@ await check('gene-paralog', '#/gene/PtXaTreH.01G330600',
 await check('gene-tandem-array', '#/gene/PtXaTreH.01G330700',
   { expect: ['Tandem array', 'Array members', 'neighbours on the chromosome'], wait: 1400 });
 await check('module-protein', '#/module/protein',
-  { expect: ['Protein', 'ESMFold', 'pLDDT proxy', 'never pooled', 'peptide'] });
+  { expect: ['Protein', 'ESMFold', 'pLDDT proxy', 'never pooled', 'peptide',
+             'r = −0.49', 'run length'] });
 await check('gene-protein', '#/gene/PtXaTreH.01G000100',
   { expect: ['Protein', 'Predicted disorder', 'Duplication class'], wait: 1000 });
 await check('module-about', '#/module/about',
-  { expect: ['About & provenance', 'Known limitations', 'HAP2 domain annotation is thin', 'Sources'] });
+  { expect: ['About & provenance', 'Known limitations', 'HAP2 domain annotation is thin',
+             'audited out', 'derived here, not imported', 'Sources'] });
 await check('home-dark', '#/', { expect: ['63,960', 'Start here'], theme: 'dark' });
 
 // Search is the one interaction that has no index file behind it -- prove it resolves.

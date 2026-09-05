@@ -71,9 +71,10 @@ function geneCard(g) {
   if (ss) {
     card.append(el('div', { class: 'warn' },
       el('strong', {}, 'Coil fraction tracks model confidence. '),
-      'In this table coil is largely a pLDDT proxy — a high-coil, low-pLDDT model says the '
-      + 'structure was hard to predict, not that the protein is unstructured. Read coil '
-      + 'alongside the pLDDT above, never alone.'));
+      'Across all 40,685 modelled genes, coil fraction correlates with mean pLDDT at r = −0.49, '
+      + 'against only +0.16 for helix. A high-coil, low-pLDDT model says the structure was hard '
+      + 'to predict, not that the protein is unstructured. Read coil alongside the pLDDT above, '
+      + 'never alone — the disorder prediction is the separate, dedicated signal.'));
   } else if (p.dis != null || ms) {
     card.append(el('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' },
       'No ESMFold model for this gene. Structure covers 40,685 of 63,960 genes (64%) — '
@@ -104,8 +105,15 @@ async function overview(man) {
       el('h2', {}, 'How to read this'),
       el('ul', { style: 'margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2);line-height:1.6' },
         el('li', {}, el('strong', {}, 'Coil fraction is largely a pLDDT proxy. '),
-          'High coil with low pLDDT means the model was uncertain, not that the protein is '
-          + 'intrinsically disordered. The disorder prediction is the separate, dedicated signal.'),
+          'Measured on this table: r = −0.49 between coil fraction and mean pLDDT across all '
+          + '40,685 modelled genes, against +0.16 for helix. High coil with low pLDDT means the '
+          + 'model was uncertain, not that the protein is disordered.'),
+        el('li', {}, el('strong', {}, 'Aggregate helix is safe; helix RUN LENGTH is not. '),
+          'The source analysis states that long-run helix content is exactly what the '
+          + 'low-confidence artifact inflates and should not be read as biology. This atlas '
+          + 'therefore serves helix_frac only, never max_helix_run.'),
+        el('li', {}, el('strong', {}, 'These are predicted structures. '),
+          'No claim here is independent of ESMFold.'),
         el('li', {}, el('strong', {}, 'ESMFold coverage is 64%. '),
           'A gene without a model is not a gene without a structure.'),
         el('li', {}, el('strong', {}, 'Peptide detection is asymmetric evidence. '),

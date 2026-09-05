@@ -59,6 +59,17 @@ function overview(man) {
         el('li', {}, el('strong', {}, 'Expression is raw TPM, not batch-corrected. '),
           'Use it for tissue specificity and per-gene magnitude. Cross-study comparison needs '
           + 'batch handling that this build does not apply.'),
+        el('li', {}, el('strong', {}, 'Two layers were audited out, not shipped. '),
+          'A presence/absence-variation layer was dropped because the available table is the '
+          + 'orthogroup-based PAV call the source repo explicitly tells readers not to use; its '
+          + 'canonical DIAMOND-based replacement is not in the mirror. An independent tau was '
+          + 'dropped because it is computed on the n=202 expression panel, which the same repo '
+          + 'records as superseded on 2026-08-24.'),
+        el('li', {}, el('strong', {}, 'Three layers are derived here, not imported. '),
+          'Exon/intron counts and TE distance are computed from the v5.1 GFF3 and repeatmasked '
+          + 'annotation that ship with the genome, and genomic order from the atlas\'s own '
+          + 'coordinates — because the tables offering them sat in case-study, calibration and '
+          + '"structural exploration" folders with no canonical status.'),
         el('li', {}, el('strong', {}, 'Duplication calls come from a mirrored repo. '),
           'The per-gene duplication class is the most current table present in the ms1-dup '
           + 'mirror; that repo names a v6 master as canonical which is not synced here. The '

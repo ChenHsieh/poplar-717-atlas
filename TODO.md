@@ -60,7 +60,11 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
       could show, and the one major layer still missing.
 - [ ] **20 — cross-species expression.** P. trichocarpa xylem (377 samples, Potri ids) joined
       through the synteny orthogroups.
-- [ ] **21 — chase the canonical v6 duplication master.** ms1-dup names
+- [ ] **21 — chase the canonical v6 duplication master, and the tier1_floor PAV table.** Both
+      are named canonical by ms1-dup but absent from the mirror; the atlas ships the best
+      available duplication call and NO PAV layer until they appear.
+- [ ] **21b — fix the ms1-dup CLAUDE.md contradiction** about n=202 vs n=222 (see
+      `docs/DATA_AUDIT.md`). Old: ms1-dup names
       `master_duplication_table_v6.csv` canonical but it is not synced to the mirror; the
       atlas currently serves the v8 membership file plus the curated union tandem set.
 - [ ] **22 — decide the two open policy questions.** Whether to hold LSG candidate labels
