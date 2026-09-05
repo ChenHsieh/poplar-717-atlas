@@ -49,8 +49,13 @@ header.top {
 }
 header.top .brand { font-weight: 640; letter-spacing: -0.01em; white-space: nowrap; }
 header.top .brand span { color: var(--ink-3); font-weight: 400; }
+header.top .brand > a { display: inline-block; padding-block: 4px; }
 header.top nav { display: flex; gap: 14px; }
-header.top nav a { color: var(--ink-2); font-size: 13px; }
+/* WCAG 2.5.8: these are primary nav, not links inline in a sentence, so the
+   inline-text exemption doesn't apply -- the plain <a> text box was ~16-20px
+   tall (13px font, no padding). padding-block grows the tap target to the
+   24px floor without changing font size or the row's horizontal gap. */
+header.top nav a { color: var(--ink-2); font-size: 13px; display: inline-block; padding-block: 6px; }
 header.top nav a.on { color: var(--ink); font-weight: 600; }
 .grow { flex: 1; }
 
