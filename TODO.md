@@ -50,3 +50,18 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
       `CITATION.cff`; `data_version` in manifest + footer; `CHANGELOG.md`; CI for `check.mjs`.
 - [x] **13 — archive sources.** `ms2_genespace/{step7_diff_*,tier3_input_v2_*,expression}` and
       `synt_ks/` to `/work/cjtlab/` before /scratch purges them.
+
+## Next up (v0.4 / v0.5)
+
+- [ ] **18 — ComBat cross-study expression view.** Needs a 63,960-gene rebuild first: the
+      shipped ComBat-seq matrices are an older 59,599-gene generation with `.1`-suffixed ids.
+- [ ] **19 — allele-specific expression.** `ase_analysis/` holds per-chromosome separated
+      reads but no per-gene table yet. The most distinctive thing a haplotype-resolved atlas
+      could show, and the one major layer still missing.
+- [ ] **20 — cross-species expression.** P. trichocarpa xylem (377 samples, Potri ids) joined
+      through the synteny orthogroups.
+- [ ] **21 — chase the canonical v6 duplication master.** ms1-dup names
+      `master_duplication_table_v6.csv` canonical but it is not synced to the mirror; the
+      atlas currently serves the v8 membership file plus the curated union tandem set.
+- [ ] **22 — decide the two open policy questions.** Whether to hold LSG candidate labels
+      until publication (recommend hold), and confirm MIT code / CC BY 4.0 data.

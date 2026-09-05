@@ -13,22 +13,27 @@ One artifact, two audiences, and they pull differently:
 
 Design principles that stay fixed: **the gene is the primitive; modules are facets; the study is the citation unit; the gene ID encodes its shard; no server, no build step.**
 
-## 2. Where it stands (2026-09-04, after v0.2)
+## 2. Where it stands (2026-09-05, after v0.3)
 
-| layer | state |
-|---|---|
-| Data — synteny | 12-genome GENESPACE, QC PASS, DIAMOND-sensitivity control (Jaccard 0.98) |
-| Data — phylostratigraphy | genEra rank, ambiguity flags (44), unplaced (50), family origin + size |
-| Data — annotation | 60,746 genes; 4,862-term GO dictionary; 51,862 allele links; 62,385 presence lists |
-| Data — expression | 652 samples / 28 studies / 38 BioProjects |
-| Data — duplication | 1,346 tier-2 paralog pairs with dS (NOT genome-wide); tandem arrays genome-wide |
-| Site | gene hub, 6 modules, free-text search, browse/query builder, gene sets, TSV export, provenance |
-| Integrity | `validate_data.py` (17 checks) + `check.mjs` (16 views + driven query), both in CI |
-| Publishing | repo private; **Pages still not enabled** (API 404, plan reads Free); Artifact preview live |
-| Repo | ~280 MB data, `.git` under 200 MB; `.nojekyll`, LICENSE, CITATION.cff, CHANGELOG in place |
-| Sources | **archived** to `/work/cjtlab/ch29576_ms2/atlas_sources_20260904/` (3.35 GB), safe from purge |
+**Live and public: https://chenhsieh.github.io/poplar-717-atlas/** — private repo, public site,
+`noindex` on until the chapter publishes.
 
-All five planned modules ship. What remains is depth, not scaffolding.
+Seven modules. Every gene carries, in one page: location and exon/intron structure; function
+(description, Arabidopsis hit, Pfam, PANTHER, GO); its HAP1↔HAP2 allele with Ka/Ks and pangene
+relationship; presence across 12 genomes; synteny class and how it changed when the panel was
+completed; phylostratum with genEra's own ambiguity flags; duplication class, tandem-array
+identity and TE proximity; predicted disorder, ESMFold structure and mass-spec peptide
+evidence; and expression across 652 samples with per-condition means, responsiveness, and an
+independent tau cross-check.
+
+Browse filters all 63,960 genes across every module over a 274 KB index, with named sets and
+TSV export. `private ∩ PS≥18` returns 923, matching the step-7 report exactly.
+
+Integrity: `validate_data.py` (16 checks) + `check.mjs` (25 views, plus three driven
+interactions), both green in CI on every push, and re-run against the deployed URL.
+
+Sources archived to `/work/cjtlab/ch29576_ms2/atlas_sources_20260904/` — safe from the 30-day
+purge, which matters because the build is not reproducible from a clone by design.
 
 ## 3. The gaps that matter, ranked
 
@@ -70,7 +75,7 @@ Each phase ships when `check.mjs` is green, build asserts pass, and one screensh
 |---|---|---|
 | ~~v0.2~~ | ~~Gene page becomes a hub~~ | **DONE** — allele link, annotation + search, presence, cross-links, publish hygiene, sources archived |
 | ~~v0.3~~ | ~~Query~~ | **DONE early** — facet index, browse builder, gene sets, TSV export, phylostrat module |
-| **v0.4** | Depth | study sample tables (metadata exists, table is label-only) · condition-grouped expression means · ComBat cross-study view after a 63,960-gene rebuild · tandem-array identity (which genes share an array) · genome-wide paralog scan if the WGD question matters |
+| ~~v0.4~~ | ~~Depth~~ | **MOSTLY DONE** — study sample tables, condition means, tandem-array identity, duplication class all shipped in v0.3. Remaining: ComBat cross-study view after a 63,960-gene rebuild |
 | **v0.5** | Hybrid-specific | ASE module (needs a per-gene table from `ase_analysis/`) · cross-species *P. trichocarpa* xylem (377 samples) via synteny orthologs · allele-level expression once ASE lands |
 | **v1.0** | Release | Zenodo DOI · `noindex` removed with the chapter · CC BY 4.0 activated on the data · docs |
 
