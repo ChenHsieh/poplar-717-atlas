@@ -53,6 +53,35 @@ def num(x):
     except (TypeError, ValueError):
         return None
 
+def sanitise_note(raw):
+    """Reduce a curation note to its MEANING, dropping the person.
+
+    The raw notes carry internal lab process onto a public page: curator initials and dates
+    ("cj_20260827"), verbatim quotes ('curator wrote: "no"'), and a named exception. A visitor
+    benefits from knowing a gene was hand-rejected or flagged pseudogene-like; nobody benefits
+    from the curator's initials, and one note pairs a REJECT verdict with the curator writing
+    "ok", which reads as a contradiction without the context that produced it.
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    low = raw.lower()
+    parts = []
+    if "pseudogene-like" in low:
+        parts.append("flagged pseudogene-like, not hand reviewed")
+    if "relaxed" in low:
+        parts.append("admitted on a relaxed edge only")
+    if "undecided" in low:
+        parts.append("curation undecided; automatic call used")
+    if "contradiction" in low:
+        parts.append("curated verdict disagrees with the automatic gate")
+    if "reject" in low:
+        parts.append("manually rejected during curation")
+    elif "keep" in low:
+        parts.append("manually confirmed during curation")
+    return " · ".join(dict.fromkeys(parts)) or "carries a curation note"
+
+
 def read_rows(path, delim, key="gene_id", strip_suffix=False, value_cols=None):
     """One row per gene.
 
@@ -282,7 +311,7 @@ def main():
             rec["why"] = r.get("removal_basis") or None
         if str(r.get("pseudogene_like")).strip().lower() == "true":
             rec["pseudo"] = 1
-        note = (r.get("manual_note") or "").strip()
+        note = sanitise_note(r.get("manual_note"))
         if note:
             rec["note"] = note
         L[g]["td"] = rec

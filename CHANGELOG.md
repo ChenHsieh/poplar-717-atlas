@@ -28,6 +28,16 @@ status, sitting in a case-study, calibration or "structural explorations" folder
 - ESMFold usage confirmed inside the source's stated safe envelope: it says aggregate
   `helix_frac` is safe and long-run helix content is not, and the atlas serves only the former.
 
+**Privacy pass**
+- Tandem-array curation notes were shipping internal lab process to a public page: curator
+  initials and dates (`cj_20260827`), verbatim quotes (`curator wrote: "no"`), and a named
+  personal exception. Notes are now reduced to their meaning — "manually rejected during
+  curation", "flagged pseudogene-like", "curated verdict disagrees with the automatic gate" —
+  which is what a visitor can use. Zero shards now carry a curator identity or raw quote.
+- Confirmed separately that LSG candidate labels (LSG1.14g, XO14gHAP2 …) appear nowhere in the
+  shipped data or UI, so no candidate identity is public. The `lsg` flag is only PS ≥ 18,
+  derived from the public genEra rank.
+
 **Surfaced for Chen**
 - ms1-dup's `CLAUDE.md` contradicts itself on the canonical expression panel: §B says n=202 was
   superseded by n=222 on 2026-08-24, §D still says "the current canonical n is 202". Line 197

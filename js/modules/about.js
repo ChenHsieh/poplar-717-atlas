@@ -59,6 +59,10 @@ function overview(man) {
         el('li', {}, el('strong', {}, 'Expression is raw TPM, not batch-corrected. '),
           'Use it for tissue specificity and per-gene magnitude. Cross-study comparison needs '
           + 'batch handling that this build does not apply.'),
+        el('li', {}, el('strong', {}, 'Curation notes are summarised, not quoted. '),
+          'Tandem-array genes carry a curation flag — hand-rejected, pseudogene-like, or '
+          + 'disagreeing with the automatic gate. The curator\'s identity and verbatim wording '
+          + 'are deliberately not published.'),
         el('li', {}, el('strong', {}, 'Two layers were audited out, not shipped. '),
           'A presence/absence-variation layer was dropped because the available table is the '
           + 'orthogroup-based PAV call the source repo explicitly tells readers not to use; its '
