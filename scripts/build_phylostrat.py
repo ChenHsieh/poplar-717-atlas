@@ -21,6 +21,14 @@ STRIP = re.compile(r"\.\d+\.p$")
 def hap_dir(h):
     return f"{GENERA}/hap{h}/genera_717hap{h}_v5.1/80863"
 
+def shard_paths(root):
+    """Every gene-shard JSON under a haplotype directory, at any nesting depth."""
+    out = []
+    for dp, _, fs in os.walk(root):
+        out += [os.path.join(dp, f) for f in fs if f.endswith(".json")]
+    return out
+
+
 def main():
     data = os.path.join(ATLAS, "data")
 
@@ -62,8 +70,8 @@ def main():
     patched = defaultdict(int)
     by_rank = defaultdict(lambda: defaultdict(int))
     for hap in ("hap1", "hap2"):
-        for fn in sorted(os.listdir(os.path.join(genes_dir, hap))):
-            p = os.path.join(genes_dir, hap, fn)
+        # Shards are nested one level deeper since the bucketed split; walk, don't listdir.
+        for p in sorted(shard_paths(os.path.join(genes_dir, hap))):
             with open(p) as fh:
                 shard = json.load(fh)
             for gid, rec in shard.items():

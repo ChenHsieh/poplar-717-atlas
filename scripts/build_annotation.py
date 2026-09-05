@@ -101,6 +101,14 @@ STOP = {"the", "and", "for", "with", "from", "not", "named", "family", "subfamil
 def tokens(text):
     return {t.lower() for t in TOKEN_RE.findall(text or "") if t.lower() not in STOP}
 
+def shard_paths(root):
+    """Every gene-shard JSON under a haplotype directory, at any nesting depth."""
+    out = []
+    for dp, _, fs in os.walk(root):
+        out += [os.path.join(dp, f) for f in fs if f.endswith(".json")]
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="/scratch/ch29576/poplar-717-atlas/data")
@@ -186,8 +194,8 @@ def main():
     gene_ids, postings = [], defaultdict(set)
     patched = defaultdict(int)
     for hap in ("hap1", "hap2"):
-        for fn in sorted(os.listdir(os.path.join(genes_dir, hap))):
-            p = os.path.join(genes_dir, hap, fn)
+        # Shards are nested one level deeper since the bucketed split; walk, don't listdir.
+        for p in sorted(shard_paths(os.path.join(genes_dir, hap))):
             with open(p) as fh:
                 shard = json.load(fh)
             for gid, rec in shard.items():

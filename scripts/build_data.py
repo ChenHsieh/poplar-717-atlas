@@ -15,7 +15,7 @@ Tiers: --tier full  (everything, private repo / local)
 So what is publishable is a build flag, not a rewrite. GitHub Pages is PUBLIC even from a
 private repo, so the public tier is the only thing that may ever be deployed.
 """
-import argparse, csv, gzip, hashlib, json, os, re, sys, time
+import argparse, csv, gzip, hashlib, json, os, re, shutil, sys, time
 from collections import defaultdict
 
 MS2  = "/scratch/ch29576/ms2_genespace"
@@ -37,12 +37,18 @@ def note(path):
                  "mtime": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(os.path.getmtime(path)))}
     return path
 
+# Genes are numbered in steps of 100 within a chromosome, so dividing the numeric suffix by
+# BUCKET_SPAN yields at most BUCKET_SPAN/100 genes per shard -- deterministically, with no
+# index. 25,000 gives <=250 genes (~40 KB gzipped) instead of a whole chromosome (up to
+# 3.9 MB raw / 600 KB gzipped) for a page that renders exactly one gene.
+BUCKET_SPAN = 25000
+
 def shard_of(gene_id):
-    """THE CLIENT RULE. Must be mirrored exactly in site/js/core/data.js."""
-    m = re.match(r"^PtXa(TreH|AlbH)\.(.+?)G\d+$", gene_id)
+    """THE CLIENT RULE. Must be mirrored exactly in js/core/data.js."""
+    m = re.match(r"^PtXa(TreH|AlbH)\.(\d\d)G(\d+)$", gene_id)
     if m:
         hap = "hap1" if m.group(1) == "TreH" else "hap2"
-        return hap, "Chr" + m.group(2)
+        return hap, f"Chr{m.group(2)}/{int(m.group(3)) // BUCKET_SPAN}"
     m = re.match(r"^PtXa(TreH|AlbH)\.T\d+$", gene_id)
     if m:
         return ("hap1" if m.group(1) == "TreH" else "hap2"), "scaffolds"
@@ -151,7 +157,8 @@ def main():
         except ValueError as e:
             bad.append(str(e)); continue
         expect = g["chr"] if g["chr"].startswith("Chr") else "scaffolds"
-        if (hap, key) != (g["hap"], expect):
+        got_chr = key.split("/")[0]
+        if (hap, got_chr) != (g["hap"], expect):
             bad.append(f"{gid}: rule says {hap}/{key}, BED says {g['hap']}/{expect}")
     if bad:
         print(f"FAIL: shard rule disagrees with the annotation for {len(bad)} genes:", file=sys.stderr)
@@ -181,6 +188,11 @@ def main():
         print("genes missing a layer:", dict(missing))
 
     outdir = os.path.join(a.out, "genes")
+    # Wipe first. Re-running after a sharding change previously LEFT the old layout in place,
+    # so the patcher scripts walked both and every gene was patched twice (127,789 records for
+    # 63,960 genes). Stale shards are worse than missing ones -- they still serve.
+    if os.path.isdir(outdir):
+        shutil.rmtree(outdir)
     os.makedirs(outdir, exist_ok=True)
     counts = {}
     for key, recs in sorted(shards.items()):

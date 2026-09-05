@@ -4,12 +4,22 @@
 // the build asserts the Python side against the real annotation, so this side is the one
 // that can drift silently.
 
-const CHR_RE = /^PtXa(TreH|AlbH)\.(.+?)G\d+$/;
+const CHR_RE = /^PtXa(TreH|AlbH)\.(\d\d)G(\d+)$/;
 const SCAF_RE = /^PtXa(TreH|AlbH)\.T\d+$/;
+
+// Genes are numbered in steps of 100 within a chromosome, so this yields <=250 genes per
+// shard (~40 KB gzipped). Whole-chromosome shards reached 3.9 MB raw for a page that renders
+// one gene. MIRRORS scripts/build_data.py:BUCKET_SPAN -- change both or neither.
+const BUCKET_SPAN = 25000;
 
 export function shardOf(geneId) {
   let m = CHR_RE.exec(geneId);
-  if (m) return { hap: m[1] === 'TreH' ? 'hap1' : 'hap2', key: 'Chr' + m[2] };
+  if (m) {
+    return {
+      hap: m[1] === 'TreH' ? 'hap1' : 'hap2',
+      key: `Chr${m[2]}/${Math.floor(parseInt(m[3], 10) / BUCKET_SPAN)}`,
+    };
+  }
   m = SCAF_RE.exec(geneId);
   if (m) return { hap: m[1] === 'TreH' ? 'hap1' : 'hap2', key: 'scaffolds' };
   return null;

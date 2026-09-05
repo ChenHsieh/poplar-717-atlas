@@ -23,10 +23,13 @@ def main():
 
     recs = {}
     for hap in ("hap1", "hap2"):
-        d = f"{data}/genes/{hap}"
-        for fn in sorted(os.listdir(d)):
-            for gid, r in json.load(open(os.path.join(d, fn))).items():
-                recs[gid] = (hap, r)
+        root = f"{data}/genes/{hap}"
+        for dp, _, fs in os.walk(root):      # shards are nested since the bucketed split
+            for fn in sorted(fs):
+                if not fn.endswith(".json"):
+                    continue
+                for gid, r in json.load(open(os.path.join(dp, fn))).items():
+                    recs[gid] = (hap, r)
     assert len(recs) == len(order), f"{len(recs)} genes vs {len(order)} in genes.json"
 
     chrs, clss, tops = [], [], []

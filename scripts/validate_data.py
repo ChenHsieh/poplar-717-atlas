@@ -13,8 +13,9 @@ import json, os, re, sys
 from collections import Counter
 
 DATA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-CHR_RE = re.compile(r"^PtXa(TreH|AlbH)\.(.+?)G\d+$")
+CHR_RE = re.compile(r"^PtXa(TreH|AlbH)\.(\d\d)G(\d+)$")
 SCAF_RE = re.compile(r"^PtXa(TreH|AlbH)\.T\d+$")
+BUCKET_SPAN = 25000   # mirrors build_data.py and js/core/data.js
 
 fails = []
 def check(name, ok, detail=""):
@@ -25,7 +26,8 @@ def check(name, ok, detail=""):
 def shard_of(gid):
     m = CHR_RE.match(gid)
     if m:
-        return ("hap1" if m.group(1) == "TreH" else "hap2"), "Chr" + m.group(2)
+        return ("hap1" if m.group(1) == "TreH" else "hap2"), \
+               f"Chr{m.group(2)}/{int(m.group(3)) // BUCKET_SPAN}"
     m = SCAF_RE.match(gid)
     if m:
         return ("hap1" if m.group(1) == "TreH" else "hap2"), "scaffolds"
@@ -35,12 +37,14 @@ def main():
     man = json.load(open(f"{DATA}/meta/manifest.json"))
     genes, shard_files = {}, 0
     for hap in ("hap1", "hap2"):
-        d = f"{DATA}/genes/{hap}"
-        for fn in sorted(os.listdir(d)):
-            shard_files += 1
-            key = fn[:-5]
-            for gid, rec in json.load(open(os.path.join(d, fn))).items():
-                genes[gid] = (hap, key, rec)
+        root = f"{DATA}/genes/{hap}"
+        for dp, _, fs in os.walk(root):
+            for fn in sorted(f for f in fs if f.endswith(".json")):
+                shard_files += 1
+                # key is the path under the haplotype dir, minus .json: "Chr05/4" or "scaffolds"
+                key = os.path.relpath(os.path.join(dp, fn), root)[:-5]
+                for gid, rec in json.load(open(os.path.join(dp, fn))).items():
+                    genes[gid] = (hap, key, rec)
 
     print(f"\nvalidating {len(genes)} genes in {shard_files} shards (data v{man.get('data_version')})\n")
 

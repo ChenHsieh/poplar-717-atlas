@@ -88,6 +88,14 @@ def build_studies(samples, runlevel):
         }
     return studies
 
+def shard_paths(root):
+    """Every gene-shard JSON under a haplotype directory, at any nesting depth."""
+    out = []
+    for dp, _, fs in os.walk(root):
+        out += [os.path.join(dp, f) for f in fs if f.endswith(".json")]
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=f"{ATLAS}/data")
@@ -199,8 +207,8 @@ def main():
     genes_dir = os.path.join(a.out, "genes")
     patched = 0
     for hap in ("hap1", "hap2"):
-        for fn in sorted(os.listdir(os.path.join(genes_dir, hap))):
-            p = os.path.join(genes_dir, hap, fn)
+        # Shards are nested one level deeper since the bucketed split; walk, don't listdir.
+        for p in sorted(shard_paths(os.path.join(genes_dir, hap))):
             with open(p) as fh:
                 shard = json.load(fh)
             changed = False

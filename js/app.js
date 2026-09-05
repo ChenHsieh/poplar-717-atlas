@@ -1,6 +1,6 @@
 import { el, clear, fmt } from './core/dom.js';
-import { getGene, loadManifest, loadShard, shardOf, hapLabel, loadExprStudies,
-         loadExprSamples, searchGenes } from './core/data.js';
+import { getGene, loadManifest, hapLabel, loadExprStudies,
+         loadExprSamples, searchGenes, loadGeneIndex } from './core/data.js';
 import { MODULES, byId } from './core/registry.js';
 import { route, start, navigate } from './core/router.js';
 import { browseView } from './core/browse.js';
@@ -23,17 +23,22 @@ function initSearch() {
     const mine = ++seq;
     if (q.length < 3) return close();
 
-    // Two paths, merged: a gene ID resolves via the shard convention with no index at all;
-    // anything else goes to the token index (descriptions, AT loci, Pfam/PANTHER).
+    // Two paths, merged: a gene-ID prefix matches against the id list; anything else goes to
+    // the token index (descriptions, AT loci, Pfam/PANTHER).
+    //
+    // ID autocomplete used to probe the shard the prefix named. That stopped being possible
+    // once shards were bucketed by gene NUMBER: a partial number ("05G1202") does not
+    // determine its bucket, and rounding it down silently pointed at the wrong shard.
+    // Prefix-matching the id list is exact, and the list is already loaded for text search.
     const byId = [];
-    const probe = /G\d+$/.test(q) ? q : q + 'G000000';
-    const s = shardOf(probe);
-    if (s) {
-      const man = await loadManifest();
-      if (`${s.hap}/${s.key}` in man.shards) {
-        const shard = await loadShard(s.hap, s.key);
-        const up = q.toUpperCase();
-        byId.push(...Object.keys(shard).filter((k) => k.toUpperCase().startsWith(up)).sort().slice(0, 12));
+    if (/^PtXa/i.test(q)) {
+      const ids = await loadGeneIndex();
+      const up = q.toUpperCase();
+      for (const id of ids) {
+        if (id.toUpperCase().startsWith(up)) {
+          byId.push(id);
+          if (byId.length >= 12) break;
+        }
       }
     }
     const byText = await searchGenes(q, 24);
