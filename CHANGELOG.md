@@ -3,6 +3,26 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## 0.2.1 — 2026-09-04
+
+**Added**
+- Study pages render the full sample metadata that `samples.json` already carried: tissue,
+  treatment, genotype, growth condition, control/perturbation role, layout, reads, alignment
+  rate and per-sample processing notes.
+- Expression gene card gains a **By condition** view: replicate means per experimental
+  condition, grouped by study, alongside the existing per-sample strip. For LSG4.5g in study
+  27 bark this reads as drought 78.4 vs control 43.0 in WT — the question a reader actually
+  has, which 652 individual dots do not answer.
+- Duplication module (see below) and its checks.
+
+**Corrected**
+- Condition grouping uses the metadata fields, not a `_repN` suffix strip. Study 27 encodes
+  replicates as `DR1/DR2/DR3`, so label-parsing split all 72 of its samples into singleton
+  "conditions". Metadata grouping gives 204 groups with a median of 3 replicates.
+- `check.mjs` assertions were case-sensitive against `innerText`, which returns RENDERED text.
+  Since `table.data th` is `text-transform:uppercase`, asserting "% aligned" could never match
+  "% ALIGNED" — two checks failed against a page that was correct.
+
 ## 0.2.0 — 2026-09-04
 
 The gene page becomes a hub, and phylostratigraphy gets a real module.

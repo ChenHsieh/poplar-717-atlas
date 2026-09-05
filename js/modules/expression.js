@@ -52,11 +52,74 @@ function geneCard(g) {
       card.append(holder);
       e.target.remove();
       const [vec, samples, studies] = await Promise.all([loadExprVector(g), loadExprSamples(), loadExprStudies()]);
-      holder.append(fullProfile(vec, samples, studies));
+
+      // Two views of the same vector. Conditions first, because "does it respond to drought
+      // in study 27" is answerable from replicate means and not from 652 individual dots.
+      const body = el('div', {});
+      const tabs = el('div', { style: 'display:flex;gap:6px;margin-bottom:10px' });
+      const mk = (label, render) => {
+        const b = el('button', {
+          onclick: () => {
+            [...tabs.children].forEach((c) => { c.dataset.on = 'false'; c.style.background = 'var(--panel-2)'; c.style.color = 'var(--ink)'; });
+            b.dataset.on = 'true'; b.style.background = 'var(--accent)'; b.style.color = '#fff';
+            clear(body).append(render());
+          },
+          style: 'font-size:12px;padding:4px 10px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
+        }, label);
+        return b;
+      };
+      const byCond = mk('By condition', () => conditionTable(vec, samples, studies));
+      const bySamp = mk('By sample', () => fullProfile(vec, samples, studies));
+      tabs.append(byCond, bySamp);
+      holder.append(tabs, body);
+      byCond.click();
     },
   }, `Show all 652 samples →`);
   card.append(btn);
   return card;
+}
+
+/** Replicate means per experimental condition, grouped by study.
+ *  Conditions come from the METADATA fields, not by stripping "_repN" off the label --
+ *  study 27 encodes replicates as DR1/DR2/DR3 with no _rep, which would split every one of
+ *  its 72 samples into its own group. */
+function conditionTable(vec, samples, studies) {
+  const groups = new Map();
+  samples.forEach((s, i) => {
+    const key = [s.study, s.tissue_full || s.tissue, s.treatment, s.growth, s.additional, s.genotype].join('\u0001');
+    if (!groups.has(key)) groups.set(key, { s, vals: [] });
+    groups.get(key).vals.push(vec[i]);
+  });
+  const rows = [...groups.values()].map(({ s, vals }) => ({
+    s, n: vals.length,
+    mean: vals.reduce((a, b) => a + b, 0) / vals.length,
+  })).sort((a, b) => a.s.study - b.s.study
+    || (a.s.tissue || '').localeCompare(b.s.tissue || '')
+    || b.mean - a.mean);
+  const max = Math.max(...rows.map((r) => r.mean), 0.01);
+
+  const cond = (s) => [s.treatment, s.growth, s.additional].filter(Boolean).join(' · ') || 'baseline';
+  return el('div', {},
+    el('p', { class: 'muted', style: 'font-size:12px;margin:0 0 8px' },
+      `${rows.length} conditions across ${new Set(rows.map((r) => r.s.study)).size} studies, `
+      + 'each a mean over its replicates. Bars share one scale.'),
+    el('div', { class: 'scroll-x', style: 'max-height:520px;overflow-y:auto' },
+      el('table', { class: 'data' },
+        el('thead', {}, el('tr', {},
+          el('th', {}, 'Study'), el('th', {}, 'Tissue'), el('th', {}, 'Condition'),
+          el('th', {}, 'Genotype'), el('th', { class: 'num' }, 'n'),
+          el('th', { class: 'num' }, 'Mean TPM'), el('th', {}, ''))),
+        el('tbody', {}, ...rows.map((r) => el('tr', {},
+          el('td', {}, el('a', { href: `#/study/${r.s.study}`, class: 'mono' }, r.s.study)),
+          el('td', { style: 'font-size:12px' }, r.s.tissue_full || r.s.tissue || '—'),
+          el('td', { style: 'font-size:12px' }, cond(r.s)),
+          el('td', { style: 'font-size:12px' }, r.s.genotype || '—'),
+          el('td', { class: 'num' }, r.n),
+          el('td', { class: 'num' }, r.mean.toFixed(2)),
+          el('td', { style: 'width:30%' },
+            el('div', { class: 'bar', style: `width:${Math.max((r.mean / max) * 100, r.mean > 0 ? 1.5 : 0)}%;`
+              + `background:${r.s.ctrl === 'perturbation' ? 'var(--c-disp)' : 'var(--c-core)'}` })))))))
+  );
 }
 
 function fullProfile(vec, samples, studies) {

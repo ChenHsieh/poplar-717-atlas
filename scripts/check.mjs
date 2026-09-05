@@ -113,6 +113,29 @@ for (const [label, q, want] of [['keyword', 'dehydrin', null], ['at-locus', 'AT1
 }
 await p.screenshot({ path: `${outdir}/search-text.png` });
 
+// The condition view is the expression module's analytical payoff -- drive it.
+{
+  const cp = await browser.newPage({ viewport: { width: 1180, height: 1200 } });
+  const cerrs = [];
+  cp.on('pageerror', (e) => cerrs.push(e.message));
+  cp.on('console', (m) => { if (m.type() === 'error') cerrs.push('console: ' + m.text()); });
+  await cp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
+  await cp.click('button:has-text("Show all 652 samples")');
+  await cp.waitForTimeout(1500);
+  const rows = await cp.$$eval('#view tbody tr', (ns) => ns.length);
+  const txt = await cp.evaluate(() => document.getElementById('view').innerText.toLowerCase());
+  await cp.click('button:has-text("By sample")');
+  await cp.waitForTimeout(700);
+  const sampleView = await cp.evaluate(() => document.getElementById('view').innerText.toLowerCase());
+  const ok = rows > 150 && txt.includes('conditions across') && txt.includes('mean tpm')
+    && sampleView.includes('every sample') && !cerrs.length;
+  if (!ok) failures++;
+  console.log(`\n### expression:conditions  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   condition rows=${rows}  sample-view toggle=${sampleView.includes('every sample')}`);
+  cerrs.forEach((e) => console.log('   !! ' + e));
+  await cp.close();
+}
+
 // The cross-module query is the whole point of browse -- drive it, don't just render it.
 {
   const bp = await browser.newPage({ viewport: { width: 1180, height: 1200 } });
