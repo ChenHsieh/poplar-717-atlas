@@ -81,11 +81,19 @@ function alleleCard(g) {
   const a = g.allele;
   const other = g.hap === 'hap1' ? 'HAP2' : 'HAP1';
   if (!a) {
+    const rel = g.pav && g.pav.rel;
     return el('div', { class: 'card' },
       el('h2', {}, 'Allele', el('span', { class: 'tag' }, 'syntelog')),
       el('p', { class: 'muted', style: 'margin:0;font-size:13px' },
         `No 1:1 ${other} syntelog in the 25,931-pair map. That is expected for genes in tandem `
-        + `arrays, hemizygous regions, or where synteny breaks down — not evidence of absence.`));
+        + `arrays, hemizygous regions, or where synteny breaks down — not evidence of absence.`),
+      // The PAV call usually explains WHY there is no allele, so show it here rather than
+      // leaving the reader with only a negative.
+      rel ? el('p', { style: 'margin:9px 0 0;font-size:13px' },
+        'Pangene relationship: ', el('strong', {}, rel.replace('_', ' ')),
+        /hemizygous/.test(rel)
+          ? el('span', { class: 'muted' }, ' — present on one haplotype only, which accounts for the missing allele.')
+          : null) : null);
   }
   const kv = el('dl', { class: 'kv' });
   kv.append(el('dt', {}, `${other} allele`),
@@ -105,6 +113,14 @@ function alleleCard(g) {
           el('span', { class: 'muted' }, a.w < 0.1 ? 'strong purifying selection'
             : a.w < 1 ? 'purifying selection' : 'Ka exceeds Ks')));
     }
+  }
+  if (g.pav && g.pav.rel) {
+    const hemi = /hemizygous/.test(g.pav.rel);
+    kv.append(el('dt', {}, 'HAP1:HAP2 relationship'),
+      el('dd', {}, hemi ? el('strong', {}, g.pav.rel.replace('_', ' ')) : g.pav.rel,
+        hemi ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+          'Present on one haplotype only — a real structural difference between the two '
+          + 'parental genomes, not a missing annotation.') : null));
   }
   return el('div', { class: 'card' },
     el('h2', {}, 'Allele', el('span', { class: 'tag' }, 'syntelog')), kv,

@@ -3,6 +3,38 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## 0.3.0 — 2026-09-05
+
+Seven genome-wide computed layers ingested from the MS1 and MS2 analysis repos, and a new
+protein module. Every gene now carries duplication class, TE proximity, gene structure,
+HAP1:HAP2 pangene relationship, disorder, and mass-spec evidence.
+
+**Added**
+- **Duplication class**, genome-wide: salicoid WGD / ancient WGD / tandem / dispersed / none,
+  from the MS1 duplication analysis. This closes the gap the module previously declared —
+  it no longer has to say "no WGD ohnolog call exists".
+- **TE proximity**: distance to the nearest transposable element, per superfamily.
+- **New protein module**: predicted disorder (63,910 genes), ESMFold secondary structure and
+  pLDDT (40,685, 64%), and peptide evidence from three independent mass-spec datasets kept
+  separate — detection is strong evidence a predicted protein is translated, which is the
+  sharpest credibility test available for a young lineage-specific gene.
+- **Gene structure** (exons/introns) on the location card; LSGs are known intron-poor.
+- **HAP1:HAP2 pangene relationship** including hemizygosity, shown on the allele card — and
+  shown especially when there is NO allele, since hemizygosity usually explains why.
+- **Neighbourhood co-expression** (k=5, k=10) on the expression card.
+- **Organelle-homology warning**: 362 genes have plastid/mito homology, a real false-positive
+  source for novel-gene claims.
+
+**Guarded**
+- Duplicate source rows are collapsed only when the columns actually ingested agree. The
+  proteomics tables repeat 5,024 genes that are both a `conserved` gene and an LSG's
+  `matched_control`, and `PtXaAlbH.14G133000` appears twice under two canonical labels
+  (LSG1.14g and XO14gHAP2). Measurements agree in every case; a disagreement is fatal.
+- Coil fraction is flagged on every gene page as largely a pLDDT proxy, not evidence of
+  disorder — the easiest misreading of the structure table.
+- Where the duplication class says "none detected" but paralogs are listed, the card explains
+  that the two rows answer different questions rather than leaving an apparent contradiction.
+
 ## 0.2.1 — 2026-09-04
 
 **Added**

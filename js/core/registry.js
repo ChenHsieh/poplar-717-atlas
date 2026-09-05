@@ -13,8 +13,9 @@ import expression from '../modules/expression.js';
 import annotation from '../modules/annotation.js';
 import phylostrat from '../modules/phylostrat.js';
 import duplication from '../modules/duplication.js';
+import protein from '../modules/protein.js';
 import about from '../modules/about.js';
 
 // annotation first: 'what is this gene' should be the top card on a gene page.
-export const MODULES = [annotation, synteny, phylostrat, duplication, expression, about];
+export const MODULES = [annotation, synteny, phylostrat, duplication, protein, expression, about];
 export const byId = (id) => MODULES.find((m) => m.id === id);

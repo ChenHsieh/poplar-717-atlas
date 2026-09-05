@@ -161,7 +161,19 @@ route(/^\/gene\/(.+)$/, async (id) => {
         el('dt', {}, 'Strand'), el('dd', {}, g.strand
           ? el('span', {}, el('span', { class: 'mono' }, g.strand), ' ', el('span', { class: 'muted' }, g.strand === '+' ? 'forward' : 'reverse'))
           : el('span', { class: 'muted' }, 'unknown')),
-        el('dt', {}, 'Span'), el('dd', {}, `${kb} kb`))));
+        el('dt', {}, 'Span'), el('dd', {}, `${kb} kb`),
+        ...(g.gs ? [el('dt', {}, 'Structure'),
+          el('dd', {}, g.gs.ex === 1 ? el('span', {}, el('strong', {}, 'single exon'),
+              el('span', { class: 'muted' }, ' · intronless'))
+            : el('span', {}, `${g.gs.ex} exons`,
+                g.gs.in != null ? el('span', { class: 'muted' }, ` · ${g.gs.in} introns`) : null))] : []))));
+
+  if (g.org) {
+    cards.firstChild.append(el('div', { class: 'warn' },
+      el('strong', {}, `Homologous to the ${g.org.o} genome. `),
+      'Organelle-derived sequence in the nuclear assembly is a known source of false '
+      + '"novel gene" calls. Treat any lineage-specific claim for this gene with care.'));
+  }
 
   for (const m of MODULES) {
     if (!m.geneCard) continue;

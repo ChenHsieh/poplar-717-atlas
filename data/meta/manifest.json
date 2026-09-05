@@ -13,6 +13,8 @@
   }
  },
  "built": "2026-09-04T21:30:30-0400",
+ "data_released": "2026-09-05",
+ "data_version": "0.3.0",
  "duplication": {
   "ks_by_rank": {
    "12": {
@@ -95,6 +97,52 @@
    "amb"
   ],
   "n_rows": 63960
+ },
+ "layers": {
+  "applied": {
+   "dup": 63960,
+   "gs": 63960,
+   "nb": 59486,
+   "org": 362,
+   "pav": 63960,
+   "prot": 63945,
+   "te": 63829
+  },
+  "coverage": {
+   "ESMFold structure": 40685,
+   "PAV / hemizygosity": 63960,
+   "TE distances": 63960,
+   "duplication class": 63960,
+   "exon/intron counts": 63960,
+   "neighbour co-expression": 63829,
+   "organelle homology": "63960 scanned, 362 with a hit",
+   "predicted disorder": 63910,
+   "proteomics PXD023826": 57845,
+   "proteomics PXD025636": 57845,
+   "proteomics PXD064017": 57845
+  },
+  "dup_class_dist": {
+   "A": 7,
+   "AD": 2492,
+   "ADS": 6676,
+   "ADST": 385,
+   "ADT": 570,
+   "C": 7392,
+   "D": 13567,
+   "DS": 20778,
+   "DST": 1262,
+   "DT": 10783,
+   "T": 48
+  },
+  "dup_code": {
+   "A": "ancient WGD",
+   "C": "none detected",
+   "D": "dispersed",
+   "S": "salicoid WGD",
+   "T": "tandem"
+  },
+  "esmfold_note": "ESMFold structure covers 40,685 of 63,960 genes (64%). Absence is coverage, not a structural claim.",
+  "proteomics_note": "Three independent PXD datasets, reported separately. Detection rates differ ~4x (3,989 / 18,739 / 21,449 genes), so a gene absent from one is not undetected."
  },
  "modules": [
   "core",

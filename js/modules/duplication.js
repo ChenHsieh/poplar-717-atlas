@@ -7,13 +7,44 @@ import { el, fmt } from '../core/dom.js';
 
 const STRATUM = { 12: 'Pentapetalae', 16: 'Salicaceae', 17: 'Saliceae', 18: 'Populus', 19: 'hybrid' };
 
+const DUP_CODE = { S: 'salicoid WGD', A: 'ancient WGD', T: 'tandem', D: 'dispersed' };
+
+function dupTypeLabel(d) {
+  if (!d) return null;
+  if (d.t === 'C') return 'no duplication detected';
+  const parts = [];
+  if (d.s) parts.push(DUP_CODE.S);
+  if (d.a) parts.push(DUP_CODE.A);
+  if (d.td) parts.push(DUP_CODE.T);
+  if (d.d) parts.push(DUP_CODE.D);
+  return parts.join(' + ') || d.t;
+}
+
 function geneCard(g) {
   const para = g.para;
   const inArray = !!((g.syn || {}).flags || {}).ar;
-  if (!para && !inArray) return null;
+  if (!para && !inArray && !g.dup && !g.te) return null;
 
   const card = el('div', { class: 'card' },
-    el('h2', {}, 'Duplication', el('span', { class: 'tag' }, 'paralogs · arrays')));
+    el('h2', {}, 'Duplication', el('span', { class: 'tag' }, 'MS1 duplication set')));
+
+  if (g.dup) {
+    const kv = el('dl', { class: 'kv' });
+    kv.append(el('dt', {}, 'Duplication class'),
+      el('dd', {}, el('strong', {}, dupTypeLabel(g.dup)),
+        el('span', { class: 'muted mono', style: 'font-size:11.5px' }, `  ${g.dup.t}`),
+        el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+          'A gene can belong to several duplication modes at once; the code concatenates them.')));
+    if (g.te && g.te.all != null) {
+      const near = Object.entries(g.te).filter(([k]) => k !== 'all')
+        .sort((a, b) => a[1] - b[1]).slice(0, 3);
+      kv.append(el('dt', {}, 'Nearest TE'),
+        el('dd', {}, el('span', { class: 'mono' }, fmt(g.te.all)), ' bp',
+          el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+            'by superfamily: ' + near.map(([k, v]) => `${k} ${fmt(v)} bp`).join(' · '))));
+    }
+    card.append(kv);
+  }
 
   if (inArray) {
     card.append(el('dl', { class: 'kv' },
@@ -47,6 +78,16 @@ function geneCard(g) {
       card.append(el('p', { class: 'muted', style: 'font-size:11.5px;margin:4px 0 0' },
         'Saturated pairs have too many synonymous substitutions for a reliable estimate.'));
     }
+    // Two different definitions sit in one card and can legitimately disagree. Say so, or a
+    // reader sees "no duplication detected" directly above a list of paralogs.
+    if (g.dup && g.dup.t === 'C') {
+      card.append(el('div', { class: 'warn' },
+        el('strong', {}, 'These two rows use different definitions. '),
+        'The class above asks whether the gene falls in a collinear WGD block, a tandem array, '
+        + 'or a dispersed duplicate pair. The paralogs here come from gene-family membership. '
+        + 'A gene can have a family paralog without meeting any of those structural criteria — '
+        + 'that is a difference in question asked, not a contradiction.'));
+    }
   }
   return card;
 }
@@ -77,6 +118,21 @@ function ksChart(byRank) {
       + 'median dS. One linear scale across all strata.'));
 }
 
+function dupClassChart(man) {
+  const dist = (man.layers && man.layers.dup_class_dist) || {};
+  const rows = Object.entries(dist).sort((a, b) => b[1] - a[1]);
+  if (!rows.length) return el('p', { class: 'muted' }, 'Distribution not built.');
+  const max = Math.max(...rows.map((r) => r[1]));
+  const expand = (code) => code === 'C' ? 'none detected'
+    : [...code].map((ch) => DUP_CODE[ch] || ch).join(' + ');
+  return el('div', { class: 'barchart' }, ...rows.map(([code, n]) =>
+    el('div', { class: 'barrow', style: 'grid-template-columns:190px 1fr 62px' },
+      el('span', { class: 'lbl' }, el('b', {}, code), el('span', { class: 'muted' }, `  ${expand(code)}`)),
+      el('div', { class: 'bartrack' },
+        el('div', { class: 'barfill', style: `width:${(n / max) * 100}%;background:var(--accent)` })),
+      el('span', { class: 'val' }, fmt(n)))));
+}
+
 async function overview(man) {
   const d = man.duplication;
   if (!d) return el('div', { class: 'empty' }, 'Duplication data not built.');
@@ -94,6 +150,12 @@ async function overview(man) {
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(d.n_ks_undefined)), el('div', { class: 'l' }, 'pairs with dS = 0')),
     ),
     el('div', { class: 'card' },
+      el('h2', {}, 'Duplication class', el('span', { class: 'tag' }, 'genome-wide')),
+      el('p', { class: 'muted', style: 'font-size:12.5px;margin:0 0 12px' },
+        'From the MS1 duplication analysis, for all 63,960 genes. Codes concatenate: '
+        + 'S salicoid WGD, A ancient WGD, T tandem, D dispersed, C none detected.'),
+      dupClassChart(man)),
+    el('div', { class: 'card' },
       el('h2', {}, 'Synonymous divergence by phylostratum'),
       el('p', { class: 'muted', style: 'font-size:12.5px;margin:0 0 12px' },
         'Within the selection above, paralogs in younger strata are less diverged — median dS '
@@ -103,9 +165,10 @@ async function overview(man) {
     el('div', { class: 'card' },
       el('h2', {}, 'What is not here'),
       el('ul', { style: 'margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2);line-height:1.6' },
-        el('li', {}, el('strong', {}, 'No salicoid-WGD ohnolog call. '),
-          'None has been computed for this assembly. Inferring a whole-genome-duplication peak '
-          + 'from a phylostratum-selected subset would be invalid, so the module does not try.'),
+        el('li', {}, el('strong', {}, 'The dS panel and the duplication class are different things. '),
+          'The class (salicoid / ancient WGD / tandem / dispersed) is genome-wide, from the MS1 '
+          + 'duplication analysis. The dS pairs below are the chapter\'s stratum-selected subset. '
+          + 'Do not read a dS distribution from the latter as a property of the former.'),
         el('li', {}, el('strong', {}, 'No genome-wide dS landscape. '),
           `The ${fmt(d.n_pairs)} pairs here were chosen for the chapter's tier-2 analysis. A `
           + 'genome-wide all-by-all paralog scan is a separate computation.'),

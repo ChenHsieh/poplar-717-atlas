@@ -84,9 +84,14 @@ await check('module-phylostrat', '#/module/phylostrat',
 await check('gene-ambiguous-ps', '#/gene/PtXaTreH.06G037000',
   { expect: ['genEra flagged this gene as ambiguous'], wait: 900 });
 await check('module-duplication', '#/module/duplication',
-  { expect: ['Duplication', 'not genome-wide', 'phylostratum', 'No salicoid-WGD ohnolog call'] });
+  { expect: ['Duplication', 'not genome-wide', 'phylostratum', 'Duplication class',
+             'salicoid WGD', 'dispersed'] });
 await check('gene-paralog', '#/gene/PtXaTreH.01G330600',
   { expect: ['Duplication', 'Paralog pairs'], wait: 900 });
+await check('module-protein', '#/module/protein',
+  { expect: ['Protein', 'ESMFold', 'pLDDT proxy', 'never pooled', 'peptide'] });
+await check('gene-protein', '#/gene/PtXaTreH.01G000100',
+  { expect: ['Protein', 'Predicted disorder', 'Duplication class'], wait: 1000 });
 await check('module-about', '#/module/about',
   { expect: ['About & provenance', 'Known limitations', 'HAP2 domain annotation is thin', 'Sources'] });
 await check('home-dark', '#/', { expect: ['63,960', 'Start here'], theme: 'dark' });

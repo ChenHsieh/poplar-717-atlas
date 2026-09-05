@@ -43,6 +43,12 @@ function geneCard(g) {
     el('p', { class: 'muted', style: 'font-size:11px;margin:6px 0 0' },
       'τ computed over leaf/xylem/bark/root/stem/bud/catkin/gall (callus excluded — 1 sample, ',
       'not part of the manuscript panel per the delivery notes). callus is still shown above.'),
+    g.nb && g.nb.k5 != null ? el('p', { style: 'font-size:12.5px;margin:9px 0 0' },
+      el('strong', {}, 'Neighbourhood: '),
+      'co-expression with the 5 nearest genes is ',
+      el('span', { class: 'mono' }, g.nb.k5.toFixed(3)),
+      g.nb.k10 != null ? el('span', {}, ', with the nearest 10 ', el('span', { class: 'mono' }, g.nb.k10.toFixed(3))) : null,
+      el('span', { class: 'muted' }, '. High values suggest shared regulation with the locus rather than with a pathway.')) : null,
   );
   const btn = el('button', {
     style: 'margin-top:10px;font-size:12px;padding:4px 9px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
