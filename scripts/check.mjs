@@ -48,7 +48,9 @@ async function check(name, hash, { expect = [], theme = null, wait = 700 } = {})
   await p.close();
 }
 
-await check('home', '#/', { expect: ['63,960', 'Modules', 'LSG pool'] });
+await check('home', '#/',
+  { expect: ['63,960', 'Start here', 'Browse all genes', 'Modules', 'Before you cite anything',
+             'lineage-specific candidates'] });
 await check('gene-lsg4', '#/gene/PtXaTreH.05G120200',
   { expect: ['PtXaTreH.05G120200', 'Chr05', 'Synteny', 'Populus', 'Dispensable'] });
 await check('gene-private', '#/gene/PtXaTreH.01G006100',
@@ -87,7 +89,7 @@ await check('gene-paralog', '#/gene/PtXaTreH.01G330600',
   { expect: ['Duplication', 'Paralog pairs'], wait: 900 });
 await check('module-about', '#/module/about',
   { expect: ['About & provenance', 'Known limitations', 'HAP2 domain annotation is thin', 'Sources'] });
-await check('home-dark', '#/', { expect: ['63,960'], theme: 'dark' });
+await check('home-dark', '#/', { expect: ['63,960', 'Start here'], theme: 'dark' });
 
 // Search is the one interaction that has no index file behind it -- prove it resolves.
 const p = await browser.newPage({ viewport: { width: 1180, height: 900 } });

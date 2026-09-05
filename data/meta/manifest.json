@@ -12,7 +12,7 @@
    "pfam_panther": "annotation_info.txt for HAP1; parsed from defline.txt for HAP2 because HAP2's annotation_info domain columns are empty in the release"
   }
  },
- "built": "2026-09-01T18:04:11-0400",
+ "built": "2026-09-04T20:25:35",
  "data_released": "2026-09-04",
  "data_version": "0.2.1",
  "duplication": {

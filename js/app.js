@@ -77,37 +77,64 @@ route(/^\/$/, async () => {
   loading();
   const man = await loadManifest();
   const s = man.summary;
-  const psRanks = Object.entries(s.ps_rank || {}).map(([k, v]) => [+k, v]).filter(([k]) => k >= 18);
-  const lsg = psRanks.reduce((a, [, v]) => a + v, 0);
+  const e = man.expression || {};
+  const a = man.annotation || {};
+  const ps = man.phylostrat || {};
+  const lsg = Object.entries(s.ps_rank || {})
+    .filter(([k]) => +k >= 18).reduce((acc, [, v]) => acc + v, 0);
+
+  // What each module ANSWERS, in a reader's terms -- not its filter count.
+  const MODULE_BLURB = {
+    annotation: 'What the gene is: description, Arabidopsis hit, Pfam, GO, and its allele in the other haplotype.',
+    synteny: 'Whether it has orthologs, in how many of 12 genomes, and how that changed when the panel was completed.',
+    phylostrat: 'How old it is — which phylostratum, and whether genEra was confident about it.',
+    duplication: 'What it duplicated from: paralog pairs with divergence, and tandem-array membership.',
+    expression: `Where it is expressed, across ${fmt(e.n_samples)} samples from ${e.n_studies} curated studies.`,
+    about: 'Provenance, known limitations, and how to cite this.',
+  };
+
   setView(el('div', {},
     el('h1', {}, 'Hybrid poplar 717 gene atlas'),
     el('p', { class: 'sub' },
-      `${fmt(man.n_genes)} genes across two haplotypes of Populus tremula × alba clone 717 (v5.1). `
-      + `Built ${man.built.slice(0, 10)} · tier ${man.tier}.`),
+      `${fmt(man.n_genes)} gene models across the two phased haplotypes of `,
+      el('em', {}, 'Populus tremula'), ' × ', el('em', {}, 'P. alba'),
+      ` clone INRA 717-1B4, v5.1. Every gene carries synteny across a 12-genome panel, a `
+      + `phylostratum, functional annotation, its allele, and an expression profile.`),
+
     el('div', { class: 'stat-row' },
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(man.n_genes)), el('div', { class: 'l' }, 'genes')),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(s.synteny_class?.private_no_ortholog)), el('div', { class: 'l' }, 'private, no ortholog')),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(s.changed)), el('div', { class: 'l' }, 'reclassified vs old panel')),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(lsg)), el('div', { class: 'l' }, 'LSG pool (PS ≥ 18)')),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(man.n_genes)), el('div', { class: 'l' }, 'gene models')),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(a.n_allele)), el('div', { class: 'l' }, 'HAP1↔HAP2 allele pairs')),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(e.n_samples)), el('div', { class: 'l' }, `RNA-seq samples, ${e.n_studies} studies`)),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(lsg)), el('div', { class: 'l' }, 'lineage-specific candidates (PS ≥ 18)')),
     ),
+
+    el('div', { class: 'card' },
+      el('h2', {}, 'Start here'),
+      el('div', { class: 'kv' },
+        el('dt', {}, el('a', { href: '#/browse' }, 'Browse all genes')),
+        el('dd', { class: 'muted' }, 'Filter across every module at once, then export or save the selection.'),
+        el('dt', {}, 'Search'),
+        el('dd', { class: 'muted' }, 'The box above takes a gene ID, a keyword, an Arabidopsis locus or a Pfam accession.'),
+        el('dt', {}, el('a', { href: '#/gene/PtXaTreH.05G120200' }, 'PtXaTreH.05G120200')),
+        el('dd', { class: 'muted' }, 'An example gene page — PS18 Populus, drought-responsive in bark.'))),
+
     el('div', { class: 'card' },
       el('h2', {}, 'Modules'),
       el('div', { class: 'kv' }, ...MODULES.flatMap((m) => [
-        el('dt', {}, el('a', { href: `#/module/${m.id}` }, m.label)),
-        el('dd', { class: 'muted' }, `${(m.filters || []).length} filters · gene card`)])),
+        el('dt', {}, m.overview
+          ? el('a', { href: `#/module/${m.id}` }, m.label)
+          : el('span', {}, m.label)),
+        el('dd', { class: 'muted' }, MODULE_BLURB[m.id] || '')])),
       el('p', { class: 'muted', style: 'margin:12px 0 0;font-size:12px' },
-        'A duplication module (tandem arrays, syntelog dS, salicoid-WGD ohnologs) is queued — see TODO.md.'),
-    ),
+        'Allele-specific expression and cross-species comparison are queued — see TODO.md.')),
+
     el('div', { class: 'card' },
-      el('h2', {}, 'Try a gene'),
-      el('div', { class: 'kv' },
-        el('dt', {}, el('a', { href: '#/gene/PtXaTreH.05G120200' }, 'PtXaTreH.05G120200')),
-        el('dd', { class: 'muted' }, 'LSG4.5g — PS18 Populus, drought candidate'),
-        el('dt', {}, el('a', { href: '#/gene/PtXaAlbH.14G133000' }, 'PtXaAlbH.14G133000')),
-        el('dd', { class: 'muted' }, 'LSG1.14g — salicoid-WGD LEA ohnolog'),
-        el('dt', {}, el('a', { href: '#/gene/PtXaTreH.10G125100' }, 'PtXaTreH.10G125100')),
-        el('dd', { class: 'muted' }, 'LSG2.10g — PS1 conserved-gene comparator')),
-    ),
+      el('h2', {}, 'Before you cite anything'),
+      el('p', { style: 'margin:0;font-size:13.5px;color:var(--ink-2)' },
+        'Private-gene calls depend on which genomes are in the panel, HAP2 domain annotation is '
+        + 'thinner than HAP1 for release reasons, and expression is raw TPM. The ',
+        el('a', { href: '#/module/about' }, 'provenance page'),
+        ' states each limitation with its numbers.')),
   ));
   markNav();
 });
