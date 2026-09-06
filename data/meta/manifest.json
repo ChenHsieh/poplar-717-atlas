@@ -13,6 +13,36 @@
   }
  },
  "built": "2026-09-05T11:22:45-0400",
+ "corrections": [
+  {
+   "after_tissue_wt_control_n": {
+    "bark": 38,
+    "bud": 5,
+    "callus": 1,
+    "catkin": 4,
+    "leaf": 55,
+    "leaf_old": 11,
+    "leaf_young": 11,
+    "root": 27,
+    "stem": 2,
+    "xylem": 59
+   },
+   "before_tissue_wt_control_n": {
+    "bark": 38,
+    "bud": 5,
+    "callus": 1,
+    "catkin": 4,
+    "leaf": 77,
+    "root": 27,
+    "stem": 2,
+    "xylem": 59
+   },
+   "date": "2026-09-05",
+   "detail": "docs/DATA_AUDIT.md, CHANGELOG.md",
+   "what": "expression tissue baseline + tau regrouped by tissue_analysis, not tissue",
+   "why": "tissue pooled leaf_young + leaf_old (46 samples, all study 1) into one 'leaf' bucket; the WT-control subset of that pool was 11 + 11 of 77"
+  }
+ ],
  "crossspecies": {
   "n_ambiguous": 6329,
   "n_hit": 52470,
@@ -21,7 +51,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.3.3",
+ "data_version": "0.3.4",
  "duplication": {
   "ks_by_rank": {
    "12": {
@@ -81,7 +111,9 @@
    "bud": 5,
    "callus": 1,
    "catkin": 4,
-   "leaf": 77,
+   "leaf": 55,
+   "leaf_old": 11,
+   "leaf_young": 11,
    "root": 27,
    "stem": 2,
    "xylem": 59

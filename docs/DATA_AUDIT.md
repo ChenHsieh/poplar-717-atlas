@@ -1,5 +1,25 @@
 # Data audit — 2026-09-05
 
+## Corrected, 2026-09-05 (same day, after the audit below): leaf_young/leaf_old pooling
+
+The expression baseline and tau grouped WT-control samples by the metadata's `tissue` column,
+which does not distinguish leaf_young from leaf_old (46 samples, all study 1) -- silently
+pooled into one "leaf" bucket, no error. One manually-verified gene moved from a single
+reported 8.12 TPM to two values 3x apart (13.74 vs 4.52) once un-pooled. The same field also
+fed the "By condition" replicate-mean table and the study-1 sample table's Tissue column, both
+silently pooled the same way.
+
+Fixed by joining a `tissue_analysis` field from MS1_2026's own curated panel
+(`sources/sample_tissue_analysis.tsv`), not by inferring the split from sample labels --
+labels are for display, not for joins. Full account: `CHANGELOG.md` 0.3.4.
+
+This is the same class of finding as everything below: check what the source actually
+distinguishes before aggregating on a field that looks fine-grained enough. It wasn't this
+audit that caught it -- Chen did, from the live site -- which is itself worth noting: a
+passing `check.mjs` run and a green `validate_data.py` do not catch an aggregation choice that
+is internally consistent but wrong. Neither tool asserted anything about tissue granularity
+before this fix added one.
+
 Chen flagged that some analysis outputs on Sapelo2 are stale. Every layer the atlas ingests was
 re-checked against what the source repositories say about themselves (`CLAUDE.md`,
 `RESOURCES.md`, `CANONICAL_NUMBERS_v8.md`, per-analysis READMEs). Two layers were removed, three

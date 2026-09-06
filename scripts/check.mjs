@@ -60,9 +60,11 @@ await check('gene-missing', '#/gene/PtXaTreH.99G999999', { expect: ['No such gen
 await check('module-synteny', '#/module/synteny',
   { expect: ['Class distribution', 'Core syntenic', 'Private', 'Tandem array'] });
 await check('module-expression', '#/module/expression',
-  { expect: ['652', 'Studies', 'WT-control samples per tissue'] });
+  { expect: ['652', 'Studies', 'WT-control samples per tissue', 'leaf_young', 'leaf_old'] });
+// Study 1 is the leaf_young/leaf_old case: if this ever again shows plain 'leaf' for
+// every row, the tissue_analysis join (sources/sample_tissue_analysis.tsv) has regressed.
 await check('study-1', '#/study/1',
-  { expect: ['Study 1', 'PRJEB22956', 'Georgii', 'Tissue', 'Aligned %', 'control'], wait: 1000 });
+  { expect: ['Study 1', 'PRJEB22956', 'Georgii', 'Tissue', 'Aligned %', 'control', 'leaf_old', 'leaf_young'], wait: 1000 });
 // Study 29 carries the "prefer counts over TPM" flag (it has no per-sample notes).
 await check('study-29', '#/study/29',
   { expect: ['Study 29', 'prefer est_counts'], wait: 1000 });
@@ -70,8 +72,10 @@ await check('study-29', '#/study/29',
 // its note is the documented below-typical alignment rate, surfaced per row.
 await check('study-10-notes', '#/study/10',
   { expect: ['Study 10', 'Notes', 'below-typical alignment rate'], wait: 1000 });
+// This gene is the manually-verified leaf_young/leaf_old case (13.74 vs 4.52 TPM, was
+// pooled to a single 8.12 before the 2026-09-05 fix) -- assert the split is visible.
 await check('gene-expr-lsg4', '#/gene/PtXaTreH.05G120200',
-  { expect: ['Expression', 'Median TPM', 'catkin', 'Show all 652 samples'], wait: 900 });
+  { expect: ['Expression', 'Median TPM', 'catkin', 'Show all 652 samples', 'leaf_young', 'leaf_old'], wait: 900 });
 await check('gene-annotated', '#/gene/PtXaTreH.01G000300',
   { expect: ['Function', 'Allele', 'Panel presence', 'AT1G55570'], wait: 1000 });
 // A gene with a reciprocal 1:1 P. trichocarpa syntenic ortholog (11,490 genes have none).

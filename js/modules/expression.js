@@ -4,7 +4,7 @@
 import { el, clear, fmt, pct } from '../core/dom.js';
 import { loadExprSamples, loadExprStudies, loadExprVector } from '../core/data.js';
 
-const TISSUE_ORDER = ['leaf', 'xylem', 'bark', 'root', 'stem', 'bud', 'catkin', 'gall', 'callus'];
+const TISSUE_ORDER = ['leaf_young', 'leaf', 'leaf_old', 'xylem', 'bark', 'root', 'stem', 'bud', 'catkin', 'gall', 'callus'];
 const orderTissues = (keys) => TISSUE_ORDER.filter((t) => keys.includes(t)).concat(keys.filter((t) => !TISSUE_ORDER.includes(t)));
 
 function tauNote(tau) {
@@ -36,13 +36,16 @@ function geneCard(g) {
   const card = el('div', { class: 'card' },
     el('h2', {}, 'Expression', el('span', { class: 'tag' }, 'kallisto k21')),
     el('p', { class: 'sub', style: 'margin:0 0 10px' },
-      `Median TPM across WT-control samples, 652-sample atlas. Peak: `,
+      `Median TPM across the WT-control subset (used for the baseline and τ below only — `,
+      `perturbation and the full 652-sample profile are separate views, see below). Peak: `,
       el('strong', {}, x.top || '—'), ` (${fmt(x.t[x.top])} TPM). `,
       `τ = ${x.tau ?? '—'} — ${tauNote(x.tau)}.`),
     baselineChart(x),
     el('p', { class: 'muted', style: 'font-size:11px;margin:6px 0 0' },
-      'τ computed over leaf/xylem/bark/root/stem/bud/catkin/gall (callus excluded — 1 sample, ',
-      'not part of the manuscript panel per the delivery notes). callus is still shown above.'),
+      `τ computed over ${orderTissues(Object.keys(x.t).filter((t) => t !== 'callus')).join('/')} `,
+      '(callus excluded — 1 sample, not part of the manuscript panel per the delivery notes). ',
+      'callus is still shown above. leaf_young/leaf_old (study 1 only) and the unsplit leaf ',
+      '(every other study) are three separate tissues here, not one — see docs/DATA_AUDIT.md.'),
     g.resp && g.resp.v != null ? el('p', { style: 'font-size:12.5px;margin:9px 0 0' },
       el('strong', {}, 'Responsiveness: '),
       'median |log2 fold-change| across perturbation contrasts is ',
@@ -97,7 +100,7 @@ function geneCard(g) {
 function conditionTable(vec, samples, studies) {
   const groups = new Map();
   samples.forEach((s, i) => {
-    const key = [s.study, s.tissue_full || s.tissue, s.treatment, s.growth, s.additional, s.genotype].join('\u0001');
+    const key = [s.study, s.tissue_analysis || s.tissue, s.treatment, s.growth, s.additional, s.genotype].join('\u0001');
     if (!groups.has(key)) groups.set(key, { s, vals: [] });
     groups.get(key).vals.push(vec[i]);
   });
@@ -105,7 +108,7 @@ function conditionTable(vec, samples, studies) {
     s, n: vals.length,
     mean: vals.reduce((a, b) => a + b, 0) / vals.length,
   })).sort((a, b) => a.s.study - b.s.study
-    || (a.s.tissue || '').localeCompare(b.s.tissue || '')
+    || (a.s.tissue_analysis || a.s.tissue || '').localeCompare(b.s.tissue_analysis || b.s.tissue || '')
     || b.mean - a.mean);
   const max = Math.max(...rows.map((r) => r.mean), 0.01);
 
@@ -122,7 +125,7 @@ function conditionTable(vec, samples, studies) {
           el('th', { class: 'num' }, 'Mean TPM'), el('th', {}, ''))),
         el('tbody', {}, ...rows.map((r) => el('tr', {},
           el('td', {}, el('a', { href: `#/study/${r.s.study}`, class: 'mono' }, r.s.study)),
-          el('td', { style: 'font-size:12px' }, r.s.tissue_full || r.s.tissue || '—'),
+          el('td', { style: 'font-size:12px' }, r.s.tissue_analysis || r.s.tissue || '—'),
           el('td', { style: 'font-size:12px' }, cond(r.s)),
           el('td', { style: 'font-size:12px' }, r.s.genotype || '—'),
           el('td', { class: 'num' }, r.n),
@@ -152,7 +155,7 @@ function fullProfile(vec, samples, studies) {
     rows.sort((a, b) => a.label.localeCompare(b.label)).forEach((r) => {
       const h = Math.max(3, (r.tpm / max) * 30);
       strip.append(el('div', {
-        title: `${r.label}\n${r.tpm} TPM\n${r.tissue}${r.treatment ? ' · ' + r.treatment : ''}${r.genotype ? ' · ' + r.genotype : ''}`,
+        title: `${r.label}\n${r.tpm} TPM\n${r.tissue_analysis || r.tissue}${r.treatment ? ' · ' + r.treatment : ''}${r.genotype ? ' · ' + r.genotype : ''}`,
         style: `width:7px;height:30px;display:flex;align-items:flex-end`,
       }, el('div', { style: `width:100%;height:${h}px;background:${r.ctrl === 'perturbation' ? 'var(--c-disp)' : 'var(--c-core)'};border-radius:1px` })));
     });

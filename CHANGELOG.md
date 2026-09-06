@@ -3,6 +3,34 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## 0.3.4 — 2026-09-05
+
+**Fixed — the expression baseline and tau pooled leaf_young + leaf_old into one "leaf" bucket**
+`build_expression.py` grouped WT-control samples by the metadata's `tissue` column, which has
+no finer distinction than "leaf" for 46 samples (all study 1: 23 young, 23 old). Silent, no
+error, a plausible-looking mean: one manually-verified case moved from a single reported 8.12
+TPM to two values 3x apart once un-pooled (leaf_young 13.74, leaf_old 4.52). The same bug
+pooled the "By condition" replicate-mean drill-down and the study-1 sample table's Tissue
+column, both of which grouped or displayed on the same coarse field.
+
+Fixed by joining a new `tissue_analysis` field (`sources/sample_tissue_analysis.tsv`, derived
+from MS1_2026's own curated 652-sample panel, sha256'd and dated in its sidecar) and grouping
+on it everywhere the old code grouped on `tissue`: the gene-card baseline and tau, the
+by-condition table, `studies.json`'s per-study tissue list, and the study-page sample table.
+`TISSUE_ORDER` and the tau caption's tissue list were updated to match (9 tissues, not 8; the
+caption now builds its list from the data rather than a second hand-written copy of it).
+
+Corrected in place (no raw-source rebuild needed — the per-sample TPM vectors were never
+wrong, only their aggregation): `scripts/patch_leaf_tissue_analysis.py`, verified gene-by-gene
+against a hand computation before running genome-wide, patched all 63,960 gene shards'
+baseline summary. `build_expression.py` is fixed at the source for the next full rebuild, with
+a hard assert if any future sample lacks a `tissue_analysis` mapping — the exact failure mode
+that caused this, so it is a stop, not a warning.
+
+`validate_data.py` gained a check that every gene's baseline tissue set matches the manifest's
+denominator table. `check.mjs` now asserts `leaf_young`/`leaf_old` appear on the module,
+study-1, and the manually-verified gene page. Full account: `docs/DATA_AUDIT.md`.
+
 ## 0.3.3 — 2026-09-05
 
 **Fixed — the audit removals had not actually reached the data**

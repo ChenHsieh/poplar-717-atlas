@@ -234,7 +234,7 @@ route(/^\/study\/(\d+)$/, async (idStr) => {
         anyNotes ? el('th', {}, 'Notes') : null)),
       el('tbody', {}, ...mine.map((x) => el('tr', {},
         el('td', { class: 'mono', style: 'font-size:11.5px' }, x.label),
-        el('td', {}, cell(x.tissue_full || x.tissue)),
+        el('td', {}, cell(x.tissue_analysis || x.tissue_full || x.tissue)),
         el('td', {}, cell(x.treatment)),
         el('td', {}, cell(x.genotype)),
         el('td', {}, cell(x.growth)),

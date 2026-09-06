@@ -78,6 +78,17 @@ def main():
     check(f"every expression vector has {n_samples} values", not bad_len,
           f"{len(bad_len)} wrong length" if bad_len else "")
 
+    # Every gene's baseline must be keyed by the SAME tissue set as the manifest's own
+    # denominator table -- if these drift, a gene page and the module overview page disagree
+    # on what a tissue even is. Added 2026-09-05 after tissue_analysis vs tissue (see
+    # docs/DATA_AUDIT.md): the failure mode is silent, so it needs a check, not a comment.
+    want_tissues = set((man.get("expression") or {}).get("tissue_wt_control_n", {}))
+    bad_tissue_keys = [gid for gid, (_, _, rec) in genes.items()
+                        if rec.get("x") and set(rec["x"]["t"]) != want_tissues]
+    check("every gene's tissue baseline uses the manifest's tissue set", not bad_tissue_keys,
+          f"{len(bad_tissue_keys)} mismatched, e.g. {bad_tissue_keys[:3]}" if bad_tissue_keys
+          else f"{len(want_tissues)} tissues: {sorted(want_tissues)}")
+
     # Allele links must point at a real gene, in the OTHER haplotype, and be reciprocal.
     dangling = [g for g, (_, _, r) in genes.items()
                 if r.get("allele") and r["allele"]["id"] not in genes]

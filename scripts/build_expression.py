@@ -13,6 +13,16 @@ Two-level data, per the design doc:
     the existing gene shard at data/genes/{hap}/{chr}.json under key "x"
   - the full 652-sample vector lives in a SEPARATE bucket (250 genes/bucket, gene order fixed
     by first appearance in the BED, i.e. genomic order) that a gene page fetches on demand
+
+TISSUE GROUPING (fixed 2026-09-05, see docs/DATA_AUDIT.md): the baseline and tau MUST group
+on `tissue_analysis`, not the coarser `tissue`. The source metadata's own `tissue` column
+pools leaf_young + leaf_old (46 samples, all study 1) into one "leaf" bucket -- silently: no
+error, a plausible-looking mean, wrong biology (one real case moved the baseline from 8.12 to
+two values 3x apart, 13.74 vs 4.52). `tissue_analysis` is not in the source metadata; it is
+joined from `sources/sample_tissue_analysis.tsv`, committed in this repo and derived from
+MS1_2026's own curated v4 sample panel (see that file's sidecar for provenance). The join
+covers all 652 samples exactly; anything short of that is a hard stop, not a silent partial
+join -- see the assert immediately after `read_samples()` below.
 """
 import argparse, csv, gzip, hashlib, json, math, os, shutil, sys, time
 from collections import defaultdict
@@ -34,6 +44,18 @@ def note(path):
 # Non-callus tissues for tau, per README: "include in any full data delivery, do NOT include
 # in the manuscript panel." Tau is a manuscript-facing statistic.
 TAU_TISSUES_EXCLUDE = {"callus"}
+
+def read_tissue_analysis():
+    """sample_label -> tissue_analysis, from the frozen join file (see docstring above)."""
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         "sources", "sample_tissue_analysis.tsv")
+    out = {}
+    with open(path) as fh:
+        next(fh)
+        for line in fh:
+            label, ta = line.rstrip("\n").split("\t")
+            out[label] = ta
+    return out
 
 def tau(values):
     """Yanai's tau. 0 = uniformly expressed, 1 = perfectly tissue-specific. Undefined (None)
@@ -66,7 +88,7 @@ def build_studies(samples, runlevel):
     studies = {}
     for s, rs in sorted(by_study.items()):
         bps = sorted(set(r["bioproject"] for r in rs))
-        tissues = sorted(set(r["tissue"] for r in rs))
+        tissues = sorted(set(r["tissue_analysis"] for r in rs))
         panel = sorted(set(r["panel_type"].strip() for r in rs if r["panel_type"].strip()))
         genotypes = sorted(set(r["genotype"] for r in rs if r["genotype"]))
         treatments = sorted(set(r["treatment"] for r in rs if r["treatment"]))
@@ -105,6 +127,14 @@ def main():
     runlevel = read_runlevel()
     print(f"samples: {len(samples)}  runs: {len(runlevel)}")
 
+    tissue_analysis_by_label = read_tissue_analysis()
+    unmapped = [r["sample_label"] for r in samples if r["sample_label"] not in tissue_analysis_by_label]
+    assert not unmapped, (
+        f"{len(unmapped)} samples have no tissue_analysis mapping, e.g. {unmapped[:5]} -- "
+        f"regenerate sources/sample_tissue_analysis.tsv from the current MS1_2026 v4 panel.")
+    for r in samples:
+        r["tissue_analysis"] = tissue_analysis_by_label[r["sample_label"]]
+
     # Order is the TPM matrix column order (== metadata order per validated README claim, but
     # assert it rather than trust it -- this order becomes the fixed vector index).
     order = [r["sample_label"] for r in samples]
@@ -119,6 +149,7 @@ def main():
     samples_out = [{
         "i": i, "label": r["sample_label"], "study": int(r["study"]), "bioproject": r["bioproject"],
         "tissue": r["tissue"], "tissue_full": r["tissue_comprehensive"],
+        "tissue_analysis": r["tissue_analysis"],
         "treatment": r["treatment"] or None, "growth": r["growth_condition"].strip() or None,
         "additional": r["additional_condition"] or None, "genotype": r["genotype"] or None,
         "ctrl": r["control/perturbation"] or None, "layout": r["library_layout"],
@@ -144,7 +175,7 @@ def main():
         wt_ctrl_idx = defaultdict(list)
         for i, s in enumerate(samples_out):
             if s["genotype"] == "WT" and s["ctrl"] == "control":
-                wt_ctrl_idx[s["tissue"]].append(i)
+                wt_ctrl_idx[s["tissue_analysis"]].append(i)
         print("WT-control samples per tissue:", {t: len(v) for t, v in sorted(wt_ctrl_idx.items())})
 
         gene_order = []  # genomic order, from the BED files -- fixes bucket assignment
