@@ -3,6 +3,59 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## 0.3.6 — 2026-09-06
+
+**Added — the promoter / CRE card**
+Every gene page now shows its 1 kb promoter's GC content, TATA-box status, and a
+transcription-factor-family motif strip, from the ms2-lsg agent's genome-wide JASPAR scan
+(reviewed before ingestion: 63,960/63,960 genes matched the atlas exactly, family sums equal
+the stored totals, and its `tata_core` rate over the LSG pool reproduces the dissertation
+chapter's own `promoter_ness.tsv` to six decimals on both haplotypes).
+
+Deliberately NOT a bare pass-through of the source columns:
+- Two family names that read as specific cis-elements in the source (`ABRE_bZIP`,
+  `DREB_ERF`) are TF-family groupings, not confirmed cis-regulatory elements, and are
+  renamed at ingestion to `bZIP` / `AP2_ERF` -- the family names -- so the card cannot
+  imply "this promoter has an ABRE" from a PWM hit to a bZIP-family matrix.
+- Bars are normalized per matrix (hits ÷ matrices-in-that-family), not raw counts, because
+  the families are built from 17 to 73 matrices each and the hit threshold is a fraction of
+  each matrix's own score -- a family with more matrices racks up more hits for reasons
+  that are about the matrix library, not the gene.
+- `cre_LFY` is dropped entirely: identically zero for all 63,960 genes (one 19bp matrix
+  that never clears the length-biased threshold anywhere in the genome).
+- TATA is rendered as two DIFFERENT facts, not one: whether a canonical TATA box sits in
+  the core promoter (−45..−20bp), versus a TATA-like hexamer found elsewhere in the window,
+  which is not the same claim. **A bug in the first draft of this card inverted the
+  distance** (reported "122 bp upstream" for a match that was actually 878bp upstream) --
+  caught by checking a known tata_core=True gene against the raw data before trusting the
+  rendered text, not by the render-check suite, which only asserted the text existed.
+
+**Added — a search results page for ambiguous queries**
+The header search dropdown can show an id and one line of description: enough to recognise
+a gene you already know, not enough to pick the right one out of many (searching "kinase"
+returns 4,351 genes; "MYB" and "dehydrin" return dozens of paralogs sharing one description).
+`#/search/<query>` now shows the columns that actually distinguish paralogs -- synteny
+class, duplication class, chromosome, phylostratum, peak tissue, τ -- side by side,
+paginated 40 at a time. The dropdown gains a "N results — compare them all →" link when a
+query has more matches than it can show; Enter on an ambiguous query (more matches than the
+dropdown shows) goes to this page instead of blindly opening an arbitrary top hit.
+
+One implementation lesson worth keeping: the comparison table's own horizontal-scroll
+check (no page-level scroll) passed on the first try, and the page still looked bad on a
+phone -- the table's DESCRIPTION column was wrapping every row onto 4+ lines instead of the
+table scrolling sideways, turning a side-by-side comparison into a tall wall of text. A
+global `white-space: nowrap` fix was tried first and broke the promoter card's family table,
+which relies on its header wrapping to fit a phone. Scoped to a `.compare` modifier instead,
+applied only to tables that need it. Caught by looking at the screenshot both times, not by
+the scroll-width assertion, which was satisfied throughout.
+
+**Checks**
+`validate_data.py` gains three: every gene carries a `cre` record, family counts sum to the
+stored total, TATA position lies inside the promoter window. `check.mjs` gains: the
+promoter card on both a TATA-true and a TATA-false gene (so an inverted-branch bug like the
+one above can't hide behind whichever case happens to render), and the search-refinement
+flow end to end (dropdown → "compare them all" → paginated results).
+
 ## 0.3.5 — 2026-09-06
 
 **Added — the locus card, and the data layer under it**

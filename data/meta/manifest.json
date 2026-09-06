@@ -43,6 +43,47 @@
    "why": "tissue pooled leaf_young + leaf_old (46 samples, all study 1) into one 'leaf' bucket; the WT-control subset of that pool was 11 + 11 of 77"
   }
  ],
+ "cre": {
+  "caveat_family_size_uneven": true,
+  "dropped_family_lfy": "identically zero genome-wide (n_matrices=1, length-biased threshold), see build_cre.py docstring",
+  "family_labels": {
+   "AP2_ERF": "AP2/ERF",
+   "ARF": "ARF",
+   "MADS": "MADS-box",
+   "MYB": "MYB",
+   "NAC": "NAC",
+   "SPL": "SPL",
+   "TCP": "TCP",
+   "WRKY": "WRKY",
+   "bZIP": "bZIP",
+   "other": "other"
+  },
+  "hit_definition": "log-odds PSSM (pseudocount 0.5, log2 vs a uniform 0.25 background), scanned on both strands; a position is a hit when its score is at least HIT_FRAC of that motif's own maximum attainable score",
+  "hit_threshold_frac": 0.85,
+  "jaspar": {
+   "database": "JASPAR 2024 CORE plants, non-redundant",
+   "n_matrices": 805,
+   "sha256_16": "e25dc968b721cf73"
+  },
+  "matrices_per_family": {
+   "AP2_ERF": 73,
+   "ARF": 19,
+   "MADS": 17,
+   "MYB": 62,
+   "NAC": 47,
+   "SPL": 44,
+   "TCP": 19,
+   "WRKY": 46,
+   "bZIP": 20,
+   "other": 457
+  },
+  "n_genes": 63960,
+  "not_included": "per-matrix enrichment statistics and LSG-vs-control comparisons; those are population-level chapter results, not per-gene facts",
+  "promoter_scanned_bp": 3000,
+  "promoter_window_bp": 1000,
+  "source": "ms2-lsg pipeline/s08d_promoter_cre_genomewide.py, reviewed 2026-09-06",
+  "tier": "public"
+ },
  "crossspecies": {
   "n_ambiguous": 6329,
   "n_hit": 52470,
@@ -51,7 +92,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.3.5",
+ "data_version": "0.3.6",
  "duplication": {
   "ks_by_rank": {
    "12": {
@@ -192,7 +233,8 @@
   "synteny",
   "phylostrat",
   "expression",
-  "duplication"
+  "duplication",
+  "promoter"
  ],
  "n_genes": 63960,
  "phylostrat": {
@@ -772,6 +814,10 @@
    "bytes": 1492463,
    "mtime": "2026-08-31T21:04:21",
    "sha256": "b62c5d33617b1832"
+  },
+  "sources/cre_promoter_hits.tsv.gz": {
+   "rows": 63960,
+   "sha256_16": "see sources/cre_promoter_hits.provenance.json"
   }
  },
  "summary": {

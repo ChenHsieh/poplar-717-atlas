@@ -132,6 +132,43 @@ for (const [label, q, want] of [['keyword', 'dehydrin', null], ['at-locus', 'AT1
 }
 await p.screenshot({ path: `${outdir}/search-text.png` });
 
+// Promoter card: text-based, so a plain content assertion is enough. Uses the known
+// tata_core=True gene so the "canonical TATA box" sentence is exercised, not just the
+// "no TATA" branch -- a wrong-branch bug (found once already: an inverted tata_pos
+// distance) would otherwise hide behind whichever branch happened to render.
+await check('gene-promoter-tata-true', '#/gene/PtXaTreH.01G000900',
+  { expect: ['Promoter', 'Canonical TATA box', 'core promoter', 'bZIP', 'not comparable'] });
+await check('gene-promoter-tata-false', '#/gene/PtXaTreH.05G120200',
+  { expect: ['Promoter', 'No canonical core-promoter TATA box'] });
+
+// Search results page: a broad query ("kinase") must produce more matches than the
+// dropdown shows, land on the results page with the true total, and carry comparison
+// columns a dropdown row cannot -- that is the entire point of the page.
+{
+  const sp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const serrs = [];
+  sp.on('pageerror', (e) => serrs.push(e.message));
+  sp.on('console', (m) => { if (m.type() === 'error') serrs.push(m.text()); });
+  await sp.goto(base + '/', { waitUntil: 'networkidle' });
+  await sp.fill('#q', 'kinase');
+  await sp.waitForTimeout(1200);
+  const seeAll = await sp.$('#hits a:last-child');
+  const seeAllText = seeAll ? await seeAll.textContent() : '';
+  await sp.goto(base + '/#/search/kinase', { waitUntil: 'networkidle' });
+  await sp.waitForTimeout(1000);
+  const stext = await sp.evaluate(() => document.getElementById('view').innerText);
+  const rows = await sp.$$eval('table.compare tbody tr', (trs) => trs.length);
+  const ok = /compare them all/.test(seeAllText) && stext.includes('matches')
+    && rows > 20 && stext.includes('page 1 of') && !serrs.length;
+  if (!ok) failures++;
+  console.log(`
+### search-results-refinement  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   dropdown link: "${seeAllText}"  rows shown: ${rows}`);
+  serrs.slice(0, 2).forEach((e) => console.log('   ERR ' + e.slice(0, 110)));
+  await sp.screenshot({ path: `${outdir}/search-results.png` });
+  await sp.close();
+}
+
 // The locus card is a canvas, so a text assertion cannot see it. Check that the
 // canvas is actually PAINTED (more than one colour sampled), that the DPR backing
 // buffer matches, and that a phone viewport neither scrolls horizontally nor

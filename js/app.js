@@ -1,69 +1,73 @@
 import { el, clear, fmt } from './core/dom.js';
 import { getGene, loadManifest, hapLabel, loadExprStudies,
-         loadExprSamples, searchGenes, loadGeneIndex } from './core/data.js';
+         loadExprSamples, searchGenesRanked } from './core/data.js';
 import { MODULES, byId } from './core/registry.js';
 import { route, start, navigate } from './core/router.js';
 import { browseView } from './core/browse.js';
+import { searchResultsView } from './core/search.js';
 
 const view = () => document.getElementById('view');
 const setView = (node) => { const v = clear(view()); v.append(node); window.scrollTo(0, 0); };
 const loading = (msg = 'Loading…') => setView(el('div', { class: 'empty' }, msg));
 
-/* ---------- search: no index file; the ID resolves its own shard ---------- */
+/* ---------- search: dropdown preview, with a hand-off to a full results page when a
+   query is too broad to disambiguate from 24 rows of "id + one-line description" ---------- */
+const DROPDOWN_SHOWN = 24;
+
 function initSearch() {
   const input = document.getElementById('q');
   const hits = document.getElementById('hits');
   let seq = 0;
+  let lastQuery = '';
+  let lastTotal = 0;
 
   const close = () => { hits.style.display = 'none'; clear(hits); };
   input.addEventListener('blur', () => setTimeout(close, 150));
+
+  const goToResults = () => { close(); navigate(`/search/${encodeURIComponent(lastQuery)}`); };
 
   input.addEventListener('input', async () => {
     const q = input.value.trim();
     const mine = ++seq;
     if (q.length < 3) return close();
 
-    // Two paths, merged: a gene-ID prefix matches against the id list; anything else goes to
-    // the token index (descriptions, AT loci, Pfam/PANTHER).
-    //
-    // ID autocomplete used to probe the shard the prefix named. That stopped being possible
-    // once shards were bucketed by gene NUMBER: a partial number ("05G1202") does not
-    // determine its bucket, and rounding it down silently pointed at the wrong shard.
-    // Prefix-matching the id list is exact, and the list is already loaded for text search.
-    const byId = [];
-    if (/^PtXa/i.test(q)) {
-      const ids = await loadGeneIndex();
-      const up = q.toUpperCase();
-      for (const id of ids) {
-        if (id.toUpperCase().startsWith(up)) {
-          byId.push(id);
-          if (byId.length >= 12) break;
-        }
-      }
-    }
-    const byText = await searchGenes(q, 24);
+    const { ids, total } = await searchGenesRanked(q);
     if (mine !== seq) return;
-
-    const seen = new Set();
-    const merged = [...byId, ...byText].filter((id) => !seen.has(id) && seen.add(id)).slice(0, 24);
+    lastQuery = q; lastTotal = total;
+    const shown = ids.slice(0, DROPDOWN_SHOWN);
 
     clear(hits);
-    if (!merged.length) {
+    if (!shown.length) {
       hits.append(el('a', { class: 'muted' }, `Nothing matches "${q}"`));
     } else {
-      for (const id of merged) {
+      for (const id of shown) {
         const g = await getGene(id);
         const note = g && g.ann && (g.ann.d || g.ann.atd);
         hits.append(el('a', { href: '#/gene/' + id, onclick: close },
           el('span', {}, id),
           note ? el('span', { class: 'muted', style: 'font-family:inherit' }, `  ${note.slice(0, 54)}`) : null));
       }
+      // "too many results" hand-off: a dropdown row can show an id and one line of
+      // description, which is not enough to tell two paralogs apart. The results page
+      // carries synteny class, duplication class, PS and peak tissue side by side instead.
+      if (total > shown.length) {
+        hits.append(el('a', {
+          href: `#/search/${encodeURIComponent(q)}`, onclick: goToResults,
+          style: 'font-weight:600;color:var(--accent);border-top:1px solid var(--line)',
+        }, `${fmt(total)} results for "${q}" — compare them all →`));
+      }
     }
     hits.style.display = 'block';
   });
 
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { const a = hits.querySelector('a[href^="#/gene/"]'); if (a) { close(); navigate(a.getAttribute('href').slice(1)); } }
+    if (e.key === 'Enter') {
+      // Ambiguous queries go to the comparison page rather than blindly opening the top
+      // hit, which for a common word like "kinase" would land on an arbitrary gene.
+      if (lastTotal > DROPDOWN_SHOWN) return goToResults();
+      const a = hits.querySelector('a[href^="#/gene/"]');
+      if (a) { close(); navigate(a.getAttribute('href').slice(1)); }
+    }
     if (e.key === 'Escape') close();
   });
 }
@@ -146,7 +150,7 @@ route(/^\/$/, async () => {
 
 route(/^\/gene\/(.+)$/, async (id) => {
   loading(`Loading ${id}…`);
-  const g = await getGene(id);
+  const [g, man] = await Promise.all([getGene(id), loadManifest()]);
   if (!g) return setView(el('div', { class: 'empty' },
     el('h2', {}, 'No such gene'), el('p', { class: 'mono' }, id),
     el('p', { class: 'muted' }, 'IDs look like PtXaTreH.05G120200 (HAP1) or PtXaAlbH.14G133000 (HAP2).')));
@@ -177,7 +181,7 @@ route(/^\/gene\/(.+)$/, async (id) => {
 
   for (const m of MODULES) {
     if (!m.geneCard) continue;
-    const c = m.geneCard(g);   // an element, or a fragment of several cards
+    const c = m.geneCard(g, man);   // an element, or a fragment of several cards
     if (c) cards.append(c);
   }
   const ord = g.ord || {};
@@ -195,6 +199,12 @@ route(/^\/gene\/(.+)$/, async (id) => {
 route(/^\/browse$/, async () => {
   loading('Loading the gene index…');
   setView(await browseView());
+  markNav();
+});
+
+route(/^\/search\/(.+)$/, async (q) => {
+  loading('Searching…');
+  setView(await searchResultsView(decodeURIComponent(q)));
   markNav();
 });
 

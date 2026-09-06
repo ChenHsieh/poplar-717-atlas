@@ -5,7 +5,7 @@ node_modules/
 shots/
 shots-live/
 
-# CRE deliverable from the ms2-lsg agent, awaiting Chen's review before it is
-# wired into the atlas (see docs/PLAN_v0.5_correctness_and_wetlab.md part E).
-sources/cre_promoter_hits*.tsv.gz
-sources/cre_promoter_hits*.provenance.json
+# CRE deliverable from the ms2-lsg agent: the 1kb contract file + provenance are
+# committed (below the SWEEP line stays ignored -- 4.7MB, exploratory, not read
+# by the site; regenerate it from ms2-lsg if the window-sensitivity work resumes).
+sources/cre_promoter_hits_sweep.tsv.gz

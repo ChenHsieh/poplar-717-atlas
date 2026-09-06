@@ -89,6 +89,26 @@ def main():
           f"{len(bad_tissue_keys)} mismatched, e.g. {bad_tissue_keys[:3]}" if bad_tissue_keys
           else f"{len(want_tissues)} tissues: {sorted(want_tissues)}")
 
+    # CRE / promoter layer: every gene must carry it, family counts must sum to the
+    # stored total, and TATA position (when set) must lie inside the promoter window.
+    cre_missing = [g for g, (_, _, r) in genes.items() if "cre" not in r]
+    cre_bad_sum, cre_bad_tata = [], []
+    win = (man.get("cre") or {}).get("promoter_window_bp")
+    for g, (_, _, r) in genes.items():
+        c = r.get("cre")
+        if not c:
+            continue
+        if sum(c["fam"].values()) != c["tot"]:
+            cre_bad_sum.append(g)
+        p = c["tata"]["pos"]
+        if p is not None and win is not None and not (0 <= p <= win):
+            cre_bad_tata.append(g)
+    check("every gene has a cre record", not cre_missing,
+          f"{len(cre_missing)} missing, e.g. {cre_missing[:3]}" if cre_missing else "63960")
+    check("cre family counts sum to the stored total", not cre_bad_sum, f"{len(cre_bad_sum)} bad")
+    check("cre TATA position lies inside the promoter window", not cre_bad_tata,
+          f"{len(cre_bad_tata)} out of range")
+
     # Locus layer: every gene must be in exactly one tile, and its structure must lie
     # inside its own span. A gene missing from the tiles is a blank locus card; a
     # segment outside the span draws off the end of the gene.

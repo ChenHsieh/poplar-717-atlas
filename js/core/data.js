@@ -102,29 +102,54 @@ export const loadGeneIndex = () => fetchJSON('data/index/genes.json');
 /** Token index is sharded by first character so typing fetches one small file. */
 export const loadSearchShard = (c) => fetchJSON(`data/index/search/${c}.json`);
 
-/** Free-text search over descriptions, Arabidopsis loci, Pfam and PANTHER accessions. */
-export async function searchGenes(query, limit = 30) {
-  const q = query.trim().toLowerCase();
-  if (q.length < 3) return [];
-  const c = /[a-z0-9]/.test(q[0]) ? q[0] : '_';
+/** Free-text search over descriptions, Arabidopsis loci, Pfam and PANTHER accessions, PLUS
+ *  a gene-ID prefix match, merged and ranked in one place so the header dropdown and the
+ *  full search-results page (#/search/<query>) can never disagree about what "the results"
+ *  are -- one had capped at `limit`, the other needs the true total to decide whether to
+ *  offer "see all results".
+ *
+ *  Returns { ids: ALL matches, ranked, uncapped, total: ids.length }. Callers slice for
+ *  display; nothing here silently drops a match the caller didn't ask to drop. Search
+ *  shards are small (largest is ~680KB, already fetched once per query) so scanning one
+ *  fully for a query is cheap -- the old implementation's `limit*8` scan-break existed only
+ *  to bound dropdown latency, not because an accurate count was expensive to get.
+ */
+export async function searchGenesRanked(query) {
+  const q = query.trim();
+  const ql = q.toLowerCase();
+  if (ql.length < 3) return { ids: [], total: 0 };
+
+  const byIdIdx = [];               // gene-ID prefix match, e.g. "PtXaTreH.05G12"
+  const idPromise = /^PtXa/i.test(q) ? loadGeneIndex() : null;
+
+  const c = /[a-z0-9]/.test(ql[0]) ? ql[0] : '_';
   let shard, ids;
   try {
     [shard, ids] = await Promise.all([loadSearchShard(c), loadGeneIndex()]);
   } catch {
-    return [];
+    shard = {}; ids = idPromise ? await idPromise : [];
   }
+  if (idPromise) {
+    const up = q.toUpperCase();
+    for (let i = 0; i < ids.length; i++) if (ids[i].toUpperCase().startsWith(up)) byIdIdx.push(i);
+  }
+
   // Exact token first, then prefix matches, so "kinase" beats "kinase-like".
-  const hits = new Map();
-  const add = (idxs, rank) => idxs.forEach((i) => { if (!hits.has(i)) hits.set(i, rank); });
-  if (shard[q]) add(shard[q], 0);
+  const rank = new Map();
+  const add = (idxs, r) => idxs.forEach((i) => { if (!rank.has(i)) rank.set(i, r); });
+  add(byIdIdx, -1);                 // an ID match always outranks a text match
+  if (shard[ql]) add(shard[ql], 0);
   for (const tok in shard) {
-    if (hits.size > limit * 8) break;
-    if (tok !== q && tok.startsWith(q)) add(shard[tok], 1);
+    if (tok !== ql && tok.startsWith(ql)) add(shard[tok], 1);
   }
-  return [...hits.entries()]
-    .sort((a, b) => a[1] - b[1] || a[0] - b[0])
-    .slice(0, limit)
-    .map(([i]) => ids[i]);
+  const ranked = [...rank.entries()].sort((a, b) => a[1] - b[1] || a[0] - b[0]).map(([i]) => ids[i]);
+  return { ids: ranked, total: ranked.length };
+}
+
+/** Back-compat wrapper: the capped, dropdown-shaped call most callers still want. */
+export async function searchGenes(query, limit = 30) {
+  const { ids } = await searchGenesRanked(query);
+  return ids.slice(0, limit);
 }
 
 /* ---------- facets (browse) ---------- */

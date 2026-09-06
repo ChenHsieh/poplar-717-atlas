@@ -111,6 +111,18 @@ table.data { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.data th { text-align: left; font-weight: 600; color: var(--ink-2); font-size: 11.5px;
   text-transform: uppercase; letter-spacing: .04em; padding: 5px 9px; border-bottom: 1px solid var(--line-2); }
 table.data td { padding: 5px 9px; border-bottom: 1px solid var(--line); }
+/* A table carrying a free-text column (a gene description, alongside short class/number
+   columns) must NOT let the browser's default table layout shrink that text down to fit a
+   narrow viewport by wrapping every cell onto many lines -- that turns a side-by-side
+   comparison table into a tall wall of 4-line rows, which defeats the point of a comparison
+   table. table.compare keeps every cell's natural width instead, so .scroll-x's
+   overflow-x:auto does what it exists for: the table scrolls sideways, one row stays one
+   line. This is deliberately NOT the default for table.data -- other tables here (e.g. the
+   promoter card's family strip) have short cells AND a longer header label that relies on
+   wrapping onto two lines to fit a phone; forcing nowrap there was tried first and broke it,
+   caught by re-running the mobile sweep after the change, not assumed safe. */
+table.compare th, table.compare td { white-space: nowrap; }
+table.compare td.wrap { white-space: normal; }
 table.data td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); }
 table.data tr:hover td { background: var(--panel-2); }
 .scroll-x { overflow-x: auto; min-width: 0; max-width: 100%; }
