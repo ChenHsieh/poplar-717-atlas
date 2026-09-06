@@ -1,0 +1,50 @@
+{
+ "purpose": "Per-gene evidence-quality flags for the 1,725 genes in the LSG pool. The atlas already publishes the pool and already warns, in prose, that a young stratum is not proof of a young gene. This says which genes that warning actually lands on, and on what evidence.",
+ "tier": "public",
+ "why_public": "Every flag here derives from published genome assemblies and public methods (OrthoFinder, DIAMOND, tblastn, abSENSE, Ks). docs/EMBARGO.md's 'Not affected' list names phylostratigraphy and the genEra layer as publishable. No wet-lab data, no transgenic line identities, no phenotype.",
+ "generated_by": "ms2-lsg pipeline/s45_qc_flags_for_atlas.py",
+ "derived_at": "2026-09-06T10:05:21",
+ "rows_written": 1725,
+ "genes_hap1": 842,
+ "genes_hap2": 883,
+ "scope": "the LSG pool only (PS rank >= 18), NOT all 63,960 genes. A non-pool gene has no young-age claim to qualify.",
+ "join_key": "gene_id, bare locus, matches the atlas gene index",
+ "derived_from": {
+  "lsg_pool_qc.tsv": {
+   "sha256": "320ab46d744143493371441d09694a6a59c203d71f5b4cc37d53520f2bdc9858",
+   "rows": 1725
+  },
+  "lsg_pool_synteny.tsv": {
+   "sha256": "08112b6ec1058270d902e87d62c584c0231f5dc38cc71e73765ec31cc379de04",
+   "rows": 1725
+  }
+ },
+ "POLICY_flags_not_filters": "The pool remains 842 HAP1 + 883 HAP2. Nothing here removes, renumbers or filters a gene, and the atlas must not use these to shrink the pool count. Cite the flag alongside the claim. This is the repo's standing policy.",
+ "idesia_deliberately_excluded": {
+  "what": "An Idesia polycarpa outgroup correction proposes moving the pool from 842/883 to 776/835. Chen has not adopted it; figures, tables and chapter prose still cite 842/883.",
+  "consequence": "out/lsg_pool_qc.tsv's `qc_survivor` column is defined as in_idesia_corrected_pool AND NOT tblastn_retract AND NOT hdf_reject AND NOT wgd_flagged, so it silently encodes that undecided correction. It is NOT in this file, and neither is in_idesia_corrected_pool.",
+  "what_ships_instead": "`qc_clean`, the same AND without the Idesia term: 1227 genes, against the chapter's qc_survivor 1214. They differ by exactly 13 genes that only Idesia excludes. Do not present qc_clean as the chapter's funnel count.",
+  "assertion": "this stage asserts the qc_survivor definition on every run and fails loudly if upstream changes it"
+ },
+ "columns": {
+  "phylostratum, rank": "genEra call, as published on the atlas already",
+  "tblastn_retract": "a Salix tblastn hit contradicts the young call outright. The strongest single retraction signal in this table.",
+  "absense_reject": "abSENSE rejects the young call as detection-failure-plausible",
+  "absense_hdf_flag": "no_prediction | detection_failure_plausible | surprising_absence | no_outgroup_in_panel",
+  "absense_verdict": "abSENSE's per-gene conclusion, e.g. a_retract_young_call, b_supports_lineage_specific, ambiguous, not_testable",
+  "wgd_flagged": "minimum Ks falls in the salicoid-WGD era, so the gene may be an ohnolog rather than a novelty",
+  "synteny_og_contested / synteny_twin_contested / synteny_contested_any": "the 12-genome OrthoFinder rerun disputes the gene's slot; contested_any is the union of the two routes",
+  "protein_len_lt100": "short ORF, a known annotation-artifact class",
+  "sens_stable": "the headline result is unchanged when this gene is excluded",
+  "qc_clean": "NOT tblastn_retract AND NOT absense_reject AND NOT wgd_flagged. Idesia-independent by construction, see above."
+ },
+ "how_to_read_absense": "abSENSE speaks about the RELIABILITY OF THE AGE CALL, not about the gene. `detection_failure_plausible` means an ancestral homolog could exist and be undetectable at this sensitivity. It does NOT mean the gene is old, and a gene card must not phrase it that way. The upstream finding is that regenerating the DIAMOND search with identical parameters does not fully reproduce the frozen phylostratum calls: 297 HAP1 / 273 HAP2 genes shift rank, all toward older, all marginal hits near the 1e-05 threshold.",
+ "counts_this_run": {
+  "tblastn_retract": 228,
+  "absense_reject": 281,
+  "wgd_flagged": 45,
+  "synteny_contested_any": 106,
+  "qc_clean": 1227
+ },
+ "regenerate": "python pipeline/s45_qc_flags_for_atlas.py, after the QC funnel"
+}
