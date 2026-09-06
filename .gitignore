@@ -4,3 +4,8 @@ __pycache__/
 node_modules/
 shots/
 shots-live/
+
+# CRE deliverable from the ms2-lsg agent, awaiting Chen's review before it is
+# wired into the atlas (see docs/PLAN_v0.5_correctness_and_wetlab.md part E).
+sources/cre_promoter_hits*.tsv.gz
+sources/cre_promoter_hits*.provenance.json

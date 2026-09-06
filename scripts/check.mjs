@@ -132,6 +132,43 @@ for (const [label, q, want] of [['keyword', 'dehydrin', null], ['at-locus', 'AT1
 }
 await p.screenshot({ path: `${outdir}/search-text.png` });
 
+// The locus card is a canvas, so a text assertion cannot see it. Check that the
+// canvas is actually PAINTED (more than one colour sampled), that the DPR backing
+// buffer matches, and that a phone viewport neither scrolls horizontally nor
+// shrinks a control below the 44px comfort target.
+for (const [label, vw, vh, dpr] of [['locus-desktop', 1180, 900, 1], ['locus-phone', 375, 667, 2]]) {
+  const lp = await browser.newPage({ viewport: { width: vw, height: vh }, deviceScaleFactor: dpr });
+  const lerrs = [];
+  lp.on('pageerror', (e) => lerrs.push(e.message));
+  lp.on('console', (m) => { if (m.type() === 'error') lerrs.push(m.text()); });
+  await lp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
+  await lp.waitForTimeout(1400);
+  const r = await lp.evaluate(() => {
+    const cv = document.querySelector('.locus-canvas');
+    if (!cv) return { missing: true };
+    const box = cv.getBoundingClientRect();
+    const px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    const seen = new Set();
+    for (let i = 0; i < px.length; i += 4 * 97) seen.add(px[i] + ',' + px[i + 1] + ',' + px[i + 2]);
+    const btns = [...document.querySelectorAll('.locus-btn')]
+      .map((b) => b.getBoundingClientRect()).map((q) => Math.min(q.width, q.height));
+    return {
+      colours: seen.size, ratio: +(cv.width / box.width).toFixed(2),
+      minBtn: btns.length ? Math.min(...btns) : 0, nBtn: btns.length,
+      hscroll: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+    };
+  });
+  const ok = !r.missing && r.colours > 3 && r.minBtn >= 44 && r.nBtn === 4
+    && !r.hscroll && r.ratio === Math.min(dpr, 2) && !lerrs.length;
+  if (!ok) failures++;
+  console.log(`\n### ${label}  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   colours=${r.colours} dprRatio=${r.ratio} minBtn=${r.minBtn}px `
+    + `buttons=${r.nBtn} h-scroll=${r.hscroll}`);
+  lerrs.slice(0, 2).forEach((e) => console.log('   ERR ' + e.slice(0, 110)));
+  await lp.screenshot({ path: `${outdir}/${label}.png` });
+  await lp.close();
+}
+
 // The condition view is the expression module's analytical payoff -- drive it.
 {
   const cp = await browser.newPage({ viewport: { width: 1180, height: 1200 } });

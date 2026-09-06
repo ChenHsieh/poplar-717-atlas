@@ -156,3 +156,11 @@ export function facetRow(facets, i) {
 
 /** Members of a tandem array, from the curated union set. */
 export const loadArrays = () => fetchJSON('data/index/arrays.json');
+
+// Locus layer. A tile is one megabase of one chromosome: gene positions, strand,
+// longest-isoform exon structure, and the few fields the locus card draws. Built by
+// scripts/build_locus.py. Self-sufficient on purpose -- a gene page on a phone should
+// not also have to pull a chromosome index.
+export const loadLocusTile = (hap, chr, mb) => fetchJSON(`data/locus/tile/${hap}/${chr}/${mb}.json`);
+export const loadLocusIndex = (hap, chr) => fetchJSON(`data/locus/index/${hap}/${chr}.json`);
+export const loadLocusOverview = () => fetchJSON('data/locus/overview.json');

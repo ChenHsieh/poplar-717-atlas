@@ -89,6 +89,33 @@ def main():
           f"{len(bad_tissue_keys)} mismatched, e.g. {bad_tissue_keys[:3]}" if bad_tissue_keys
           else f"{len(want_tissues)} tissues: {sorted(want_tissues)}")
 
+    # Locus layer: every gene must be in exactly one tile, and its structure must lie
+    # inside its own span. A gene missing from the tiles is a blank locus card; a
+    # segment outside the span draws off the end of the gene.
+    ldir = f"{DATA}/locus/tile"
+    if os.path.isdir(ldir):
+        seen, bad_seg, bad_span = {}, [], []
+        for dp, _, fs in os.walk(ldir):
+            for fn in (f for f in fs if f.endswith(".json")):
+                for r in json.load(open(os.path.join(dp, fn))):
+                    seen.setdefault(r["g"], 0)
+                    seen[r["g"]] += 1
+                    span = r["e"] - r["s"]
+                    for off, ln, _k in r["f"]:
+                        if off < 0 or off + ln > span + 1:
+                            bad_seg.append(r["g"])
+                            break
+                    if span <= 0:
+                        bad_span.append(r["g"])
+        missing = [g for g in genes if g not in seen]
+        dupes = [g for g, n in seen.items() if n > 1]
+        check("every gene has a locus tile entry", not missing,
+              f"{len(missing)} missing, e.g. {missing[:3]}" if missing else f"{len(seen)} genes")
+        check("no gene appears in two locus tiles", not dupes, f"{len(dupes)} duplicated")
+        check("locus structure lies inside the gene span", not bad_seg,
+              f"{len(bad_seg)} genes with a stray segment, e.g. {bad_seg[:3]}")
+        check("locus gene spans are positive", not bad_span, f"{len(bad_span)} bad")
+
     # Allele links must point at a real gene, in the OTHER haplotype, and be reciprocal.
     dangling = [g for g, (_, _, r) in genes.items()
                 if r.get("allele") and r["allele"]["id"] not in genes]

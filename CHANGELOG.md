@@ -3,6 +3,51 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## 0.3.5 — 2026-09-06
+
+**Added — the locus card, and the data layer under it**
+Every gene page now draws its neighbourhood: gene arrows with exon structure, forward strand
+above the line and reverse below, coloured by duplication class, focal gene boxed. Built from
+the v5.1 annotation, which lives in OneDrive rather than on Sapelo2 — so `scripts/build_locus.py`
+runs off-cluster, unlike the rest of the build. Isoform choice is the annotation's own
+`longest=1` flag, not a length recomputed here.
+
+Three outputs sized for how they are fetched: per-megabase tiles (median 6.9 KB gzipped, the
+locus card's only fetch), per-chromosome position indexes for the coming genome map, and a
+100 kb-bin overview. Validated by merging abutting CDS/UTR segments into exons and comparing
+against the exon counts the atlas derived independently on Sapelo2 from a different annotation
+file: **63,960 of 63,960 agree, zero disagreements.**
+
+**Fixed — the whole site scrolled horizontally on every phone**
+Found while testing the locus card at 375 px, and it predates it: the header nav was one
+unwrappable 502 px flex row, which set a 522 px minimum width for *every page on the site*.
+Wrapping the nav, letting the search input flex, and giving the card grid `minmax(0, 1fr)` with
+`min-width: 0` (a grid item defaults to `min-width: auto`, so the single widest card was
+stretching all of them) removes it. Verified at 320, 375 and 393 px, and in landscape: no
+horizontal page scroll on any route. Wide tables now scroll inside their own box, as intended.
+
+Also fixed: the τ caption added in 0.3.4 joined tissue names with `/` and no spaces, making one
+unbreakable 299 px token that overflowed a 320 px viewport. Now joined with ` / `.
+
+**Mobile is now a designed target, not a media query**
+The locus window shrinks on small screens (4 genes each side instead of 10) because genes are
+tap targets and 21 of them across a 375 px phone gives 16 px each, under the WCAG 2.2 SC 2.5.8
+floor — the view drops genes rather than silently clamping. Panning has always-visible 44 px
+step buttons and arrow keys, since SC 2.5.1 Pointer Gestures is Level A and a gesture-only pan
+would fail it. Canvas fitting follows DPR discipline: ResizeObserver on the container with the
+canvas absolutely positioned inside it, `device-pixel-content-box` with the Safari try/catch
+fallback, a guarded width assignment (assigning it resets all 2D context state), a synchronous
+redraw, and a self-re-arming dpr watcher.
+
+One bug the screenshots caught that the assertions did not: canvas `fillStyle` does not resolve
+CSS custom properties, so `var(--c-tandem)` was silently invalid and every gene drew grey. The
+palette is now read off the document and re-read when the theme changes.
+
+**Checks**
+`validate_data.py` gains four locus checks (every gene has exactly one tile entry, structure
+lies inside the gene span). `check.mjs` gains two: the canvas is actually painted, the DPR
+backing buffer matches, controls stay at 44 px, and a phone viewport does not scroll sideways.
+
 ## 0.3.4 — 2026-09-05
 
 **Fixed — the expression baseline and tau pooled leaf_young + leaf_old into one "leaf" bucket**

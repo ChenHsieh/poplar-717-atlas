@@ -42,7 +42,7 @@ function geneCard(g) {
       `τ = ${x.tau ?? '—'} — ${tauNote(x.tau)}.`),
     baselineChart(x),
     el('p', { class: 'muted', style: 'font-size:11px;margin:6px 0 0' },
-      `τ computed over ${orderTissues(Object.keys(x.t).filter((t) => t !== 'callus')).join('/')} `,
+      `τ computed over ${orderTissues(Object.keys(x.t).filter((t) => t !== 'callus')).join(' / ')} `,
       '(callus excluded — 1 sample, not part of the manuscript panel per the delivery notes). ',
       'callus is still shown above. leaf_young/leaf_old (study 1 only) and the unsplit leaf ',
       '(every other study) are three separate tissues here, not one — see docs/DATA_AUDIT.md.'),

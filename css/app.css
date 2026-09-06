@@ -50,7 +50,7 @@ header.top {
 header.top .brand { font-weight: 640; letter-spacing: -0.01em; white-space: nowrap; }
 header.top .brand span { color: var(--ink-3); font-weight: 400; }
 header.top .brand > a { display: inline-block; padding-block: 4px; }
-header.top nav { display: flex; gap: 14px; }
+header.top nav { display: flex; gap: 14px; flex-wrap: wrap; min-width: 0; }
 /* WCAG 2.5.8: these are primary nav, not links inline in a sentence, so the
    inline-text exemption doesn't apply -- the plain <a> text box was ~16-20px
    tall (13px font, no padding). padding-block grows the tap target to the
@@ -59,9 +59,9 @@ header.top nav a { color: var(--ink-2); font-size: 13px; display: inline-block; 
 header.top nav a.on { color: var(--ink); font-weight: 600; }
 .grow { flex: 1; }
 
-.search { position: relative; }
+.search { position: relative; flex: 1 1 200px; min-width: 0; max-width: 260px; }
 .search input {
-  width: 260px; padding: 6px 10px; border: 1px solid var(--line-2); border-radius: 6px;
+  width: 100%; max-width: 260px; padding: 6px 10px; border: 1px solid var(--line-2); border-radius: 6px;
   background: var(--surface); color: var(--ink); font-family: var(--mono); font-size: 13px;
 }
 .search input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
@@ -78,7 +78,13 @@ h1 { font-size: 22px; margin: 0 0 2px; letter-spacing: -0.015em; }
 h2 { font-size: 15px; margin: 0 0 10px; letter-spacing: -0.005em; }
 .sub { color: var(--ink-2); font-size: 13px; margin: 0 0 18px; }
 
-.cards { display: grid; gap: 14px; }
+.cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+/* A grid item defaults to min-width:auto, so the single widest card's min-content
+   width stretches EVERY card and then the page. minmax(0,1fr) + min-width:0 is the
+   fix; without it one wide table sets the page's minimum width. */
+.card { min-width: 0; }
+.card p, .card dd, .card li { overflow-wrap: anywhere; }
+.card table { max-width: 100%; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 15px 17px; }
 .card > h2 { display: flex; align-items: center; gap: 8px; }
 .card > h2 .tag { font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
@@ -86,7 +92,7 @@ h2 { font-size: 15px; margin: 0 0 10px; letter-spacing: -0.005em; }
 
 .kv { display: grid; grid-template-columns: max-content 1fr; gap: 5px 16px; font-size: 13px; }
 .kv dt { color: var(--ink-2); }
-.kv dd { margin: 0; }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 
 .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 550;
   border: 1px solid var(--line-2); border-radius: 5px; padding: 2px 7px; background: var(--panel-2); }
@@ -107,7 +113,9 @@ table.data th { text-align: left; font-weight: 600; color: var(--ink-2); font-si
 table.data td { padding: 5px 9px; border-bottom: 1px solid var(--line); }
 table.data td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); }
 table.data tr:hover td { background: var(--panel-2); }
-.scroll-x { overflow-x: auto; }
+.scroll-x { overflow-x: auto; min-width: 0; max-width: 100%; }
+/* min-width:0 is the load-bearing half: overflow-x alone still lets a wide table
+   stretch its own box inside a grid/flex parent, which pushes the page. */
 
 .bar { height: 9px; border-radius: 2px; background: var(--line-2); position: relative; min-width: 3px; }
 
@@ -126,3 +134,77 @@ table.data tr:hover td { background: var(--panel-2); }
 .muted { color: var(--ink-3); }
 footer.bot { border-top: 1px solid var(--line); color: var(--ink-3); font-size: 11.5px;
   padding: 14px 20px; text-align: center; }
+
+/* ---- locus card ------------------------------------------------------------
+   The canvas is absolutely positioned inside a sized container so its own size
+   can never feed back into the container's, which is what makes the
+   ResizeObserver loop structurally impossible rather than merely unlikely. */
+.locus-stage {
+  position: relative;
+  height: 168px;
+  width: 100%;
+  overflow: clip;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  /* Pan gestures belong to the canvas; page scroll still works because the
+     canvas is short and the page scrolls around it. Never set this globally. */
+  touch-action: pan-y;
+  overscroll-behavior: none;
+}
+.locus-stage:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.locus-canvas { position: absolute; inset: 0; display: block; }
+
+.locus-readout {
+  min-height: 1.25em;           /* reserved, so hovering does not shift the page */
+  font-size: 11.5px;
+  font-family: var(--mono);
+  margin: 7px 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.locus-controls { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+.locus-spacer { flex: 1; }
+.locus-btn {
+  /* 44px: Apple HIG / Material comfort target, well above the 24px WCAG floor */
+  min-width: 44px; min-height: 44px;
+  font-size: 16px; line-height: 1;
+  border: 1px solid var(--line-2); border-radius: 8px;
+  background: var(--panel-2); color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;   /* kills the 300ms tap delay without blocking pinch */
+}
+.locus-btn:hover { background: var(--line); }
+.locus-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  /* The header nav was one unwrappable 502px flex row, which set a 522px minimum
+     width for EVERY page on the site -- horizontal scroll on every phone. Wrapping
+     it (above) is the fix; this block tightens the rest of the shell to match. */
+  header.top { padding: 8px 12px; gap: 10px; }
+  header.top nav { gap: 12px; order: 3; width: 100%; }
+  header.top .grow { display: none; }
+  .search { flex: 1 1 auto; max-width: none; }
+  main { padding: 16px 12px 60px; }
+  h1 { font-size: 19px; overflow-wrap: anywhere; }
+  .locus-stage { height: 168px; }
+  .locus-controls { gap: 10px; }
+  /* Wide content scrolls inside its own box, never the page. */
+  .scroll-x { max-width: 100%; }
+  table.data { font-size: 12px; }
+}
+
+/* Notched phones: env() resolves to 0px without viewport-fit=cover, and max()
+   keeps a gutter on devices that have no inset at all. */
+@supports (padding: max(0px)) {
+  header.top { padding-left: max(12px, env(safe-area-inset-left));
+               padding-right: max(12px, env(safe-area-inset-right)); }
+  main { padding-left: max(12px, env(safe-area-inset-left));
+         padding-right: max(12px, env(safe-area-inset-right));
+         padding-bottom: max(60px, env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .locus-stage * { transition: none !important; animation: none !important; }
+}
