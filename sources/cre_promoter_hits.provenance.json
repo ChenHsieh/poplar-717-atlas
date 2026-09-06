@@ -45,7 +45,7 @@
   "non_maximum_suppression": "hits of one matrix within its own motif length are collapsed to the single best-scoring position, pooled across strands, so one site counts once"
  },
  "family_mapping": {
-  "DECISION_PENDING_SIGN_OFF": "These are TF-FAMILY groupings keyed on the JASPAR TF name, NOT cis-element names. A column named MYB means 'matrices for MYB-family transcription factors', not 'MYB box'. ABRE and DRE/CRT are cis-elements bound by members of the bZIP and ERF families respectively, so they are not the same kind of category as the columns here. Chen to confirm before the atlas labels these as cis-elements.",
+  "display_label": "Render these as \"<FAMILY>-family TF motifs\", e.g. \"MYB-family TF motifs\". Approved by Chen 2026-09-06. Do NOT label them as cis-elements (\"MYB box\", \"ABRE\", \"DRE/CRT\"): the grouping is on the JASPAR TF NAME, so a column means \"matrices for transcription factors of this family\", not \"occurrences of a named DNA element\". ABRE and DRE/CRT are cis-elements bound by particular bZIP and ERF family members, which is a different kind of category and would be a wrong caption here.",
   "source": "STRESS imported from s08_promoter_cre.py and DEV from case_studies/piggyback_locus_cre_marks.py, verbatim, so the atlas cannot drift from the chapter or the locus figure on what counts as a stress or developmental motif",
   "patterns": {
    "ABRE_bZIP": "^(ABF|AREB|ABI5|GBF|bZIP|TGA)",
@@ -93,7 +93,7 @@
    "families": [
     "LFY"
    ],
-   "note": "identically zero for every gene in this run. A family listed here carries no information and should not be rendered as a lane on the gene card. cre_LFY is the expected case: one 19 bp matrix, never clearing the threshold anywhere in the genome, for the length reason above."
+   "note": "zero for every gene in this run, and therefore REMOVED from this file rather than shipped as an empty lane (Chen, 2026-09-06). They remain in the sweep file as the full record. LFY is the expected case: one 19 bp matrix against a median of 8, never clearing the threshold anywhere in the genome, for the length reason above."
   },
   "jaspar_redundancy": "counts are summed over matrices, so one genomic site bound by a family with several similar matrices contributes more than one hit. JASPAR CORE plants nr reduces this but does not remove it: ABF1/ABF2/ABF3/AREB-type matrices are separate nr entries that recognise overlapping sites. Non-maximum suppression is applied WITHIN a matrix, not across matrices of a family.",
   "counts_are_not_comparable_to_s08_motif_density": "s08_promoter_cre.py's promoter_ness.tsv motif_density_mean counts MATRICES with at least one hit (max ~805). cre_total here counts SITES after non-maximum suppression, so it is a larger number measuring a different thing. The two files agree exactly where they measure the same thing: this run's tata_core rate over the LSG pool reproduces s08's tata_rate to six decimals on both haplotypes (HAP1 0.051069, n=842; HAP2 0.052095, n=883).",

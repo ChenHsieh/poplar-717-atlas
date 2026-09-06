@@ -74,7 +74,11 @@ def main():
     cre = {}
     with gzip.open(SRC, "rt") as fh:
         for row in csv.DictReader(fh, delimiter="\t"):
-            assert row.pop(DROPPED_FAMILY) == "0", f"{row['gene_id']}: {DROPPED_FAMILY} not zero"
+            # Absent since 2026-09-06: the upstream contract now drops all-zero
+            # family columns at source (Chen's call), so cre_LFY is no longer
+            # shipped. Older copies still carry it as all-zero, so accept both
+            # and keep asserting it is zero whenever it IS present.
+            assert row.pop(DROPPED_FAMILY, "0") == "0", f"{row['gene_id']}: {DROPPED_FAMILY} not zero"
             fam = {key: int(row[col]) for col, _prov_key, key, _label in FAMILY_MAP}
             tot = sum(fam.values())
             cre[row["gene_id"]] = {
