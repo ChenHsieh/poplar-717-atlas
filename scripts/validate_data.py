@@ -89,6 +89,26 @@ def main():
           f"{len(bad_tissue_keys)} mismatched, e.g. {bad_tissue_keys[:3]}" if bad_tissue_keys
           else f"{len(want_tissues)} tissues: {sorted(want_tissues)}")
 
+    # ComBat-seq is opt-in per gene (TODO 18): x.cb present only where the source matrix had
+    # enough count signal to batch-correct. Every gene claiming one must actually resolve.
+    want_cb = (man.get("expression") or {}).get("combat_eligible_genes")
+    cb_genes = [(gid, rec) for gid, (_, _, rec) in genes.items() if rec.get("x", {}).get("cb")]
+    cb_bad_ptr = []
+    cb_buckets = {}
+    for gid, rec in cb_genes:
+        b = rec["x"]["cb"]
+        if b not in cb_buckets:
+            p2 = f"{DATA}/expr/combat_buckets/{b}.json"
+            cb_buckets[b] = json.load(open(p2)) if os.path.exists(p2) else None
+        if cb_buckets[b] is None or gid not in cb_buckets[b]:
+            cb_bad_ptr.append(gid)
+    check("manifest combat_eligible_genes matches the shard count", want_cb == len(cb_genes),
+          f"manifest {want_cb} vs {len(cb_genes)} genes carrying x.cb")
+    check("every x.cb pointer resolves to a real ComBat bucket entry", not cb_bad_ptr,
+          f"{len(cb_bad_ptr)} dangling, e.g. {cb_bad_ptr[:3]}" if cb_bad_ptr else f"{len(cb_buckets)} buckets")
+    cb_no_raw = [gid for gid, rec in cb_genes if not rec.get("x", {}).get("b")]
+    check("no ComBat-eligible gene lacks a raw baseline", not cb_no_raw, f"{len(cb_no_raw)} records")
+
     # CRE / promoter layer: every gene must carry it, family counts must sum to the
     # stored total, and TATA position (when set) must lie inside the promoter window.
     cre_missing = [g for g, (_, _, r) in genes.items() if "cre" not in r]

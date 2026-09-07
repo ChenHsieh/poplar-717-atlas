@@ -96,6 +96,17 @@ export async function loadExprVector(gene) {
   return bucket[gene.id] || null;
 }
 
+/** ComBat-seq batch-corrected vector, same 652-sample index as loadExprVector -- but ONLY
+ *  for the ~59,600 genes with enough count signal to have been batch-corrected upstream
+ *  (see docs and sources/combat_tpm.provenance.json). `gene.x.cb` is absent, not null, on
+ *  every gene without one; callers must check it before offering the option at all. */
+export const loadCombatBucket = (bucketKey) => fetchJSON(`data/expr/combat_buckets/${bucketKey}.json`);
+export async function loadCombatVector(gene) {
+  if (!gene.x || !gene.x.cb) return null;
+  const bucket = await loadCombatBucket(gene.x.cb);
+  return bucket[gene.id] || null;
+}
+
 /* ---------- annotation, allele, search ---------- */
 export const loadTerms = () => fetchJSON('data/index/terms.json');
 export const loadGeneIndex = () => fetchJSON('data/index/genes.json');

@@ -2,7 +2,7 @@
 // Two-level data: gene.x is a baseline SUMMARY already in the shard (free); the full
 // 652-sample vector is a second fetch via loadExprVector(gene) -- see core/data.js.
 import { el, clear, fmt, pct } from '../core/dom.js';
-import { loadExprSamples, loadExprStudies, loadExprVector } from '../core/data.js';
+import { loadExprSamples, loadExprStudies, loadExprVector, loadCombatVector } from '../core/data.js';
 
 const TISSUE_ORDER = ['leaf_young', 'leaf', 'leaf_old', 'xylem', 'bark', 'root', 'stem', 'bud', 'catkin', 'gall', 'callus'];
 const orderTissues = (keys) => TISSUE_ORDER.filter((t) => keys.includes(t)).concat(keys.filter((t) => !TISSUE_ORDER.includes(t)));
@@ -62,30 +62,73 @@ function geneCard(g) {
     style: 'margin-top:10px;font-size:12px;padding:4px 9px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
     onclick: async (e) => {
       e.target.disabled = true; e.target.textContent = 'Loading…';
-      const holder = el('div', { style: 'margin-top:12px' });
+      const holder = el('div', { id: 'expr-profile', style: 'margin-top:12px' });
       card.append(holder);
       e.target.remove();
-      const [vec, samples, studies] = await Promise.all([loadExprVector(g), loadExprSamples(), loadExprStudies()]);
+      const [rawVec, samples, studies] = await Promise.all([loadExprVector(g), loadExprSamples(), loadExprStudies()]);
 
       // Two views of the same vector. Conditions first, because "does it respond to drought
       // in study 27" is answerable from replicate means and not from 652 individual dots.
+      let activeVec = rawVec;
+      let combatVec = null; // fetched lazily, only if the toggle is used
       const body = el('div', {});
       const tabs = el('div', { style: 'display:flex;gap:6px;margin-bottom:10px' });
+      let renderCurrent = () => {};
       const mk = (label, render) => {
         const b = el('button', {
           onclick: () => {
             [...tabs.children].forEach((c) => { c.dataset.on = 'false'; c.style.background = 'var(--panel-2)'; c.style.color = 'var(--ink)'; });
             b.dataset.on = 'true'; b.style.background = 'var(--accent)'; b.style.color = '#fff';
-            clear(body).append(render());
+            renderCurrent = () => clear(body).append(render());
+            renderCurrent();
           },
           style: 'font-size:12px;padding:4px 10px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
         }, label);
         return b;
       };
-      const byCond = mk('By condition', () => conditionTable(vec, samples, studies));
-      const bySamp = mk('By sample', () => fullProfile(vec, samples, studies));
+      const byCond = mk('By condition', () => conditionTable(activeVec, samples, studies));
+      const bySamp = mk('By sample', () => fullProfile(activeVec, samples, studies));
       tabs.append(byCond, bySamp);
       holder.append(tabs, body);
+
+      // ComBat-corrected is a SEPARATE toggle, not a third tab -- it swaps which vector feeds
+      // the same two views rather than tripling the tab count. Only offered when this gene
+      // has one: `x.cb` is absent (not null) for the ~4,360 genes with too little count
+      // signal to batch-correct -- see sources/combat_tpm.provenance.json. Never implies the
+      // corrected value is more correct; it is a narrower cross-study comparison view only.
+      if (g.x.cb) {
+        const src = el('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:10px;font-size:11.5px;color:var(--ink-2)' },
+          'Values: ');
+        const mkSrc = (label, isRaw) => {
+          const b = el('button', {
+            onclick: async () => {
+              if (isRaw) {
+                activeVec = rawVec;
+              } else {
+                if (!combatVec) {
+                  b.textContent = 'Loading…';
+                  combatVec = await loadCombatVector(g);
+                }
+                activeVec = combatVec;
+              }
+              [...src.querySelectorAll('button')].forEach((c) => { c.dataset.on = 'false'; c.style.background = 'var(--panel-2)'; c.style.color = 'var(--ink)'; });
+              b.dataset.on = 'true'; b.style.background = 'var(--accent)'; b.style.color = '#fff';
+              b.textContent = label;
+              renderCurrent();
+            },
+            style: 'font-size:11.5px;padding:3px 8px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
+          }, label);
+          return b;
+        };
+        const rawBtn = mkSrc('Raw', true);
+        const cbBtn = mkSrc('ComBat-corrected (cross-study)', false);
+        rawBtn.dataset.on = 'true'; rawBtn.style.background = 'var(--accent)'; rawBtn.style.color = '#fff';
+        src.append(rawBtn, cbBtn,
+          el('span', { style: 'font-size:11px' },
+            '— batch-adjusted for comparing this gene ACROSS studies; raw stays primary everywhere else on this site.'));
+        holder.insertBefore(src, tabs);
+      }
+
       byCond.click();
     },
   }, `Show all 652 samples →`);

@@ -229,6 +229,42 @@ for (const [label, vw, vh, dpr] of [['locus-desktop', 1180, 900, 1], ['locus-pho
   await cp.close();
 }
 
+// ComBat-seq (TODO 18) is opt-in per gene: the toggle must appear on an eligible gene and
+// switch the rendered numbers, and must be ABSENT on an ineligible one -- offering it with
+// nothing behind it would be worse than not offering it at all.
+{
+  const gp = await browser.newPage({ viewport: { width: 1180, height: 1200 } });
+  const gerrs = [];
+  gp.on('pageerror', (e) => gerrs.push(e.message));
+  gp.on('console', (m) => { if (m.type() === 'error') gerrs.push('console: ' + m.text()); });
+  await gp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' }); // has x.cb
+  await gp.click('button:has-text("Show all 652 samples")');
+  await gp.waitForTimeout(1200);
+  const rawFirstRow = await gp.$eval('#expr-profile tbody tr', (n) => n.innerText);
+  await gp.click('button:has-text("ComBat-corrected")');
+  await gp.waitForTimeout(900);
+  const cbFirstRow = await gp.$eval('#expr-profile tbody tr', (n) => n.innerText);
+  const cbText = await gp.evaluate(() => document.getElementById('view').innerText.toLowerCase());
+  const eligibleOk = cbText.includes('cross-study') && rawFirstRow !== cbFirstRow && !gerrs.length;
+  if (!eligibleOk) failures++;
+  console.log(`
+### combat:eligible  ${eligibleOk ? 'OK' : 'FAIL'}`);
+  console.log(`   raw row="${rawFirstRow.replace(/\n/g, ' ')}"`);
+  console.log(`   combat row="${cbFirstRow.replace(/\n/g, ' ')}"`);
+  gerrs.forEach((e) => console.log('   !! ' + e));
+  await gp.close();
+
+  const ip = await browser.newPage({ viewport: { width: 1180, height: 1200 } });
+  await ip.goto(base + '/#/gene/PtXaTreH.T000100', { waitUntil: 'networkidle' }); // no x.cb
+  await ip.click('button:has-text("Show all 652 samples")');
+  await ip.waitForTimeout(900);
+  const hasToggle = (await ip.$('button:has-text("ComBat-corrected")')) !== null;
+  const ineligibleOk = !hasToggle;
+  if (!ineligibleOk) failures++;
+  console.log(`### combat:ineligible  ${ineligibleOk ? 'OK' : 'FAIL'}  (toggle present: ${hasToggle})`);
+  await ip.close();
+}
+
 // The cross-module query is the whole point of browse -- drive it, don't just render it.
 {
   const bp = await browser.newPage({ viewport: { width: 1180, height: 1200 } });

@@ -3,6 +3,42 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## 0.3.7 — 2026-09-06
+
+**Added — ComBat-seq batch-corrected values, opt-in per gene (TODO 18)**
+TODO 18 had stood on a wrong premise: the shipped ComBat-seq matrix was believed to be an
+older, incompatible gene generation and to need a fresh 63,960-gene rerun. Checked instead
+of trusted, and it was wrong. Joining the two directly: **0 sample mismatches** (652 of 652,
+exact 1:1 on the metadata's own `column` field, which already stores the matrix's
+accession-style header verbatim) and **0 gene-naming mismatches** once the trailing
+transcript-style suffix is stripped (`PtXaTreH.T003800.1` -> `PtXaTreH.T003800`). No rerun
+needed; this is a local join, `scripts/build_combat.py`.
+
+The real gap, 59,599 of 63,960 genes, is not a mismatch at all. Measured, not assumed: the
+4,361 excluded genes have a median max-TPM of 0.84 across all 652 samples (91.2% never
+exceed 5 TPM anywhere), against 26.73 (11.2% under 5 TPM) for the 59,599 included --
+consistent with a low-count filter ahead of the original ComBat-seq run, which needs count
+signal to fit its model, not with an incomplete or differently-versioned gene set.
+
+**Offered per gene, not as a site-wide feature.** A gene without a ComBat value has nothing
+to show, so the toggle is present only when the shard carries `x.cb` -- there is no
+disabled state or "not available" message, since either would imply a value that does not
+exist. Wired as a source toggle (Raw / ComBat-corrected) above the existing By
+condition / By sample tabs, swapping which vector feeds both, rather than tripling the tab
+count. Labeled explicitly as a cross-study comparison view: raw TPM stays primary
+everywhere else on the site, per the existing caution that batch is confounded with tissue
+for roughly 70% of the 652 samples.
+
+**Checks.** `validate_data.py` gains three: the manifest's `combat_eligible_genes` count
+matches the shards carrying `x.cb`, every `x.cb` pointer resolves to a real bucket entry,
+and no ComBat-eligible gene lacks a raw baseline. `check.mjs` drives the toggle on a known
+eligible gene (confirms the rendered numbers actually change, not just that the button
+exists) and confirms the toggle is absent on a known ineligible one. A first draft of the
+check used an unscoped `#view tbody tr` selector and silently graded the promoter card's
+table instead of the expression profile's -- caught because the two source's values came
+back identical, not because the selector looked wrong. Fixed by giving the profile's own
+container a stable id (`#expr-profile`) rather than guessing a more specific CSS path.
+
 ## 0.3.6 — 2026-09-06
 
 **Added — the promoter / CRE card**

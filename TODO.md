@@ -55,8 +55,13 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
 
 ## Next up (v0.4 / v0.5)
 
-- [ ] **18 — ComBat cross-study expression view.** Needs a 63,960-gene rebuild first: the
-      shipped ComBat-seq matrices are an older 59,599-gene generation with `.1`-suffixed ids.
+- [x] **18 — ComBat cross-study expression view. SHIPPED 2026-09-06.** The "needs a
+      63,960-gene rebuild" premise was wrong -- checked by actually joining the shipped
+      v7 matrix against the current gene/sample sets: 0 sample mismatches, 0 gene-naming
+      mismatches after stripping the `.1` suffix. The 59,599-vs-63,960 gap is a low-count
+      filter upstream of the original ComBat-seq run (excluded genes: median max-TPM 0.84,
+      91.2% never exceed 5 TPM; included genes: median 26.73, 11.2% under 5 TPM), not an
+      annotation mismatch. Shipped as a per-gene opt-in toggle -- see CHANGELOG.md 0.3.7.
 - [x] **19 — allele-specific expression. CLOSED, deliberately not built.** Chen did not pursue
       the analysis; `ase_analysis/` has no per-gene table. Building one would generate a new
       result from an abandoned analysis and publish it as established. See `docs/DATA_AUDIT.md`.
