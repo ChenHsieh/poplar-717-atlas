@@ -4,6 +4,45 @@ import { el, fmt, pct } from '../core/dom.js';
 
 const LSG_MIN = 18;
 
+const ABSENSE_VERDICT = {'a_retract_young_call': 'abSENSE retracts the young call', 'b_supports_lineage_specific': 'abSENSE supports lineage-specific', 'b_weak_low_sensitivity': 'abSENSE supports it, weakly (low sensitivity)', 'ancestral_sequence_present_unannotated': 'an ancestral sequence appears present but unannotated', 'ambiguous': 'abSENSE result is ambiguous', 'not_testable': 'not testable with abSENSE'};
+
+function qcSummary(qc) {
+  const flags = [];
+  if (qc.ret) {
+    flags.push(el('div', {}, el('span', { class: 'badge' }, 'tblastn'),
+      ' a Salix hit contradicts the young call outright.'));
+  }
+  const verdictLabel = ABSENSE_VERDICT[qc.verdict] || qc.verdict;
+  flags.push(el('div', {}, el('span', { class: 'muted' }, 'abSENSE: '), verdictLabel,
+    qc.hdf === 'detection_failure_plausible'
+      ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+          'This is about the reliability of the age call, not the gene — an ancestral homolog '
+          + 'could exist and be undetectable at this sensitivity. It does not mean the gene is old.')
+      : null));
+  if (qc.wgd) {
+    flags.push(el('div', {}, el('span', { class: 'badge' }, 'WGD-era Ks'),
+      ' minimum Ks falls in the salicoid-WGD era — may be an ohnolog, not a novelty.'));
+  }
+  if (qc.syn_any) {
+    flags.push(el('div', {},
+      'A 12-genome OrthoFinder rerun disputes this gene\'s orthogroup slot.'));
+  }
+  if (qc.short) {
+    flags.push(el('div', {}, `Short ORF (${qc.plen} aa) — a known annotation-artifact class.`));
+  }
+  if (qc.stable === false) {
+    flags.push(el('div', {}, el('span', { class: 'badge' }, 'sensitivity'),
+      ' the chapter\'s headline result changes if this one gene is excluded.'));
+  }
+  return el('div', {},
+    qc.clean
+      ? el('div', { class: 'muted' }, 'No evidence-quality flag raised on this gene.')
+      : el('div', {}, ...flags),
+    el('div', { class: 'muted', style: 'font-size:11px;margin-top:4px' },
+      'Flags, not filters — the published LSG pool (842 HAP1 + 883 HAP2) is unchanged by '
+      + 'this data; every claim about this gene should cite the flag alongside it.'));
+}
+
 function geneCard(g) {
   const p = g.ps;
   if (!p) return null;
@@ -23,6 +62,9 @@ function geneCard(g) {
     add('LSG pool', p.rank >= LSG_MIN
       ? el('strong', {}, `yes — PS${p.rank}`)
       : el('span', { class: 'muted' }, `no (pool is PS ≥ ${LSG_MIN})`));
+  }
+  if (g.qc) {
+    kv.append(el('dt', {}, 'Evidence quality'), el('dd', {}, qcSummary(g.qc)));
   }
   if (p.fnd) {
     const s = p.fnd.fam;

@@ -105,6 +105,25 @@ await check('gene-pav-confirmed', '#/gene/PtXaTreH.12G001400',
   { expect: ['Presence', 'HAP1-only', 'confirmed', 'DIAMOND PAV'], wait: 900 });
 await check('gene-pav-not-confirmed', '#/gene/PtXaTreH.T006000',
   { expect: ['Presence', 'not confirmed', 'detection gap', 'PtXaAlbH.14G167700'], wait: 900 });
+// LSG evidence-quality (TODO 23): a flagged pool gene and a clean one, and -- because the
+// forbidden fields are a real publication risk -- assert neither ever appears in the
+// rendered page, not just that the two intended checks pass.
+await check('gene-lsg-qc-flagged', '#/gene/PtXaTreH.12G056600',
+  { expect: ['Evidence quality', 'tblastn', 'retracts the young call', 'Flags, not filters'], wait: 900 });
+await check('gene-lsg-qc-clean', '#/gene/PtXaTreH.01G001500',
+  { expect: ['Evidence quality', 'No evidence-quality flag raised'], wait: 900 });
+{
+  const fp = await browser.newPage();
+  const ferrs = [];
+  fp.on('pageerror', (e) => ferrs.push(e.message));
+  await fp.goto(base + '/#/gene/PtXaTreH.12G056600', { waitUntil: 'networkidle' });
+  await fp.waitForTimeout(900);
+  const ftext = await fp.evaluate(() => document.getElementById('view').innerText);
+  const clean = !/qc_survivor|in_idesia_corrected_pool/i.test(ftext) && !ferrs.length;
+  if (!clean) failures++;
+  console.log(`\n### lsg-qc:no-forbidden-fields  ${clean ? 'OK' : 'FAIL'}`);
+  await fp.close();
+}
 await check('module-protein', '#/module/protein',
   { expect: ['Protein', 'ESMFold', 'pLDDT proxy', 'never pooled', 'peptide',
              'r = −0.49', 'run length'] });

@@ -92,7 +92,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.3.8",
+ "data_version": "0.3.9",
  "duplication": {
   "ks_by_rank": {
    "12": {
@@ -229,6 +229,17 @@
   },
   "esmfold_note": "ESMFold structure covers 40,685 of 63,960 genes (64%). Absence is coverage, not a structural claim.",
   "proteomics_note": "Three independent PXD datasets, reported separately. Detection rates differ ~4x (3,989 / 18,739 / 21,449 genes), so a gene absent from one is not undetected."
+ },
+ "lsg_qc": {
+  "flags": {
+   "absense_reject": 281,
+   "qc_clean": 1227,
+   "synteny_contested_any": 106,
+   "tblastn_retract": 228,
+   "wgd_flagged": 45
+  },
+  "note": "flags, not filters -- the LSG pool size (842 HAP1 + 883 HAP2) is unchanged by this data and must never be filtered by these fields.",
+  "pool_genes": 1725
  },
  "modules": [
   "core",

@@ -91,27 +91,16 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
 - [ ] **22 — decide the two open policy questions.** Whether to hold LSG candidate labels
       until publication (recommend hold), and confirm MIT code / CC BY 4.0 data.
 
-- [ ] **23 — module: LSG evidence quality.** Source delivered 2026-09-06 by the ms2-lsg agent:
-      `sources/lsg_qc_flags.tsv.gz` (1,725 rows, 13 KB) + its provenance sidecar. Chen approved
-      shipping it. The site already publishes the pool (`ps_lsg` filter) and already says in
-      prose that a young stratum is not proof of a young gene; this makes that warning
-      per-gene instead of generic.
-      Flags, with genome-wide counts: `tblastn_retract` 228 (13.2%), `absense_reject` 281
-      (16.3%), `synteny_contested_any` 106 (6.1%), `wgd_flagged` 45 (2.6%), `qc_clean` 1,227
-      (71.1%). HAP1 and HAP2 agree closely on every one.
-      **Three constraints, all load-bearing, all in the sidecar:**
-      1. **Flags, not filters.** The pool stays 842 HAP1 + 883 HAP2. Do not use these to shrink
-         a count, and do not add a "filter to clean genes only" control that changes the
-         published pool size. Cite the flag beside the claim.
-      2. **Do not add `qc_survivor` or `in_idesia_corrected_pool` later.** They are in
-         `pipeline/out/lsg_pool_qc.tsv` upstream and are deliberately NOT in the delivered
-         file. `qc_survivor` is defined as `in_idesia_corrected_pool AND NOT (the three
-         checks)`, so it silently encodes the undecided Idesia polycarpa correction that would
-         move the pool from 842/883 to 776/835. Chen has not adopted it and the chapter still
-         cites 842/883. `qc_clean` is the Idesia-independent equivalent and differs by exactly
-         13 genes. **The site is public; this one matters.**
-      3. **abSENSE is about the AGE CALL, not the gene.** `detection_failure_plausible` means
-         an ancestral homolog could exist and be undetectable at this sensitivity. It does not
-         mean the gene is old, and the card must not phrase it that way.
-      Scope is the 1,725 pool genes only, so the card should render nothing for the other
-      62,235. Every `gene_id` was checked against `data/index/genes.json`: zero missing.
+- [x] **23 — SHIPPED 2026-09-06.** Card built on the phylostratigraphy page, right next to
+      the existing "LSG pool" line -- makes the site's own long-standing prose warning
+      ("a young stratum is not proof of a young gene") per-gene instead of generic. All
+      three load-bearing constraints enforced, not just followed: `patch_lsg_qc.py` asserts
+      the two forbidden fields are absent from the source header before reading a single
+      row, `validate_data.py` gains a check that searches every shard's serialized `qc`
+      record for either forbidden field by text, not by a key list a rename could dodge,
+      and confirms every qc record sits on an actual pool gene (never widens the pool).
+      abSENSE is rendered as its own verdict string plus a caution note (not collapsed into
+      a yes/no gene-age claim) exactly where `absense_hdf_flag` is
+      `detection_failure_plausible`. `check.mjs` renders a flagged gene, a clean gene, and
+      separately asserts neither forbidden field ever appears in the rendered page text.
+      Screenshots reviewed for both. See CHANGELOG.md 0.3.9.

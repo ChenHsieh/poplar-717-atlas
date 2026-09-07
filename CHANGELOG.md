@@ -3,6 +3,42 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## 0.3.9 — 2026-09-06
+
+**Added — LSG evidence-quality flags, per gene (TODO 23)**
+The site has long carried a general-purpose prose warning that a young phylostratum is
+not proof of a young gene. This makes that warning specific: a per-gene "Evidence
+quality" line on the phylostratigraphy card, sourced from the ms2-lsg agent's already
+Chen-approved `sources/lsg_qc_flags.tsv.gz` (1,725 rows, the LSG pool only -- the other
+62,235 genes render nothing here).
+
+A gene can carry: a Salix tblastn hit that contradicts the young call outright; an
+abSENSE verdict, rendered as its own string (not collapsed into a yes/no gene-age claim),
+with an explicit caution note wherever the flag is `detection_failure_plausible` -- an
+ancestral homolog could exist and be undetectable at this sensitivity, which is not the
+same claim as "the gene is old"; a minimum Ks in the salicoid-WGD era, meaning it may be
+an ohnolog rather than a novelty; a contested orthogroup slot from an independent
+12-genome OrthoFinder rerun; a short ORF, a known annotation-artifact class; or (10 genes
+only) a flag that the chapter's headline result changes if this one gene is excluded.
+
+**Three constraints enforced, not just followed, because this is a public page over
+chapter-adjacent data.** (1) Flags, not filters -- nothing here changes which genes are
+in the published pool (842 HAP1 + 883 HAP2), and the card has no filter control that
+could. (2) Two fields must never reach the site: `qc_survivor` and
+`in_idesia_corrected_pool` silently encode an Idesia polycarpa pool correction Chen has
+not adopted (it would move the pool to 776/835; the chapter still cites 842/883).
+`patch_lsg_qc.py` asserts both are absent from the source file's own header before
+reading a row, and `validate_data.py` gains a check that searches every shard's
+serialized `qc` record as text for either name -- not a fixed key list a future rename
+could slip past. (3) abSENSE speaks to the reliability of the age call, not the gene;
+enforced by rendering its verdict field directly rather than re-deriving a boolean.
+
+**Checks.** `validate_data.py` gains three (no forbidden field on any shard, every `qc`
+record sits on an actual pool gene, manifest count matches the shard count) -- 26/26
+pass. `check.mjs` renders a flagged gene and a clean gene, then separately loads a page
+and searches its full rendered text for either forbidden field by string, independent of
+the two content checks -- 35/35 pass. Screenshots reviewed for both.
+
 ## 0.3.8 — 2026-09-06
 
 **Fixed — the "missing" duplication and PAV sources were never actually missing (TODO 21)**

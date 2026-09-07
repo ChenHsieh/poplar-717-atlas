@@ -134,6 +134,26 @@ def main():
     check("every PAV 'not confirmed' target names a real gene", not bad_target,
           f"{len(bad_target)} dangling, e.g. {bad_target[:3]}" if bad_target else "")
 
+    # TODO 23: LSG evidence-quality flags. The forbidden fields encode an undecided pool
+    # correction (see sources/lsg_qc_flags.provenance.json) and must never reach a shard,
+    # under ANY key name -- checked by serialising each qc record and searching the text,
+    # not by checking a fixed key list that a future edit could rename around.
+    FORBIDDEN = ("qc_survivor", "in_idesia_corrected_pool")
+    qc_bad = [gid for gid, (_, _, rec) in genes.items()
+              if rec.get("qc") and any(f in json.dumps(rec["qc"]) for f in FORBIDDEN)]
+    check("no forbidden LSG QC field reaches any shard", not qc_bad,
+          f"{len(qc_bad)} records, e.g. {qc_bad[:3]}" if qc_bad else "")
+
+    qc_outside_pool = [gid for gid, (_, _, rec) in genes.items()
+                       if rec.get("qc") and (rec.get("ps") or {}).get("rank", -1) < 18]
+    check("every qc record sits on an LSG-pool gene (PS >= 18)", not qc_outside_pool,
+          f"{len(qc_outside_pool)} records, e.g. {qc_outside_pool[:3]}" if qc_outside_pool else "")
+
+    n_qc = sum(1 for _, (_, _, rec) in genes.items() if rec.get("qc"))
+    want_qc = (man.get("lsg_qc") or {}).get("pool_genes")
+    check("manifest lsg_qc.pool_genes matches the shard count", want_qc == n_qc,
+          f"manifest {want_qc} vs {n_qc} genes carrying qc")
+
     # CRE / promoter layer: every gene must carry it, family counts must sum to the
     # stored total, and TATA position (when set) must lie inside the promoter window.
     cre_missing = [g for g, (_, _, r) in genes.items() if "cre" not in r]
