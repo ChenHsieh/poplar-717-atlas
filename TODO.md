@@ -73,9 +73,17 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
       not merged: different genome, annotation and pipeline.
 - [ ] ~~20-old~~ P. trichocarpa xylem (377 samples, Potri ids) joined
       through the synteny orthogroups.
-- [ ] **21 — chase the canonical v6 duplication master, and the tier1_floor PAV table.** Both
-      are named canonical by ms1-dup but absent from the mirror; the atlas ships the best
-      available duplication call and NO PAV layer until they appear.
+- [x] **21 — SHIPPED 2026-09-06.** Both files were already in the mirror, under names the
+      2026-09-05 audit never searched for -- `hemizygous_pav_diamond.csv` (PAV) and
+      `master_duplication_table_v9.csv` (duplication; v6, the file this item literally
+      named, is itself superseded by v9). Duplication: checked directly against the
+      running shard values before swapping, and 0 genes actually changed -- the v8-named
+      source the atlas already used had already carried the adopted WGD rule 5c letters
+      and the current TD union set (6,663/6,385, matching the canonical numbers exactly).
+      Kept the swap anyway for provenance honesty; the old source's name and this file's
+      own wording both claimed staleness that measurement showed was not true. PAV: new,
+      6,092-gene candidate set, 805/859 DIAMOND-confirmed hemizygous (HAP1/HAP2), a
+      per-gene card, not a filter -- see CHANGELOG.md 0.3.8.
 - [ ] **21b — fix the ms1-dup CLAUDE.md contradiction** about n=202 vs n=222 (see
       `docs/DATA_AUDIT.md`). Old: ms1-dup names
       `master_duplication_table_v6.csv` canonical but it is not synced to the mirror; the

@@ -25,11 +25,11 @@ re-checked against what the source repositories say about themselves (`CLAUDE.md
 `RESOURCES.md`, `CANONICAL_NUMBERS_v8.md`, per-analysis READMEs). Two layers were removed, three
 were replaced with locally derived equivalents, and the rest carry a recorded verdict.
 
-## Removed
+## Removed, then replaced with the real thing (2026-09-06, TODO 21)
 
 | layer | why |
 |---|---|
-| **PAV / hemizygosity** | `hemi_pav_crosstab.csv` is the **orthogroup-based** PAV call. ms1-dup `CLAUDE.md` line 166: *"Do NOT use the OG/OrthoFinder PAV call (2,075 / 1,942) — the canonical PAV call is DIAMOND-based `tier1_floor` (805 / 859)."* The ingested table gives **2,356 / 2,117** and carries an `n_ogs` column, so it is that family. The canonical `tier1_floor` table is **not in the mirror**, so the atlas ships no PAV layer rather than the wrong one. |
+| **PAV / hemizygosity** | `hemi_pav_crosstab.csv` was correctly rejected: it is the **orthogroup-based** PAV call. ms1-dup `CLAUDE.md` line 166: *"Do NOT use the OG/OrthoFinder PAV call (2,075 / 1,942) — the canonical PAV call is DIAMOND-based `tier1_floor` (805 / 859)."* The ingested table gave **2,356 / 2,117** and carried an `n_ogs` column, confirming that family. **The "not in the mirror" part of this entry was wrong** — the canonical table is `hemizygous_pav_diamond.csv`, present the whole time, just under a name this audit never searched for. Confirmed by opening it directly: 6,092-gene candidate set, 805/859 DIAMOND-confirmed, exact match. Now shipped as a per-gene card; see CHANGELOG.md 0.3.8. |
 | **Independent tau (n=202)** | Computed on the n=202 atlas panel, recorded as **superseded 2026-08-24**. |
 
 ### A contradiction in ms1-dup's own CLAUDE.md, for Chen to resolve

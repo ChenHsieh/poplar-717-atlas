@@ -109,6 +109,31 @@ def main():
     cb_no_raw = [gid for gid, rec in cb_genes if not rec.get("x", {}).get("b")]
     check("no ComBat-eligible gene lacks a raw baseline", not cb_no_raw, f"{len(cb_no_raw)} records")
 
+    # TODO 21: duplication moved to v9, and a PAV layer was added. Both checked against the
+    # canonical published totals, not just against each other.
+    td_by_hap = Counter()
+    for gid, (_, _, rec) in genes.items():
+        d = rec.get("dup")
+        if d and d.get("td"):
+            td_by_hap["hap1" if gid.startswith("PtXaTreH") else "hap2"] += 1
+    check("tandem (TD) gene counts match the canonical union set", td_by_hap == Counter(hap1=6663, hap2=6385),
+          f"{dict(td_by_hap)}")
+
+    pav_confirmed = Counter()
+    bad_target = []
+    for gid, (_, _, rec) in genes.items():
+        p = rec.get("pav")
+        if not p:
+            continue
+        if p["confirmed"]:
+            pav_confirmed["hap1" if gid.startswith("PtXaTreH") else "hap2"] += 1
+        elif p.get("target") and p["target"] not in genes:
+            bad_target.append(gid)
+    check("PAV confirmed counts match the canonical tier1_floor call", pav_confirmed == Counter(hap1=805, hap2=859),
+          f"{dict(pav_confirmed)}")
+    check("every PAV 'not confirmed' target names a real gene", not bad_target,
+          f"{len(bad_target)} dangling, e.g. {bad_target[:3]}" if bad_target else "")
+
     # CRE / promoter layer: every gene must carry it, family counts must sum to the
     # stored total, and TATA position (when set) must lie inside the promoter window.
     cre_missing = [g for g, (_, _, r) in genes.items() if "cre" not in r]

@@ -66,7 +66,7 @@ Standing verdicts:
 | | |
 |---|---|
 | **Do NOT ingest** | `hemi_pav_crosstab.csv` (orthogroup PAV — ms1-dup explicitly forbids it), `tau_n202_*` (superseded panel), `master_duplication_table_v4.csv` (carries the eliminated `W_excluded` class) |
-| **Still missing from the mirror** | the canonical `tier1_floor` PAV table, and `master_duplication_table_v6.csv`. If either appears, wire it in — the atlas currently ships no PAV layer and the v8 duplication call |
+| **Resolved 2026-09-06 (TODO 21)** | neither was actually missing. `hemizygous_pav_diamond.csv` (PAV) and `master_duplication_table_v9.csv` (duplication -- v6 was already superseded) were in the mirror under different names than this line searched for. Both wired in; see CHANGELOG.md 0.3.8. |
 | **Read-only** | `ms2-lsg/pipeline/out/*.tsv` and `GOI_CANONICAL.tsv`, by Chen's standing instruction |
 | **Never publish** | LSG candidate labels (`LSG1.14g`, `XO14gHAP2`…) while the chapter is unpublished, and curator identity or verbatim curation quotes. `build_layers.py:sanitise_note` enforces the second |
 

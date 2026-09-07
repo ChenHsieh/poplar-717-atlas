@@ -98,6 +98,13 @@ await check('gene-paralog', '#/gene/PtXaTreH.01G330600',
 // A curated tandem-array member: array identity, size, age bin and member links.
 await check('gene-tandem-array', '#/gene/PtXaTreH.01G330700',
   { expect: ['Tandem array', 'Array members', 'neighbours on the chromosome'], wait: 1400 });
+// PAV (TODO 21): a DIAMOND-confirmed hemizygous gene, and a "not confirmed" one whose
+// contradicting hit is named -- so a wrong-branch bug (the confirmed/not-confirmed text
+// swapped) can't hide behind whichever branch happens to render.
+await check('gene-pav-confirmed', '#/gene/PtXaTreH.12G001400',
+  { expect: ['Presence', 'HAP1-only', 'confirmed', 'DIAMOND PAV'], wait: 900 });
+await check('gene-pav-not-confirmed', '#/gene/PtXaTreH.T006000',
+  { expect: ['Presence', 'not confirmed', 'detection gap', 'PtXaAlbH.14G167700'], wait: 900 });
 await check('module-protein', '#/module/protein',
   { expect: ['Protein', 'ESMFold', 'pLDDT proxy', 'never pooled', 'peptide',
              'r = −0.49', 'run length'] });

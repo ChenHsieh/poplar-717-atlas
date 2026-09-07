@@ -3,6 +3,47 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## 0.3.8 — 2026-09-06
+
+**Fixed — the "missing" duplication and PAV sources were never actually missing (TODO 21)**
+The 2026-09-05 audit's `docs/DATA_AUDIT.md` and this file's own `TODO.md`/`HANDOFF.md`
+claimed the canonical `tier1_floor` PAV table and `master_duplication_table_v6.csv` were
+absent from the ms1-dup mirror. Checked directly instead of trusted, and both are present,
+under names the audit never searched for: `hemizygous_pav_diamond.csv` (PAV) and
+`master_duplication_table_v9.csv` (duplication -- v6 is itself superseded by v9, so
+chasing the file this TODO literally named would have imported an already-stale table).
+
+**Duplication moved from v8 to v9 -- and 0 genes actually changed.** Checked before
+assuming: the atlas's existing `dupclass_membership_v8.csv` source had already been
+carrying the adopted WGD rule 5c letters (byte-identical from the v8 freeze, per that
+table's own build history) and the current TD union set (6,663/6,385 tandem genes,
+matching the canonical numbers exactly) despite its name. The swap is kept anyway --
+provenance should point at the table that is actually canonical, not one whose own name
+and this repo's own comments both claimed staleness that measurement showed was untrue.
+
+**PAV/hemizygosity added for the first time.** Not a swap: the atlas has never shipped
+this layer. `hemizygous_pav_diamond.csv` is a 6,092-gene candidate set (from an
+asymmetric HAP1/HAP2 orthogroup), of which 805 HAP1 / 859 HAP2 are DIAMOND-confirmed
+hemizygous -- exactly the numbers already cited elsewhere in this project as canonical.
+Shown as a "Presence" card only on genes in the candidate set (no key at all for the
+other ~58,000, same convention as ESMFold's coverage-limited layer): confirmed genes get
+a plain verdict, unconfirmed ones name the contradicting DIAMOND hit and are captioned as
+a likely detection gap in the original orthogroup call, not a confirmed absence.
+
+**A real bug, caught by the render suite before it ever loaded a page.** The first draft
+of the PAV card's nested ternary lost track of one closing parenthesis, which broke
+`duplication.js`'s module parse -- and because ES modules fail atomically, every route on
+the site went blank with a single `pageerror`, not just the duplication card. Rewritten
+with intermediate variables instead of deep nesting specifically to make this class of
+mistake harder to make, not just to fix this one instance.
+
+**Checks.** `validate_data.py` gains three: tandem gene counts match the canonical union
+totals per haplotype, PAV-confirmed counts match the canonical 805/859, and every
+"not confirmed" PAV record's named target resolves to a real gene. `check.mjs` gains two,
+a DIAMOND-confirmed gene and a not-confirmed one with a named contradicting hit, so a
+swapped confirmed/not-confirmed branch cannot hide behind whichever case happens to
+render. Screenshots reviewed for both.
+
 ## 0.3.7 — 2026-09-06
 
 **Added — ComBat-seq batch-corrected values, opt-in per gene (TODO 18)**

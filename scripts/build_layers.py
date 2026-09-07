@@ -5,11 +5,25 @@ Ingests the genome-wide computed layers from the MS1 and MS2 analysis repos.
 Sources (all keyed on gene_id, all genome-wide unless noted):
 
   ms1-dup
-    dupclass_membership_v8.csv        duplication class: S salicoid WGD / A ancient WGD /
-                                      T tandem / D dispersed, concatenated; "C" = none of them
+    master_duplication_table_v9.csv   duplication class: S salicoid WGD / A ancient WGD /
+                                      T tandem (union set) / D dispersed, concatenated;
+                                      "C" = none of them. Supersedes dupclass_membership_v8.csv
+                                      (2026-09-06, TODO 21) -- checked against it directly at
+                                      the swap: 0 genes differed, since the WGD letters were
+                                      already carried byte-identical from the v8 freeze and the
+                                      T set was already the adopted union (6,663/6,385). Kept
+                                      the swap anyway: the v8 file's name and this comment both
+                                      claimed staleness that was no longer true, and nothing
+                                      guarantees that file keeps tracking v9 as either evolves.
     gene_te_distances_*.csv           distance to the nearest TE, per superfamily
     gene_intron_counts.csv            exon / intron counts
-    hemi_pav_crosstab.csv             HAP1:HAP2 relationship and strict PAV
+    hemizygous_pav_diamond.csv        PAV / hemizygosity, DIAMOND-based tier1_floor call
+                                      (805/859 confirmed HAP1/HAP2). Added 2026-09-06 (TODO 21)
+                                      -- the earlier hemi_pav_crosstab.csv is the OrthoFinder
+                                      call ms1-dup's own CLAUDE.md forbids (2,075/1,942); this
+                                      file was believed absent from the mirror and was not,
+                                      just named differently than the audit searched for.
+                                      Scope: 6,092 candidate hemizygous genes, not genome-wide.
   ms2-lsg
     predicted_disorder_genomewide.tsv mean disorder, disordered fraction
     secondary_structure_summary.tsv   ESMFold helix/strand/coil + pLDDT -- 40,685 of 63,960
@@ -123,11 +137,11 @@ def main():
     cov = {}
 
     # ---- duplication class -------------------------------------------------------------
-    d = read_rows(f"{MS1}/ms1-figures/data/dupclass_membership_v8.csv", ",")
+    d = read_rows(f"{MS1}/data/55_master_v9_20260902/master_duplication_table_v9.csv", ",")
     tf = lambda v: 1 if str(v).strip().lower() == "true" else 0
     for g, r in d.items():
-        L[g]["dup"] = {"t": r["dup_type_v8"], "s": tf(r["has_S_v8"]), "a": tf(r["has_A_v8"]),
-                       "td": tf(r["has_T_v8"]), "d": tf(r["has_D_v6"])}
+        L[g]["dup"] = {"t": r["dup_type_v9"], "s": tf(r["has_S_v9"]), "a": tf(r["has_A_v9"]),
+                       "td": tf(r["has_T_union"]), "d": tf(r["has_D_v6"])}
     cov["duplication class"] = len(d)
 
     # ---- TE proximity, re-derived from the AUTHORITATIVE repeatmasker annotation --------
@@ -234,13 +248,24 @@ def main():
                 n_gs += 1
     cov["exon/intron (re-derived from v5.1 GFF3, longest isoform)"] = n_gs
 
-    # ---- PAV / hemizygosity: REMOVED after audit (2026-09-05) --------------------------
-    # hemi_pav_crosstab.csv is the ORTHOGROUP-based PAV call. ms1-dup CLAUDE.md 166:
-    #   "Do NOT use the OG/OrthoFinder PAV call (2,075 / 1,942) -- the canonical PAV call is
-    #    DIAMOND-based `tier1_floor` (805 / 859)."
-    # The ingested table gives 2,356 / 2,117 and carries an `n_ogs` column, so it is that
-    # forbidden family. The canonical tier1_floor table is not present in this mirror, so the
-    # atlas ships NO PAV layer rather than the wrong one.
+    # ---- PAV / hemizygosity: ADDED 2026-09-06 (TODO 21) ---------------------------------
+    # The 2026-09-05 audit was right to reject hemi_pav_crosstab.csv (the forbidden
+    # OrthoFinder family, 2,356/2,117) but wrong that the canonical file was absent from
+    # the mirror -- it is present as hemizygous_pav_diamond.csv, confirmed here to give
+    # exactly 805/859. Scope is the 6,092-gene candidate set only; a gene outside it gets
+    # no `pav` key, same convention as ESMFold's 64% coverage below.
+    d = read_rows(f"{MS1}/data/02_synteny_section/hemizygous_pav_diamond.csv", ",")
+    n_pav = 0
+    for g, r in d.items():
+        L[g]["pav"] = {
+            "rel": r["relationship"], "confirmed": r["is_pav_diamond"].strip().lower() == "true",
+            "nhits": int(r["n_diamond_hits_partner_hap"]),
+            "target": r["best_target_partner_hap"] or None,
+            "pident": float(r["best_pident"]) if r["best_pident"] else None,
+            "evalue": r["best_evalue"] or None,
+        }
+        n_pav += 1
+    cov["PAV / hemizygosity (DIAMOND tier1_floor, candidate set only)"] = n_pav
 
     # ---- disorder ------------------------------------------------------------------------
     d = read_rows(f"{MS2}/analyses/strict_control_audit/results/predicted_disorder_genomewide.tsv", "\t")

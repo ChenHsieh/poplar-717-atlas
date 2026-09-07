@@ -92,7 +92,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.3.7",
+ "data_version": "0.3.8",
  "duplication": {
   "ks_by_rank": {
    "12": {
@@ -133,6 +133,7 @@
   "n_pairs": 1346,
   "n_saturated": 11,
   "scope": "Chapter tier-2 selection, NOT genome-wide: pairs are concentrated at phylostrata 16-18 with a rank-12 Pentapetalae comparator set. Any Ks distribution here describes that selection, not the genome.",
+  "source": "master_duplication_table_v9.csv (rule 5c + 178-conflict WGD resolution, TD union set) -- supersedes dupclass_membership_v8.csv",
   "sources": {
    "founder": 861,
    "synteny": 485
@@ -238,6 +239,13 @@
   "promoter"
  ],
  "n_genes": 63960,
+ "pav": {
+  "candidate_genes": 6092,
+  "confirmed_hap1": 805,
+  "confirmed_hap2": 859,
+  "confirmed_pav": 1664,
+  "source": "hemizygous_pav_diamond.csv (canonical DIAMOND-based tier1_floor call)"
+ },
  "phylostrat": {
   "by_rank": {
    "hap1": {

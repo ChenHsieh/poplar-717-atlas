@@ -24,7 +24,7 @@ function dupTypeLabel(d) {
 function geneCard(g) {
   const para = g.para;
   const inArray = !!((g.syn || {}).flags || {}).ar;
-  if (!para && !inArray && !g.dup && !g.te) return null;
+  if (!para && !inArray && !g.dup && !g.te && !g.pav) return null;
 
   const card = el('div', { class: 'card' },
     el('h2', {}, 'Duplication', el('span', { class: 'tag' }, 'MS1 duplication set')));
@@ -82,6 +82,44 @@ function geneCard(g) {
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:3px' },
           'GENESPACE placed this gene in a tandem array, but it is not in the curated union '
           + 'tandem set — so no array identity or age is available for it.'))));
+  }
+
+  // PAV / hemizygosity: a candidate set (6,092 genes from an asymmetric HAP1/HAP2
+  // orthogroup), not genome-wide -- g.pav is simply absent for the other ~58,000 genes,
+  // which is not the same as "confirmed present in both" and the card says so.
+  if (g.pav) {
+    const otherHap = g.hap === 'hap1' ? 'HAP2' : 'HAP1';
+    const side = g.pav.rel.endsWith('HAP1') ? 'HAP1' : 'HAP2';
+
+    let verdict;
+    if (g.pav.confirmed) {
+      verdict = el('div', { style: 'margin-top:4px' },
+        el('span', { class: 'badge' }, 'confirmed'),
+        el('span', { class: 'muted', style: 'font-size:12px' }, `  no same-genome hit found in ${otherHap}`));
+    } else {
+      const pctText = g.pav.pident != null ? ` (${g.pav.pident}% identity` : '';
+      const evText = g.pav.evalue ? `, E=${g.pav.evalue})` : (g.pav.pident != null ? ')' : '');
+      const targetLink = g.pav.target
+        ? el('a', { href: `#/gene/${g.pav.target}`, class: 'mono' }, g.pav.target)
+        : '—';
+      verdict = el('div', { style: 'margin-top:4px' },
+        el('span', { class: 'muted' }, 'not confirmed'),
+        el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+          `A hit exists in ${otherHap}: `, targetLink, pctText, evText,
+          el('div', { style: 'margin-top:2px' },
+            'This reads as a detection gap in the original orthogroup call, not a confirmed absence.')));
+    }
+
+    const kv = el('dl', { class: 'kv' });
+    kv.append(
+      el('dt', {}, 'Presence'),
+      el('dd', {},
+        el('strong', {}, `${side}-only, candidate`),
+        el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+          `Flagged by orthogroup structure as present only in ${side}. `
+          + 'DIAMOND PAV check, tier1_floor:'),
+        verdict));
+    card.append(kv);
   }
 
   if (para && para.length) {
