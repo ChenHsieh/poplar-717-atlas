@@ -12,7 +12,25 @@ const SHORT = {
   Egrandis: 'E. grandis', Vvinifera: 'V. vinifera', Athaliana: 'A. thaliana',
   Osativa: 'O. sativa', Ppatens: 'P. patens',
 };
-const PHYTOZOME = 'https://phytozome-next.jgi.doe.gov/report-gene/';
+// Genome-report links, verified 2026-09-08 by actually navigating to each of the
+// three, not inferred: PHYTOZOME_GENOME's HAP1/HAP2 slugs against a known gene of each
+// (Phytozome genome IDs 717/716), PTRICHOCARPA_GENOME against Potri.005G161100. The
+// previous constant here ('report-gene/', no genome segment) 404s for every gene -- it
+// was never a valid Phytozome URL.
+const PHYTOZOME_GENOME = { hap1: 'PtremulaxPopulusalbaHAP1_v5_1', hap2: 'PtremulaxPopulusalbaHAP2_v5_1' };
+const PTRICHOCARPA_GENOME = 'Ptrichocarpa_v4_1';
+const phytozomeGeneUrl = (genomeId, geneId) =>
+  `https://phytozome-next.jgi.doe.gov/report/gene/${genomeId}/${geneId}`;
+// Verified against the same known gene: the exact track list is one Chen already uses
+// day to day, not a guess at a sensible default -- keep it in step with how she reads
+// this view rather than curating a "better" set independently.
+const JBROWSE_TRACKS = 'Transcripts,Alt_Transcripts,PASA_assembly,'
+  + 'Blatx_BasalMalvidae,Blastx_protein,RNAExpression';
+const phytozomeBrowserUrl = (genomeId, chr, start, end) => {
+  const q = new URLSearchParams({ data: `genomes/${genomeId}`, loc: `${chr}:${start}..${end}`,
+    tracks: JBROWSE_TRACKS, highlight: '' });
+  return `https://phytozome-next.jgi.doe.gov/jbrowse/index.html?${q}`;
+};
 
 let termsCache = null;
 loadTerms().then((t) => { termsCache = t; }).catch(() => {});
@@ -78,7 +96,7 @@ function annotationCard(g) {
     const one = !!g.ptri.one2one;
     kv.append(el('dt', {}, 'P. trichocarpa ortholog'),
       el('dd', {},
-        el('a', { href: PHYTOZOME + g.ptri.id, target: '_blank', rel: 'noopener', class: 'mono' }, g.ptri.id),
+        el('a', { href: phytozomeGeneUrl(PTRICHOCARPA_GENOME, g.ptri.id), target: '_blank', rel: 'noopener', class: 'mono' }, g.ptri.id),
         one ? el('span', { class: 'muted' }, '  reciprocal 1:1')
             : el('span', { class: 'muted' }, `  ambiguous — ${g.ptri.n ? `${g.ptri.n} syntenic hits` : 'not reciprocal'}`),
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
@@ -88,8 +106,12 @@ function annotationCard(g) {
     kv.append(el('dt', {}, 'P. trichocarpa ortholog'),
       el('dd', { class: 'muted' }, 'no syntenic hit'));
   }
-  card.append(el('p', { style: 'margin:12px 0 0;font-size:12px' },
-    el('a', { href: PHYTOZOME + g.id, target: '_blank', rel: 'noopener' }, 'View on Phytozome ↗')));
+  const ownGenome = PHYTOZOME_GENOME[g.hap];
+  card.append(el('p', { style: 'margin:12px 0 0;font-size:12px;display:flex;gap:14px' },
+    el('a', { href: phytozomeGeneUrl(ownGenome, g.id), target: '_blank', rel: 'noopener' },
+      'View on Phytozome ↗'),
+    el('a', { href: phytozomeBrowserUrl(ownGenome, g.chr, g.start, g.end), target: '_blank', rel: 'noopener' },
+      'View in genome browser ↗')));
   return card;
 }
 

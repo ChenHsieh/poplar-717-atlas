@@ -351,6 +351,66 @@ await check('map-hap2', '#/map/hap2',
   await mp.close();
 }
 
+// Phytozome links (fixed 2026-09-08): the previous constant had no genome segment at
+// all and 404'd for every gene. Verify actual href values, not just that a link with
+// some text exists -- a wrong destination renders identically to a right one.
+{
+  const lp = await browser.newPage();
+  await lp.goto(base + '/#/gene/PtXaTreH.01G000600', { waitUntil: 'networkidle' });
+  await lp.waitForTimeout(900);
+  const hrefs = await lp.$$eval('a', (as) => as.map((a) => a.href));
+  const hap1Report = hrefs.includes('https://phytozome-next.jgi.doe.gov/report/gene/PtremulaxPopulusalbaHAP1_v5_1/PtXaTreH.01G000600');
+  const ptriReport = hrefs.some((h) => h.startsWith('https://phytozome-next.jgi.doe.gov/report/gene/Ptrichocarpa_v4_1/Potri.'));
+  const browserLink = hrefs.some((h) => h.startsWith('https://phytozome-next.jgi.doe.gov/jbrowse/index.html?')
+    && h.includes('data=genomes%2FPtremulaxPopulusalbaHAP1_v5_1') && h.includes('loc=Chr01%3A'));
+  await lp.close();
+
+  const lp2 = await browser.newPage();
+  await lp2.goto(base + '/#/gene/PtXaAlbH.05G122300', { waitUntil: 'networkidle' });
+  await lp2.waitForTimeout(900);
+  const hrefs2 = await lp2.$$eval('a', (as) => as.map((a) => a.href));
+  const hap2Report = hrefs2.includes('https://phytozome-next.jgi.doe.gov/report/gene/PtremulaxPopulusalbaHAP2_v5_1/PtXaAlbH.05G122300');
+  await lp2.close();
+
+  const ok = hap1Report && ptriReport && browserLink && hap2Report;
+  if (!ok) failures++;
+  console.log(`\n### phytozome-links  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   hap1 report=${hap1Report}  ptri report=${ptriReport}  jbrowse=${browserLink}  hap2 report=${hap2Report}`);
+}
+
+// Mirror (plan section 2.2): renders on a gene with a real allele partner, shows both a
+// fully-resolved neighbourhood and one with genuine hemizygous gaps (no ribbon), and a
+// click on the OTHER haplotype's strip actually navigates there -- driven, not just
+// rendered, since the whole point is comparing two independently-coordinated genomes.
+await check('mirror-full', '#/gene/PtXaTreH.05G120200',
+  { expect: ['Mirror', 'both haplotypes', 'HAP1 (TreH) above', 'HAP2 (AlbH) below'], wait: 1200 });
+// This gene's neighbourhood runs into a real HAP1-only stretch (verified against pav.confirmed
+// directly): the card must say so in its own count, not just render silently.
+await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
+  { expect: ['Mirror', 'with none'], wait: 1200 });
+{
+  const mp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const merrs = [];
+  mp.on('pageerror', (e) => merrs.push(e.message));
+  mp.on('console', (m) => { if (m.type() === 'error') merrs.push(m.text()); });
+  await mp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
+  await mp.waitForTimeout(1200);
+  const h = await mp.$('h2:has-text("Mirror")');
+  await h.scrollIntoViewIfNeeded();
+  await mp.waitForTimeout(500);
+  const canvases = await mp.$$('.locus-canvas');
+  const box = await canvases[1].boundingBox();  // [0] is the Locus card's own canvas
+  await mp.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.8);
+  await mp.waitForTimeout(700);
+  const navigated = /#\/gene\/PtXaAlbH\./.test(mp.url());
+  const ok = navigated && !merrs.length;
+  if (!ok) failures++;
+  console.log(`\n### mirror:cross-haplotype-click  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   url after click: ${mp.url()}`);
+  merrs.forEach((e) => console.log('   !! ' + e));
+  await mp.close();
+}
+
 await browser.close();
 console.log(`\n${failures ? `${failures} CHECK(S) FAILED` : 'ALL CHECKS PASSED'}`);
 process.exit(failures ? 1 : 0);

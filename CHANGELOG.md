@@ -3,6 +3,73 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## Fixed — every Phytozome link on the site was broken
+
+The constant behind both links pointed at `report-gene/` with no genome segment at all
+(`https://phytozome-next.jgi.doe.gov/report-gene/<id>`), which 404s for every gene -- it was
+never a valid URL on the current site. Replaced with the real pattern,
+`.../report/gene/<genome-id>/<gene-id>`, and the three genome-id slugs verified by actually
+navigating to each rather than guessed: `PtremulaxPopulusalbaHAP1_v5_1`,
+`PtremulaxPopulusalbaHAP2_v5_1` (confirmed against Phytozome's own reported genome IDs, 717
+and 716), and `Ptrichocarpa_v4_1` for the cross-species ortholog link (found via Phytozome's
+own genome picker after a first guess at the slug 404'd -- not assumed from the pattern of
+the other two).
+
+**Added a second link**: "View in genome browser," to Phytozome's JBrowse instance at this
+gene's own coordinates, with the track set Chen already uses day to day
+(`Transcripts,Alt_Transcripts,PASA_assembly,Blatx_BasalMalvidae,Blastx_protein,RNAExpression`)
+rather than a guessed-at default. Verified byte-for-byte: `URLSearchParams` reproduces the
+exact percent-encoding of a known-working example URL before trusting it in the codebase.
+
+`check.mjs` gains a check that reads the actual `href` values of all three link kinds (own
+gene report, cross-species ortholog report, genome browser) on both a HAP1 and a HAP2 gene
+page -- a wrong destination renders identically to a right one, so only the href itself
+proves it.
+
+## Mirror view — the locus-map plan's section 2.2, shipped 2026-09-08
+
+The two-strand, haplotype-native view: the syntenic HAP2 locus drawn flipped to face its
+HAP1 counterpart, with ribbons between allele pairs. New card on the gene page, right below
+Locus, rendered only for a gene that itself has an allele partner (a gene with none has
+nothing to anchor the view on).
+
+No new data build. Reuses the same locus tiles the Locus card already fetches -- which
+already carry each gene's allele-partner id -- plus the ordinary per-gene shard lookup
+(`getGene`) to resolve a partner's own position, structure and Ks. Ribbon crossing (a local
+inversion) and copy-number asymmetry are not detected by special-case code; they fall out
+for free from mapping each side by its own true coordinate, the same "let the data draw
+itself" approach as the rest of this project's figures.
+
+**A hemizygous gene reads as a gap, honestly.** The two haplotypes are independently
+assembled genomes with no shared coordinate system, so "an empty slot on the other strand"
+(the plan's own phrase) is drawn as simply no ribbon reaching that gene, rather than a
+fabricated shared axis pretending to align two different physical sequences. Verified
+against a real case: `PtXaTreH.12G001200`'s neighbourhood runs into a confirmed HAP1-only
+stretch (checked against the PAV layer's own `confirmed` flag before treating it as a good
+test case), and the card correctly reports "9 with none" alongside the 8 that do have a
+partner.
+
+**Deliberately not drawn**: tandem-array brackets grouping array members into one visual
+unit. The ribbon view already shows a size mismatch as an uneven ribbon count landing in a
+shorter span; a dedicated bracket is a follow-up, not silently pretended here.
+
+**A real caching trap, worth recording.** The card worked when called directly in the
+console but did not appear on the actual page after a hash-only navigation, a full
+`index.html` reload, and even a brand-new tab -- all three still showed the pre-existing
+site with no trace of the new module. Root cause, confirmed by fetching the same URL with
+and without `cache: 'no-store'`: the browser's ordinary HTTP cache was serving a stale
+`registry.js` left over from earlier in this same long-lived session, and modules imported
+by a stale file are never fetched at all, so the new file's own correctness was never in
+question. Fixed by serving from a fresh port with no cache history, not by changing any
+code -- worth remembering for the next feature added in this same browser session.
+
+**Checks.** `check.mjs` gains three: the card renders on a gene with a fully-resolved
+neighbourhood, renders on a gene whose neighbourhood has genuine hemizygous gaps and reports
+them in its own count, and a driven click on the OTHER haplotype's strip actually navigates
+to a real gene on that haplotype -- 44/44 total pass. Screenshots reviewed for a fully-paired
+neighbourhood, a neighbourhood with real gaps, and the phone layout (no horizontal scroll,
+the same reduced flank the Locus card already uses on narrow screens).
+
 ## Genome map — the locus-map plan's section 2.4, shipped 2026-09-07
 
 Semantic zoom from all 19 chromosomes down to one chromosome's genes, then a click hands

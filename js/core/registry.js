@@ -16,9 +16,10 @@ import phylostrat from '../modules/phylostrat.js';
 import duplication from '../modules/duplication.js';
 import protein from '../modules/protein.js';
 import locus from '../modules/locus.js';
+import mirror from '../modules/mirror.js';
 import promoter from '../modules/promoter.js';
 import about from '../modules/about.js';
 
 // annotation first: 'what is this gene' should be the top card on a gene page.
-export const MODULES = [annotation, locus, promoter, synteny, phylostrat, duplication, protein, expression, about];
+export const MODULES = [annotation, locus, mirror, promoter, synteny, phylostrat, duplication, protein, expression, about];
 export const byId = (id) => MODULES.find((m) => m.id === id);
