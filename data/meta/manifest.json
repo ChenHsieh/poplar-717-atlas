@@ -92,7 +92,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.3.9",
+ "data_version": "0.3.10",
  "duplication": {
   "ks_by_rank": {
    "12": {
@@ -144,6 +144,8 @@
   "combat_eligible_genes": 59599,
   "n_bioprojects": 38,
   "n_buckets": 257,
+  "n_contrasts": 191,
+  "n_contrasts_recommended": 117,
   "n_samples": 652,
   "n_studies": 28,
   "tau_excludes": [

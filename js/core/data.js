@@ -206,3 +206,7 @@ export const loadLocusOverview = () => fetchJSON('data/locus/overview.json');
 /** Every gene on one chromosome, position and class only (no structure) -- for the
  *  genome map's per-chromosome zoom. Sorted by start already. */
 export const loadLocusIndex = (hap, chr) => fetchJSON(`data/locus/index/${hap}/${chr}.json`);
+
+/** The 191-contrast panel, sample labels already resolved to their fixed index in
+ *  samples.json / any raw expression vector. One small fetch, loaded once. */
+export const loadContrasts = () => fetchJSON('data/expr/contrasts.json');

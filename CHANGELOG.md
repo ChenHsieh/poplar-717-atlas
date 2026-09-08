@@ -3,6 +3,79 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## Expression scrubber — the locus-map plan's section 2.3, shipped 2026-09-07
+
+Paint the same locus window Locus and Mirror already draw, but by expression instead of
+duplication class: click through the 10 tissues for median TPM, or pick one of the curated
+panel's 191 perturbation contrasts for a live log2 fold-change. New card on the gene page,
+gated on the gene actually carrying an expression shard (`g.x`).
+
+The plan's own framing was "pure client work," since the data is already in the two bucket
+files the locus fetched. Tissue mode is literally that -- each gene's own `x.t[tissue]`
+median, no new build. Contrast mode needed one bridge: MS1's canonical curated panel,
+`data/50_v4_panel_20260814/v4_contrasts_20260814.csv` (191 rows), names each contrast's
+control and perturbation arm as sample LABELS, not positions in this site's own 652-sample
+vector order. A new script, `scripts/build_contrasts.py`, resolves each label to its fixed
+index once at build time and ships a 191-entry `data/expr/contrasts.json` (index lists
+only, no per-gene values) -- the fold-change itself, `log2((mean perturbation + 1) /
+(mean control + 1))`, is computed live in the browser from each gene's already-fetched raw
+652-sample vector against whichever contrast the reader picks. No 63,960-gene by
+191-contrast table was built or shipped; the arithmetic is cheap enough per gene that
+shipping the inputs and computing on demand beats shipping the outputs.
+
+**A file that looks like exactly this precomputed table already exists on disk, and is
+not used.** `data/v7_supporting/log2FC_per_gene_per_contrast_v4.csv` (225 MB) was checked,
+not assumed: 47 distinct contrast ids on an underscore naming scheme
+(`control_500CO2_non-recovered`) against the current panel's own comma scheme and full
+191-contrast count, and a file three months older than the panel it would need to match.
+Documented inline in `build_contrasts.py`'s own docstring so the next session doesn't
+rediscover this by re-reading 225 MB.
+
+**Ships one strip with a mode toggle, not two permanent strips.** The plan text describes
+tissue and contrast as two simultaneous draggable strips. Both modes paint the identical
+gene window on the identical x-axis, so a second permanently-visible strip would only
+double the canvas, not add information -- and 191 contrasts do not fit a row of chips, so
+contrast selection is a single `<select>` grouped into four optgroups by kind (treatment,
+genotype, other condition, growth condition) rather than a strip. Opens on the gene's own
+top-expressed tissue (`g.x.top`) rather than an arbitrary first tissue, so the default view
+is already meaningful rather than blank.
+
+**A visualization bug caught by looking at the screenshot, not the numbers.** The first
+render used a linear min-max scale directly on tissue TPM; the result was a near-blank
+window with only the single loudest gene visible, because TPM is heavily right-skewed.
+Fixed by scaling `log2(TPM+1)` before normalizing for the tissue strip -- the same
+transform the site's raw vectors are read in elsewhere -- while contrast mode's log2FC
+values, already log-scaled, are used as-is.
+
+**Three real bugs surfaced before shipping, each caught by a different check.** An edit to
+the `<select>` option values corrupted the intended `|` separator into a literal SOH
+control byte in two places, surfacing as a confusing silent no-op on `split('|')` rather
+than an exception; found only by dumping the file with `od -c` after higher-level checks
+kept passing against stale cached content, fixed with a direct byte-level
+`perl -i -pe 's/\x01/|/g'` and confirmed at zero occurrences afterward. Switching to
+"By contrast" without ever touching the dropdown left the previous tissue-mode caption on
+screen, because a `<select>`'s browser-assigned first option does not fire its own
+`change` event; fixed by hoisting the option-lookup map out of the load closure so the
+mode button's own click handler can resolve and paint the implied first option exactly as
+the `change` handler would. And giving the 10 tissue chips `min-width:0` to keep them
+visually compact silently dropped them below the site's established 44px WCAG touch-target
+floor, while nearly tripling the page's total `.locus-btn` count and breaking the
+pre-existing `locus-desktop`/`locus-phone` checks, which had assumed -- correctly, until
+this card reused the same class -- that the whole page has exactly 4 such buttons; fixed by
+dropping the override, moving the contrast `<select>` out of `.locus-btn` entirely (it
+needs its own width, not a fixed floor), rescoping those two checks to the same card as the
+canvas they test rather than the whole document, and adding a dedicated
+`scrubber:touch-targets` check so this specific regression can't recur silently.
+
+**Checks.** `validate_data.py` gains three: `contrasts.json` has exactly 191 entries, every
+sample index it names is in range for `samples.json`, and both arms of every contrast are
+non-empty. `check.mjs` gains four: the tissue strip opens on the gene's own top tissue by
+default, switching to contrast mode without touching the select still paints the implied
+selection, a driven click through the canvas navigates to a real gene, and the touch-target
+regression above -- 51/51 total pass, including `locus-desktop`/`locus-phone` restored to
+their original page-wide count of 4. Screenshots reviewed for two tissues, one contrast,
+and the phone layout (no horizontal scroll).
+
 ## Fixed — every Phytozome link on the site was broken
 
 The constant behind both links pointed at `report-gene/` with no genome segment at all

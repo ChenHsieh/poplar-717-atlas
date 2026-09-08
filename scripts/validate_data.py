@@ -180,6 +180,26 @@ def main():
         check("every genome-map index gene is a real atlas gene", not idx_bad_gene,
               f"{len(idx_bad_gene)} unknown, e.g. {idx_bad_gene[:3]}" if idx_bad_gene else "")
 
+    # Expression scrubber (section 2.3): every contrast's sample indices must be in
+    # range for the 652-sample vectors they will index into, and both arms non-empty.
+    contrasts_path = f"{DATA}/expr/contrasts.json"
+    if os.path.exists(contrasts_path):
+        contrasts = json.load(open(contrasts_path))
+        n_samples = (man.get("expression") or {}).get("n_samples")
+        bad_range, bad_empty = [], []
+        for c in contrasts:
+            idxs = c["ctrl"] + c["pert"]
+            if any(i < 0 or (n_samples and i >= n_samples) for i in idxs):
+                bad_range.append(c["id"])
+            if not c["ctrl"] or not c["pert"]:
+                bad_empty.append(c["id"])
+        check("contrasts.json covers the full 191-contrast panel", len(contrasts) == 191,
+              str(len(contrasts)))
+        check("every contrast sample index is in range", not bad_range,
+              f"{len(bad_range)} bad, e.g. {bad_range[:3]}" if bad_range else "")
+        check("every contrast has both a control and a perturbation arm", not bad_empty,
+              f"{len(bad_empty)} bad, e.g. {bad_empty[:3]}" if bad_empty else "")
+
     qc_outside_pool = [gid for gid, (_, _, rec) in genes.items()
                        if rec.get("qc") and (rec.get("ps") or {}).get("rank", -1) < 18]
     check("every qc record sits on an LSG-pool gene (PS >= 18)", not qc_outside_pool,

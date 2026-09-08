@@ -213,7 +213,11 @@ for (const [label, vw, vh, dpr] of [['locus-desktop', 1180, 900, 1], ['locus-pho
     const px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
     const seen = new Set();
     for (let i = 0; i < px.length; i += 4 * 97) seen.add(px[i] + ',' + px[i + 1] + ',' + px[i + 2]);
-    const btns = [...document.querySelectorAll('.locus-btn')]
+    // Scoped to the SAME card as the canvas above -- .locus-btn is now also used by the
+    // Expression scrubber card (added 2026-09-08), a legitimate second user of the same
+    // touch-target-compliant class, not a regression. A page-wide count would conflate
+    // the two cards' controls; per-card is what "the Locus card's 4 controls" ever meant.
+    const btns = [...cv.closest('.card').querySelectorAll('.locus-btn')]
       .map((b) => b.getBoundingClientRect()).map((q) => Math.min(q.width, q.height));
     return {
       colours: seen.size, ratio: +(cv.width / box.width).toFixed(2),
@@ -409,6 +413,67 @@ await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
   console.log(`   url after click: ${mp.url()}`);
   merrs.forEach((e) => console.log('   !! ' + e));
   await mp.close();
+}
+
+// Expression scrubber (plan section 2.3): renders, defaults to the focal gene's own top
+// tissue, and switching to contrast mode paints and captions correctly even with NO
+// manual selection -- a real bug caught during development, where the <select> showed a
+// value the browser auto-picks with no 'change' event to hook, while the caption and
+// canvas still showed stale tissue-mode content. Checked here so it cannot silently
+// return.
+await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
+  { expect: ['Expression scrubber', 'By tissue', 'By contrast', 'Median TPM in catkin'], wait: 1200 });
+{
+  const sp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const serrs2 = [];
+  sp.on('pageerror', (e) => serrs2.push(e.message));
+  sp.on('console', (m) => { if (m.type() === 'error') serrs2.push(m.text()); });
+  await sp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
+  await sp.waitForTimeout(1200);
+  const h = await sp.$('h2:has-text("Expression scrubber")');
+  await h.scrollIntoViewIfNeeded();
+  await sp.waitForTimeout(500);
+  // Switch mode WITHOUT ever touching the <select> -- the exact scenario that failed.
+  await sp.click('button:has-text("By contrast")');
+  await sp.waitForTimeout(700);
+  const text = await sp.evaluate(() => document.getElementById('view').innerText);
+  const ok = text.includes('log2((mean perturbation') && text.includes('Orange = higher') && !serrs2.length;
+  if (!ok) failures++;
+  console.log(`\n### scrubber:contrast-mode-no-manual-select  ${ok ? 'OK' : 'FAIL'}`);
+  serrs2.forEach((e) => console.log('   !! ' + e));
+  // Click-through still works from this card too.
+  const canvases = await sp.$$('.locus-canvas');
+  const box = await canvases[canvases.length - 1].boundingBox();
+  await sp.mouse.click(box.x + box.width * 0.05, box.y + box.height * 0.5);
+  await sp.waitForTimeout(600);
+  const navigated = sp.url() !== base + '/#/gene/PtXaTreH.05G120200';
+  if (!navigated) failures++;
+  console.log(`### scrubber:click-through  ${navigated ? 'OK' : 'FAIL'}  url: ${sp.url()}`);
+  await sp.close();
+}
+
+// The scrubber's own tissue chips and mode buttons are real tap targets (10 chips, easy
+// to reach for on a phone) -- they must meet the same 44px floor as every other button
+// on the site, not a smaller one because there happen to be more of them. Caught once
+// already in development (an inline min-width:0 silently opted them out); asserted here
+// so it cannot regress silently a second time.
+{
+  const tp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  await tp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
+  await tp.waitForTimeout(1200);
+  const h = await tp.$('h2:has-text("Expression scrubber")');
+  await h.scrollIntoViewIfNeeded();
+  const r = await tp.evaluate(() => {
+    const card = [...document.querySelectorAll('.card')]
+      .find((c) => c.querySelector('h2')?.textContent.includes('Expression scrubber'));
+    const btns = [...card.querySelectorAll('.locus-btn')]
+      .map((b) => b.getBoundingClientRect()).map((q) => Math.min(q.width, q.height));
+    return { n: btns.length, min: btns.length ? Math.min(...btns) : 0 };
+  });
+  const ok = r.n === 12 && r.min >= 44;  // 2 mode buttons + 10 tissue chips
+  if (!ok) failures++;
+  console.log(`\n### scrubber:touch-targets  ${ok ? 'OK' : 'FAIL'}  n=${r.n} min=${r.min}px`);
+  await tp.close();
 }
 
 await browser.close();
