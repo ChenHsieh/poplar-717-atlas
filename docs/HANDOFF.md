@@ -2,11 +2,13 @@
 
 For whoever picks this up next, on any machine. Read this before touching `data/`.
 
-## The one thing that will bite you
+## The two things that will bite you
 
-**`scripts/build_data.py` wipes and rewrites `data/genes/`. Every other build script patches
-those shards.** Run it alone and you get a `data/` directory that looks fine, loads fine, and is
-silently missing eleven layers.
+### 1. The build destroys before it creates
+
+**`scripts/build_data.py` wipes and rewrites `data/genes/`. Every later stage patches those
+shards.** Run it alone and you get a `data/` directory that looks fine, loads fine, and is
+silently missing a dozen layers.
 
 The patchers only ADD keys — they never remove one. So if a layer is dropped from the build
 code, its old values survive in `data/` until a full rebuild wipes the shards. That actually
@@ -16,21 +18,40 @@ downloadable, until a full rebuild purged them.
 Never run the build scripts individually. Use:
 
 ```bash
-scripts/build_all.sh        # preflight, then all 8 stages in the only correct order
+scripts/build_all.sh        # every stage, in the only correct order
 ```
 
-It takes about 3 minutes and is deterministic: two consecutive runs produce byte-identical
-output for all 277 gene shards and every index file. Only `manifest.json` changes, by its
-`built` timestamp. So `git status` after a rebuild is a real signal — if a gene shard moved,
-something upstream changed.
+### 2. No single machine can run every stage
 
-**The build only runs on UGA Sapelo2.** Every source lives under `/scratch/ch29576` or
-`/work/cjtlab`. `scripts/preflight.py` checks all 13 source groups and refuses to start
-elsewhere, rather than half-building. On any other machine:
+The core stages read Sapelo2-local sources (`/scratch/ch29576`, `/work/cjtlab`). Four later
+stages read the OneDrive `MS1_2026` tree, which is on Chen's Mac and is **not** mounted on
+Sapelo2. So a complete `data/` is a two-machine sequence:
 
-- You **can**: edit the site, serve it, run `scripts/validate_data.py`, run `scripts/check.mjs`,
-  and deploy. The committed `data/` **is** the artifact.
-- You **cannot**: rebuild `data/`. Don't try; you'll destroy it.
+```bash
+# on Sapelo2
+scripts/build_all.sh --allow-partial   &&  git add -A data && git commit && git push
+# on the Mac
+git pull  &&  scripts/build_all.sh --allow-partial   # re-applies its stages, rewrites facets
+```
+
+`build_all.sh` classifies every stage by which source tree it needs, probes what is present,
+and **refuses to start** unless it can finish — aborting *before* `build_data.py` wipes layers
+the current machine could not restore. `--allow-partial` is the explicit opt-in to doing half
+the job. If a tree does get wiped, `git checkout -- data/` restores it; the committed `data/`
+**is** the artifact.
+
+`scripts/validate_data.py` is the backstop: it asserts the canonical per-layer counts (PAV
+805/859, TD 6663/6385, 191 contrasts, every gene has a `cre` record and a locus tile), so a
+partial build fails loudly rather than shipping.
+
+### Determinism
+
+Two consecutive runs produce byte-identical output for all 277 gene shards and all 27 index
+files, so `git status` after a rebuild is a real signal. That was **not** true until
+2026-09-08: `build_annotation.py` iterated a `set` of locus ids, and Python randomises string
+hashing per process, so every build silently reshuffled the search index and redrew which of
+several conflicting descriptions labelled a PANTHER accession. Both are now sorted. If you
+add a stage, sort anything you iterate before it reaches a file.
 
 ## What this is
 
@@ -70,16 +91,27 @@ Standing verdicts:
 | **Read-only** | `ms2-lsg/pipeline/out/*.tsv` and `GOI_CANONICAL.tsv`, by Chen's standing instruction |
 | **Never publish** | LSG candidate labels (`LSG1.14g`, `XO14gHAP2`…) while the chapter is unpublished, and curator identity or verbatim curation quotes. `build_layers.py:sanitise_note` enforces the second |
 
-## Checks — run both, they catch different things
+## Checks — run all three, they catch different things
 
 ```bash
-python3 scripts/validate_data.py                    # 16 data-integrity checks, no browser
+python3 scripts/validate_data.py                    # 42 data-integrity checks, no browser
+python3 scripts/check_version.py                    # VERSION == manifest == CITATION.cff
 python3 -m http.server 8931 --bind 127.0.0.1 &
-node scripts/check.mjs                              # 28 rendered views + 3 driven interactions
+node scripts/check.mjs                              # rendered views + driven interactions
 node scripts/check.mjs https://chenhsieh.github.io/poplar-717-atlas shots-live   # against live
 ```
 
-CI runs both on every push. Two lessons already paid for:
+CI runs all three on every push.
+
+`check_version.py` exists because `data_version` was *read* in three places — the validator,
+the site footer, the About page — and *written* by nothing. It survived only as a hand-edit to
+the committed manifest, so the next full rebuild would have dropped it, and nothing would have
+failed: the footer hides the chip when the key is absent and About falls back to an em dash. A
+citable dataset would have quietly stopped saying which version it was. **To release: edit
+`VERSION`, add a `## X.Y.Z — date — title` entry to `CHANGELOG.md`, sync `CITATION.cff`, then
+rebuild** (`build_data.py` stamps `VERSION` into the manifest).
+
+Three lessons already paid for:
 
 - `check.mjs` asserts against `innerText`, which is **rendered** text. Assertions are
   case-insensitive because `table.data th` is uppercase — a styling rule should not decide
@@ -87,6 +119,11 @@ CI runs both on every push. Two lessons already paid for:
 - A passing text assertion does not mean the page is right. The phylostratigraphy chart once
   rendered as stacked text with no bars at all while every check passed, because the bar CSS
   classes were missing. **Look at a screenshot after any visual change.**
+- Neither check catches a value that is *stable and wrong*. 834 PANTHER accessions were
+  labelled with one arbitrary member gene's subfamily name (PTHR13832 was shipped as both
+  "PROTEIN PHOSPHATASE 1D" and "PROTEIN PHOSPHATASE 1K", depending on the build). Every check
+  passed throughout. It was found by diffing two rebuilds against each other, which is worth
+  doing after any change to a build script.
 
 ## Numbers that should stay stable
 

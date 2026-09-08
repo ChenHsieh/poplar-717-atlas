@@ -1,28 +1,137 @@
 #!/usr/bin/env bash
 # The data build, in the ONE order that produces a complete data/ directory.
 #
-# build_data.py WIPES and rewrites data/genes/; every other script PATCHES those shards.
-# Running build_data.py alone leaves a plausible-looking data/ that is silently missing
-# eleven layers, so this script exists to make the order un-gettable-wrong.
+# TWO THINGS MAKE THIS SCRIPT NECESSARY, and both have already caused real damage:
 #
-# Sources are Sapelo2-only. preflight.py stops before anything is written if they are absent.
+#   1. build_data.py WIPES and rewrites data/genes/; every later stage PATCHES those shards.
+#      Run out of order, or run alone, and you get a plausible-looking data/ that is silently
+#      missing layers.
+#
+#   2. NO SINGLE MACHINE CAN RUN EVERY STAGE. The core stages read Sapelo2-local sources
+#      (/scratch, /work). Four later stages read the OneDrive MS1_2026 tree, which is on
+#      Chen's Mac and is NOT mounted on Sapelo2. So a complete build is a two-machine
+#      sequence, and this script refuses to start a build it cannot finish -- BEFORE
+#      build_data.py destroys the layers this machine would be unable to restore.
+#
+# Usage:
+#   scripts/build_all.sh                  full build; aborts unless every stage can run here
+#   scripts/build_all.sh --allow-partial  run only the stages available here (see warning)
+#
+# Two-machine sequence, when no one machine has both source trees:
+#   Sapelo2 : scripts/build_all.sh --allow-partial   then commit and push
+#   The Mac : git pull && scripts/build_all.sh --allow-partial   then commit and push
+# The second machine's run re-applies its own stages and finishes with the facet index.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "== preflight =="
-python3 scripts/preflight.py
+ALLOW_PARTIAL=0
+[ "${1:-}" = "--allow-partial" ] && ALLOW_PARTIAL=1
 
-echo; echo "== 1/8 gene shards (WIPES data/genes) =="; python3 scripts/build_data.py --tier full
-echo; echo "== 2/8 expression =="                    ; python3 scripts/build_expression.py
-echo; echo "== 3/8 annotation + search index =="     ; python3 scripts/build_annotation.py
-echo; echo "== 4/8 phylostratigraphy context =="     ; python3 scripts/build_phylostrat.py
-echo; echo "== 5/8 duplication (paralog dS) =="      ; python3 scripts/build_duplication.py
-echo; echo "== 6/8 external genome-wide layers =="   ; python3 scripts/build_layers.py
-echo; echo "== 7/8 cross-species orthologs =="       ; python3 scripts/build_crossspecies.py
-echo; echo "== 8/8 facet index (must be LAST) =="    ; python3 scripts/build_facets.py
+# --- what each stage needs -------------------------------------------------------------
+# env|script|description.  Order is load-bearing; build_facets.py must stay last.
+STAGES=(
+  "sapelo2|build_data.py --tier full|gene shards (WIPES data/genes)"
+  "sapelo2|build_expression.py|expression"
+  "sapelo2|build_annotation.py|annotation + search index"
+  "sapelo2|build_phylostrat.py|phylostratigraphy context"
+  "sapelo2|build_duplication.py|duplication (paralog dS)"
+  "sapelo2|build_layers.py|external genome-wide layers"
+  "sapelo2|build_crossspecies.py|cross-species orthologs"
+  "onedrive|patch_dup_v9_and_pav.py|duplication v9 + PAV (after build_duplication)"
+  "repo|patch_lsg_qc.py|LSG evidence-quality flags (after build_phylostrat)"
+  "repo|build_cre.py|promoter/CRE layer"
+  "onedrive|build_combat.py|ComBat-seq view (after build_expression)"
+  "onedrive|build_contrasts.py|contrast index (after build_expression)"
+  "onedrive|build_locus.py|locus tiles + genome map"
+  "any|build_facets.py|facet index (MUST be last)"
+)
+# DELIBERATELY NOT A STAGE: patch_leaf_tissue_analysis.py. It is a one-time correction to
+# already-shipped data; build_expression.py is fixed at source, so a real rebuild already
+# produces the corrected baseline and re-running the patch would be a no-op at best.
 
-echo; echo "== validate =="; python3 scripts/validate_data.py
+# --- can this machine run each class? --------------------------------------------------
+have_sapelo2=0
+if python3 scripts/preflight.py >/tmp/preflight.$$ 2>&1; then have_sapelo2=1; fi
+
+# Ask the scripts themselves where the OneDrive tree is, so this probe cannot drift from them.
+MS1_ROOT="$(python3 - <<'PY'
+import re
+src = open("scripts/patch_dup_v9_and_pav.py").read()
+m = re.search(r'^MS1\s*=\s*"([^"]+)"', src, re.M)
+print(m.group(1) if m else "")
+PY
+)"
+have_onedrive=0
+[ -n "$MS1_ROOT" ] && [ -d "$MS1_ROOT" ] && have_onedrive=1
+
+avail() {
+  case "$1" in
+    sapelo2)  [ "$have_sapelo2"  = 1 ] ;;
+    onedrive) [ "$have_onedrive" = 1 ] ;;
+    *)        true ;;
+  esac
+}
+
+echo "== source availability =="
+echo "  Sapelo2 sources (/scratch, /work) : $([ $have_sapelo2  = 1 ] && echo present || echo ABSENT)"
+echo "  OneDrive MS1_2026 tree            : $([ $have_onedrive = 1 ] && echo present || echo ABSENT)"
+[ "$have_sapelo2" = 0 ] && { echo; echo "  preflight said:"; sed 's/^/    /' /tmp/preflight.$$; }
+rm -f /tmp/preflight.$$
+
+missing=()
+for s in "${STAGES[@]}"; do
+  IFS='|' read -r env script desc <<< "$s"
+  avail "$env" || missing+=("$script  ($env)")
+done
+
+if [ ${#missing[@]} -gt 0 ]; then
+  echo
+  echo "  ${#missing[@]} stage(s) cannot run on this machine:"
+  printf '    %s\n' "${missing[@]}"
+  if [ "$ALLOW_PARTIAL" = 0 ]; then
+    echo
+    echo "REFUSING TO BUILD. build_data.py would wipe data/genes and this machine could not"
+    echo "restore the layers listed above -- you would be left with a data/ that fails"
+    echo "validation and cannot be repaired here."
+    echo
+    echo "  To do your half of a two-machine build:  scripts/build_all.sh --allow-partial"
+    echo "  To recover a wiped tree at any time:     git checkout -- data/"
+    exit 1
+  fi
+  echo
+  echo "  --allow-partial given: running this machine's stages only."
+  echo "  data/ WILL BE INCOMPLETE and validation WILL FAIL until the other machine runs."
+fi
+
+# --- run -------------------------------------------------------------------------------
+n=0; total=${#STAGES[@]}
+for s in "${STAGES[@]}"; do
+  IFS='|' read -r env script desc <<< "$s"
+  n=$((n + 1))
+  if ! avail "$env"; then
+    echo; echo "== $n/$total SKIPPED ($env unavailable): $desc =="
+    continue
+  fi
+  echo; echo "== $n/$total $desc =="
+  # shellcheck disable=SC2086
+  python3 scripts/$script
+done
+
+echo; echo "== validate =="
+if [ ${#missing[@]} -gt 0 ]; then
+  echo "  (skipped: partial build, failures here would be expected and uninformative)"
+else
+  python3 scripts/validate_data.py
+fi
+
+echo; echo "== version consistency =="; python3 scripts/check_version.py
+
 echo
-echo "Build complete. Now run the render checks:"
-echo "  python3 -m http.server 8931 --bind 127.0.0.1 &"
-echo "  node scripts/check.mjs"
+if [ ${#missing[@]} -gt 0 ]; then
+  echo "PARTIAL build complete. Commit and push, then run the same command on the machine"
+  echo "that has the missing sources -- it finishes the job and rewrites the facet index."
+else
+  echo "Build complete. Now run the render checks:"
+  echo "  python3 -m http.server 8931 --bind 127.0.0.1 &"
+  echo "  node scripts/check.mjs"
+fi
