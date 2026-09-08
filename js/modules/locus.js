@@ -17,6 +17,7 @@
 // it resets all 2D context state, redraw synchronously, and re-arm a dpr watcher.
 import { el, clear } from '../core/dom.js';
 import { loadLocusTile } from '../core/data.js';
+import { palette, fillFor } from '../core/palette.js';
 
 const MB = 1_000_000;
 const MIN_CENTRE_GAP = 24;   // CSS px, SC 2.5.8 spacing allowance
@@ -27,37 +28,6 @@ const PAD_X = 10;
 const short = (id) => id.split('.')[1] || id;
 const isNarrow = () => window.matchMedia('(max-width: 640px)').matches;
 const defaultFlank = () => (isNarrow() ? 4 : 10);
-
-// Canvas fillStyle does NOT resolve CSS custom properties -- assigning
-// 'var(--c-tandem)' is silently invalid and leaves the previous colour. So the
-// tokens are read off the document and cached, and re-read when the theme flips.
-const CLASS_VAR = {
-  T: '--c-tandem', A: '--c-priv', S: '--c-core', D: '--c-disp', C: '--c-nonsyn',
-};
-let PALETTE = null;
-function palette() {
-  if (PALETTE) return PALETTE;
-  const cs = getComputedStyle(document.documentElement);
-  const g = (v, fb) => (cs.getPropertyValue(v).trim() || fb);
-  PALETTE = {
-    T: g('--c-tandem', '#e87ba4'), A: g('--c-priv', '#eda100'),
-    S: g('--c-core', '#2a78d6'), D: g('--c-disp', '#eb6834'),
-    C: g('--c-nonsyn', '#1baf7a'),
-    ink: g('--ink', '#111'), ink3: g('--ink-3', '#888'),
-    line: g('--line-2', '#ccc'), accent: g('--accent', '#2a78d6'),
-    panel: g('--panel', '#fff'),
-  };
-  return PALETTE;
-}
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { PALETTE = null; });
-
-// A gene's letters are concatenated (e.g. "ADS"); colour by the first structural one.
-const fillFor = (c) => {
-  const p = palette();
-  if (!c) return p.ink3;
-  for (const k of ['T', 'A', 'S', 'D', 'C']) if (c.includes(k)) return p[k];
-  return p.ink3;
-};
 
 /** Tiles covering a gene's neighbourhood. Usually 1, at a tile edge 2. */
 async function loadWindow(gene, flank) {

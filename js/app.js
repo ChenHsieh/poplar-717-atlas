@@ -5,6 +5,7 @@ import { MODULES, byId } from './core/registry.js';
 import { route, start, navigate } from './core/router.js';
 import { browseView } from './core/browse.js';
 import { searchResultsView } from './core/search.js';
+import { renderMap } from './modules/genomemap.js';
 
 const view = () => document.getElementById('view');
 const setView = (node) => { const v = clear(view()); v.append(node); window.scrollTo(0, 0); };
@@ -199,6 +200,24 @@ route(/^\/gene\/(.+)$/, async (id) => {
 route(/^\/browse$/, async () => {
   loading('Loading the gene index…');
   setView(await browseView());
+  markNav();
+});
+
+route(/^\/map(?:\/(hap[12]))?(?:\/(\w+))?$/, async (hapArg, chrArg) => {
+  const hap = hapArg || 'hap1';
+  loading('Loading the genome map…');
+  const hapBtn = (h, label) => el('button', {
+    class: 'locus-btn', type: 'button',
+    style: h === hap ? 'background:var(--accent);color:#fff' : '',
+    onclick: () => { location.hash = chrArg ? `#/map/${h}/${chrArg}` : `#/map/${h}`; },
+  }, label);
+  const body = await renderMap(hap, chrArg || null);
+  setView(el('div', {},
+    el('h1', {}, 'Genome map'),
+    el('p', { class: 'sub' }, 'Semantic zoom from all 19 chromosomes to one gene\'s neighbourhood.'),
+    el('div', { style: 'display:flex;gap:8px;margin:10px 0 14px' },
+      hapBtn('hap1', 'HAP1 (TreH)'), hapBtn('hap2', 'HAP2 (AlbH)')),
+    body));
   markNav();
 });
 

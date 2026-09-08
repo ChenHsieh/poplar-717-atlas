@@ -320,6 +320,37 @@ for (const [label, vw, vh, dpr] of [['locus-desktop', 1180, 900, 1], ['locus-pho
 serrs.forEach((e) => console.log('   !! ' + e));
 await p.close();
 
+// Genome map (section 2.4): the overview renders and is clickable through to a
+// chromosome, and the chromosome view is clickable through to a real gene page --
+// driven end to end, not just rendered, since the whole point is the click-through.
+await check('map-overview', '#/map',
+  { expect: ['Genome map', 'Colour by', 'Click a chromosome to zoom in'], wait: 900 });
+await check('map-hap2', '#/map/hap2',
+  { expect: ['Genome map', 'HAP2 (AlbH)'], wait: 900 });
+{
+  const mp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const merrs = [];
+  mp.on('pageerror', (e) => merrs.push(e.message));
+  mp.on('console', (m) => { if (m.type() === 'error') merrs.push(m.text()); });
+  await mp.goto(base + '/#/map/hap1/Chr19', { waitUntil: 'networkidle' });
+  await mp.waitForTimeout(900);
+  const chrText = await mp.evaluate(() => document.getElementById('view').innerText);
+  // "genes" and "Mb" are drawn INSIDE the canvas (like the locus card's own captions),
+  // invisible to innerText -- only assert on real DOM text here.
+  const hasChr = chrText.includes('Chr19') && chrText.includes('HAP1 (TreH)')
+    && chrText.includes('← genome');
+  await mp.click('.locus-canvas', { position: { x: 400, y: 84 } });
+  await mp.waitForTimeout(900);
+  const afterClick = mp.url();
+  const navigated = /#\/(gene\/PtXaTreH\.19|map\/hap1$)/.test(afterClick);
+  const ok = hasChr && navigated && !merrs.length;
+  if (!ok) failures++;
+  console.log(`\n### map:chromosome-drilldown  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   chromosome view rendered: ${hasChr}   url after click: ${afterClick}`);
+  merrs.forEach((e) => console.log('   !! ' + e));
+  await mp.close();
+}
+
 await browser.close();
 console.log(`\n${failures ? `${failures} CHECK(S) FAILED` : 'ALL CHECKS PASSED'}`);
 process.exit(failures ? 1 : 0);

@@ -198,5 +198,11 @@ export const loadArrays = () => fetchJSON('data/index/arrays.json');
 // scripts/build_locus.py. Self-sufficient on purpose -- a gene page on a phone should
 // not also have to pull a chromosome index.
 export const loadLocusTile = (hap, chr, mb) => fetchJSON(`data/locus/tile/${hap}/${chr}/${mb}.json`);
-export const loadLocusIndex = (hap, chr) => fetchJSON(`data/locus/index/${hap}/${chr}.json`);
+
+/** 100kb-bin whole-genome overview, both haplotypes, one fetch (~112 KB raw). For the
+ *  genome map's zoomed-out view. */
 export const loadLocusOverview = () => fetchJSON('data/locus/overview.json');
+
+/** Every gene on one chromosome, position and class only (no structure) -- for the
+ *  genome map's per-chromosome zoom. Sorted by start already. */
+export const loadLocusIndex = (hap, chr) => fetchJSON(`data/locus/index/${hap}/${chr}.json`);

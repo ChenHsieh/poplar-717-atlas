@@ -144,6 +144,42 @@ def main():
     check("no forbidden LSG QC field reaches any shard", not qc_bad,
           f"{len(qc_bad)} records, e.g. {qc_bad[:3]}" if qc_bad else "")
 
+    # Genome map (section 2.4): the overview's 100kb bins and the per-chromosome index
+    # are two INDEPENDENTLY built views of the same gene set. They must agree on gene
+    # count per chromosome, and every gene the index names must be a real atlas gene.
+    overview_path = f"{DATA}/locus/overview.json"
+    if os.path.exists(overview_path):
+        ov = json.load(open(overview_path))
+        bad_count, bad_gene, missing_index = [], [], []
+        for hap in ("hap1", "hap2"):
+            for chr_, bins in ov["hap"].get(hap, {}).items():
+                ov_n = sum(b[0] for b in bins)
+                ip = f"{DATA}/locus/index/{hap}/{chr_}.json"
+                if not os.path.exists(ip):
+                    missing_index.append(f"{hap}/{chr_}")
+                    continue
+                idx = json.load(open(ip))
+                if len(idx) != ov_n:
+                    bad_count.append(f"{hap}/{chr_}: overview {ov_n} vs index {len(idx)}")
+        check("overview.json exists and covers both haplotypes", set(ov.get("hap", {})) == {"hap1", "hap2"},
+              str(sorted(ov.get("hap", {}))))
+        check("every overview chromosome has a matching index file", not missing_index,
+              f"{len(missing_index)} missing, e.g. {missing_index[:3]}" if missing_index else "")
+        check("overview and index agree on gene count per chromosome", not bad_count,
+              f"{len(bad_count)} mismatched, e.g. {bad_count[:3]}" if bad_count else "")
+
+        idx_bad_gene = []
+        for hap in ("hap1", "hap2"):
+            for chr_ in ov["hap"].get(hap, {}):
+                ip = f"{DATA}/locus/index/{hap}/{chr_}.json"
+                if not os.path.exists(ip):
+                    continue
+                for g in json.load(open(ip)):
+                    if g["g"] not in genes:
+                        idx_bad_gene.append(g["g"])
+        check("every genome-map index gene is a real atlas gene", not idx_bad_gene,
+              f"{len(idx_bad_gene)} unknown, e.g. {idx_bad_gene[:3]}" if idx_bad_gene else "")
+
     qc_outside_pool = [gid for gid, (_, _, rec) in genes.items()
                        if rec.get("qc") and (rec.get("ps") or {}).get("rank", -1) < 18]
     check("every qc record sits on an LSG-pool gene (PS >= 18)", not qc_outside_pool,

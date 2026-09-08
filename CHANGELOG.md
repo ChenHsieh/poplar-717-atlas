@@ -3,6 +3,53 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
+## Genome map — the locus-map plan's section 2.4, shipped 2026-09-07
+
+Semantic zoom from all 19 chromosomes down to one chromosome's genes, then a click hands
+off to the already-shipped locus card for the final resolve. New route `#/map`, new nav
+link, reuses data the locus-card work (0.3.5) already built for exactly this purpose
+(`data/locus/overview.json`, `data/locus/index/{hap}/{chr}.json`) -- no new data build.
+
+**Overview tier**: one horizontal strip per chromosome, drawn to its own physical length
+(a real ideogram proportion, not 19 equal bars), coloured by a selectable 100kb-bin
+density -- gene count, tandem fraction, LSG-pool fraction, or mean τ. Click a chromosome
+to zoom in. **Chromosome tier**: one tick per gene at its true coordinate, coloured by
+duplication class with the same palette and the same convention as the locus card. Click
+a gene to open its page.
+
+**Reused, not duplicated, the locus card's canvas machinery.** The palette-resolution
+helper (`fillFor`/`palette`, the fix for canvas fillStyle not resolving CSS custom
+properties) moved to a new `js/core/palette.js` so the locus card and the genome map read
+the exact same colours and can never drift apart -- a direct instance of the plan's own
+"one renderer" principle. The DPR/ResizeObserver fitting discipline is reused as a small
+`makeStage()` helper rather than copy-pasted a second time.
+
+**WGD-block and syntenic-run overlays are NOT drawn at the chromosome tier.** The plan's
+own section 1.3 flagged that data layer as unmeasured and not yet built; this ships the
+two tiers the existing data supports rather than silently promising a third. The
+chromosome-view caption says so explicitly and points back to the gene page's locus card,
+which already carries allele and duplication-array relationships today.
+
+**A design mistake caught by rereading my own code, not by the render suite.** A first
+draft wired hover state through by directly reconstructing the canvas context and
+re-invoking the draw function inline, bypassing the stage's own hit-test bookkeeping --
+harmless here only because tick positions do not move with hover, so it happened not to
+surface as a visible bug, but it was still wrong and would not have stayed harmless
+through the next change. Rewritten so the stage exposes two real entry points,
+`refresh()` for a resize and `redraw()` for a pure repaint, and both render tiers use only
+those. **A second bug the render suite DID catch**: the chromosome-view check initially
+asserted the word "genes" appears in the page text, which can never pass -- that count is
+drawn inside the canvas, like the locus card's own captions, and canvas text is invisible
+to `innerText`. Fixed the check, not the (correctly working) feature.
+
+**Checks.** `validate_data.py` gains four: `overview.json` covers both haplotypes, every
+overview chromosome has a matching per-chromosome index file, the two independently-built
+files agree on gene count per chromosome, and every gene an index file names is a real
+atlas gene -- 30/30 pass. `check.mjs` gains three, including one that drives the full
+chain: load the overview, click a chromosome, confirm the chromosome view rendered, click
+a gene tick, confirm the browser actually navigated to that gene's real page -- 39/39
+pass. Screenshots reviewed for the overview (both haplotypes) and one chromosome zoom.
+
 ## 0.3.9 — 2026-09-06
 
 **Added — LSG evidence-quality flags, per gene (TODO 23)**
