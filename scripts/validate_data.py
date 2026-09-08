@@ -307,20 +307,45 @@ def main():
         oob = sum(1 for r in fac["rows"] if r[ci] >= vocab_n)
         check("facet class codes are inside the vocabulary", oob == 0, f"{oob} out of range")
         # Spot-check against the shards: the facet class must equal the gene's class.
-        pi = fac["cols"].index("ps")
-        mism = 0
-        for k in range(0, len(idx), 997):
-            gid = idx[k]
-            r = fac["rows"][k]
-            rec = genes[gid][2]
-            want = (rec.get("syn") or {}).get("cls")
-            got = fac["vocab"]["cls"][r[ci]] if 0 <= r[ci] < vocab_n else None
-            if want != got:
-                mism += 1
-            wps = (rec.get("ps") or {}).get("rank")
-            if (wps if wps is not None else -1) != r[pi]:
-                mism += 1
-        check("facet values match the gene shards (sampled)", mism == 0, f"{mism} mismatches")
+        # EVERY row, EVERY column -- not a sample, and not just the two columns this check
+        # used to cover. It sampled `cls` and `ps` only, and both happen to be untouched by
+        # expression work: so when the leaf_young/leaf_old tissue correction was patched into
+        # the shards without re-running build_facets.py, the facet index kept pre-fix `tau`
+        # and `top` for 62,192 genes and this check passed anyway. Browse and the gene page
+        # disagreed about the same gene. The facet table is a pure function of the shards --
+        # there is no reason to sample it.
+        def facet_row(hap, r, vocab):
+            syn, ps = r.get("syn") or {}, r.get("ps") or {}
+            x, ann = r.get("x") or {}, r.get("ann") or {}
+            flags = syn.get("flags") or {}
+            def vi(name, v):
+                return vocab[name].index(v) if v in vocab[name] else -1
+            return [
+                0 if hap == "hap1" else 1,
+                vi("chr", r.get("chr")),
+                vi("cls", syn.get("cls")),
+                ps.get("rank") if ps.get("rank") is not None else -1,
+                int(round(x["tau"] * 100)) if x.get("tau") is not None else -1,
+                vi("top", x.get("top")),
+                1 if r.get("allele") else 0,
+                1 if ann.get("at") else 0,
+                1 if syn.get("changed") else 0,
+                1 if flags.get("ar") else 0,
+                len(r.get("pres") or []),
+                1 if ps.get("amb") else 0,
+            ]
+
+        by_col = Counter()
+        for k, gid in enumerate(idx):
+            hap, _, rec = genes[gid]
+            want = facet_row(hap, rec, fac["vocab"])
+            for j, (w, g) in enumerate(zip(want, fac["rows"][k])):
+                if w != g:
+                    by_col[fac["cols"][j]] += 1
+        worst = ", ".join(f"{c}={n}" for c, n in by_col.most_common(4))
+        check("facet values match the gene shards (all rows, all columns)", not by_col,
+              f"stale columns: {worst}" if by_col
+              else f"{len(idx)} rows x {len(fac['cols'])} cols")
 
     sdir = f"{DATA}/index/search"
     oob = 0

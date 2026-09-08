@@ -154,13 +154,14 @@ def main():
 
     # ---- annotation --------------------------------------------------------------------
     ann, go_terms, acc_names = {}, {}, {}
+    acc_offers = defaultdict(set)
     stats = defaultdict(int)
     for hap in ("hap1", "hap2"):
         defl = read_defline(hap)
         info = read_annotation_info(hap)
         go_per_gene, terms = read_go(hap)
         go_terms.update(terms)
-        for locus in set(defl) | set(info) | set(go_per_gene):
+        for locus in sorted(set(defl) | set(info) | set(go_per_gene)):
             desc, accs = defl.get(locus, (None, []))
             i = info.get(locus, {})
             pf = i.get("pfam_native") or [x for x in accs if x.startswith("PF")]
@@ -168,10 +169,17 @@ def main():
             rec = {}
             if desc:
                 rec["d"] = desc
-                # A defline names its own accessions; keep one name per accession for the
-                # term dictionary so the gene page can label a Pfam badge.
+                # A defline names its own accessions, so a single-accession defline offers
+                # a name for that accession. COLLECT every offer rather than keeping
+                # whichever arrived first: 834 PANTHER accessions (11.5%) are named
+                # inconsistently across the genes that carry them -- PTHR13832 is offered
+                # both "PROTEIN PHOSPHATASE 1D" and "PROTEIN PHOSPHATASE 1K", and PTHR27001
+                # is offered 40 different names. Those are per-gene SUBFAMILY names, not the
+                # family's name, so "first one wins" shipped one arbitrary gene's label as
+                # the family's -- and, iterating an unordered set, a DIFFERENT arbitrary one
+                # on every build. Resolved below: label only where every offer agrees.
                 if len(accs) == 1 and desc:
-                    acc_names.setdefault(accs[0], desc[:80])
+                    acc_offers[accs[0]].add(desc[:80])
             if i.get("at"):
                 rec["at"] = i["at"]
             if i.get("atd"):
@@ -186,8 +194,15 @@ def main():
                 ann[locus] = rec
                 for k in ("d", "at", "pf", "go"):
                     stats[f"{hap}:{k}"] += bool(rec.get(k))
+    # Keep a name only where it is unambiguous. An accession whose genes disagree gets no
+    # entry, and the gene page renders the bare accession -- correct and unlabelled beats
+    # labelled and wrong.
+    acc_names.update({a: next(iter(v)) for a, v in acc_offers.items() if len(v) == 1})
+    ambiguous = sum(1 for v in acc_offers.values() if len(v) > 1)
+
     print("annotation coverage:", dict(sorted(stats.items())))
-    print(f"GO vocabulary: {len(go_terms)} terms   accession names: {len(acc_names)}")
+    print(f"GO vocabulary: {len(go_terms)} terms   accession names: {len(acc_names)} "
+          f"({ambiguous} accessions left unnamed: their genes disagree on the name)")
 
     # ---- patch the shards, and collect search postings ----------------------------------
     genes_dir = os.path.join(a.out, "genes")
@@ -232,7 +247,12 @@ def main():
     # instead of a multi-megabyte index.
     shards = defaultdict(dict)
     dropped = 0
-    for tok, ids in postings.items():
+    # sorted(): postings is keyed by strings collected out of set unions, whose iteration
+    # order is randomised per process. Without this the 26 search shards were rewritten in a
+    # different key order on every build -- content-identical, but a 26-file diff that made
+    # `git status` useless as a "did the data actually change" signal.
+    for tok in sorted(postings):
+        ids = postings[tok]
         if len(ids) > 6000:      # a token matching >9% of genes is noise, not a search term
             dropped += 1
             continue
@@ -242,7 +262,7 @@ def main():
     os.makedirs(sdir, exist_ok=True)
     for c, d in shards.items():
         with open(os.path.join(sdir, f"{c}.json"), "w") as fh:
-            json.dump(d, fh, separators=(",", ":"))
+            json.dump(d, fh, separators=(",", ":"), sort_keys=True)
     print(f"search: {len(postings)} tokens ({dropped} too-common dropped) in {len(shards)} shards")
 
     man_path = os.path.join(a.out, "meta", "manifest.json")
