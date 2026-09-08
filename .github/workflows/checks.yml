@@ -21,6 +21,9 @@ jobs:
       - name: Validate data invariants
         run: python3 scripts/validate_data.py
 
+      - name: Check version references agree
+        run: python3 scripts/check_version.py
+
       - name: Install Playwright Chromium
         run: |
           npm init -y >/dev/null 2>&1

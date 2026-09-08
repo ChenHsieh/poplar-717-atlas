@@ -83,6 +83,12 @@ def main():
     man_path = f"{data}/meta/manifest.json"
     man = json.load(open(man_path))
     man["facets"] = {"n_rows": len(rows), "cols": out["cols"], "bytes": size}
+    # build_data.py stamps VERSION at the start of a full build, but it is also the stage that
+    # wipes data/genes -- so on a machine that can only do half the two-machine build it never
+    # runs. This script runs LAST in every path, so stamping here too means the manifest
+    # converges on VERSION either way, and check_version.py stays honest.
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    man["data_version"] = open(os.path.join(root, "VERSION")).read().strip()
     json.dump(man, open(man_path, "w"), indent=1, sort_keys=True)
     return 0
 

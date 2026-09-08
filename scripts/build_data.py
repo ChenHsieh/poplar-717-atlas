@@ -18,6 +18,14 @@ private repo, so the public tier is the only thing that may ever be deployed.
 import argparse, csv, gzip, hashlib, json, os, re, shutil, sys, time
 from collections import defaultdict
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Single source of truth for the release version. Read from disk rather than restated here,
+# so VERSION, the manifest, CITATION.cff and CHANGELOG.md cannot drift apart unnoticed.
+# scripts/check_version.py asserts all four agree; it caught this key being READ in three
+# places (validator, footer, About page) while no build script ever WROTE it -- a rebuild
+# silently dropped the version chip instead of failing.
+VERSION = open(os.path.join(ROOT, "VERSION")).read().strip()
+
 MS2  = "/scratch/ch29576/ms2_genespace"
 GENERA = "/scratch/ch29576/genera"
 HAPS = {"Ptrxalhap1": ("hap1", "PtXaTreH"), "Ptrxalhap2": ("hap2", "PtXaAlbH")}
@@ -217,6 +225,7 @@ def main():
     summ = {k: (dict(v) if isinstance(v, defaultdict) else v) for k, v in summ.items()}
 
     man = {"built": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "tier": a.tier,
+           "data_version": VERSION,
            "n_genes": len(genes), "shards": counts, "summary": summ,
            "modules": ["core", "synteny", "phylostrat"], "sources": SRC}
     os.makedirs(os.path.join(a.out, "meta"), exist_ok=True)

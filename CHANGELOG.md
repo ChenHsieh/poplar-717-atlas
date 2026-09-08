@@ -3,7 +3,54 @@
 Data versions are stamped into `data/meta/manifest.json` as `data_version` and shown in the
 site footer. A data version changes only when the *contents* of `data/` change.
 
-## Expression scrubber — the locus-map plan's section 2.3, shipped 2026-09-07
+So headings come in two kinds, on purpose: `## X.Y.Z — date — title` for a release that
+changed `data/`, and a plain `## title` for one that changed only the site. The version
+lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
+`scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
+heading here. Unversioned headings are skipped by that check by design.
+
+## 0.3.11 — 2026-09-08 — Three silent defects in the build itself
+
+No new layers. Everything here is a correction to data that was already shipping, found by
+diffing two rebuilds against each other rather than by any check.
+
+**The facet index was stale, and Browse disagreed with the gene page.** The
+`leaf_young`/`leaf_old` tissue correction was patched into the gene shards without re-running
+`build_facets.py`, so `data/index/facets.json` kept pre-fix values: **54,705 genes with the
+wrong tau and 16,321 with the wrong top tissue**. Filtering by tissue specificity in Browse
+returned answers that contradicted the gene page it linked to. The facet table is a pure
+function of the shards, so `validate_data.py` now recomputes **every row and every column**
+and compares. It previously sampled every 997th gene and only the `cls` and `ps` columns —
+neither of which expression work can touch, which is why it passed throughout.
+
+**834 PANTHER accessions were labelled with an arbitrary member gene's name.** A
+single-accession defline offers a name for that accession, and `build_annotation.py` kept
+whichever arrived first while iterating an unordered `set`. Those are per-gene *subfamily*
+names, not the family's: PTHR13832 was shipped as "PROTEIN PHOSPHATASE 1D" or "PROTEIN
+PHOSPHATASE 1K" depending on the build, and PTHR27001 had 40 candidates. 88.5% of accessions
+are named consistently and keep their label; the 834 that are not now render as the bare
+accession. Correct and unlabelled beats labelled and wrong.
+
+**The build was not reproducible.** Python randomises string hashing per process, so the same
+`set` iteration also reshuffled all 26 search-index shards on every build — content-identical,
+but a 26-file diff that made `git status` useless as a "did the data actually change" signal.
+Both iterations are now sorted; two consecutive runs are byte-identical across all 27 index
+files.
+
+**Version numbers now have a single source of truth.** `data_version` was read in three places
+and written by nothing — it survived only as a hand-edit to the committed manifest, so the next
+full rebuild would have dropped it silently (the footer hides the chip when the key is absent).
+A `VERSION` file is now stamped into the manifest by `build_data.py` and again by
+`build_facets.py`, and `scripts/check_version.py` holds it equal to `CITATION.cff` and to the
+newest versioned heading here. `CITATION.cff` was four releases behind at 0.2.0.
+
+**`build_all.sh` could not finish the build it started.** Seven stages added since it was
+written were missing from it, and four of those read the OneDrive tree that is not mounted on
+Sapelo2 — so running it there would have wiped `data/genes` and been unable to restore them.
+It now classifies every stage by the source tree it needs and refuses to start unless it can
+finish, with `--allow-partial` as the explicit opt-in for one half of a two-machine build.
+
+## 0.3.10 — 2026-09-07 — Expression scrubber, the locus-map plan's section 2.3
 
 Paint the same locus window Locus and Mirror already draw, but by expression instead of
 duplication class: click through the 10 tissues for median TPM, or pick one of the curated

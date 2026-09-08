@@ -5,7 +5,10 @@ abstract: >-
   A static, browsable atlas of the 63,960 gene models in the two phased haplotypes of hybrid
   poplar clone 717, integrating GENESPACE synteny across a 12-genome panel, genEra
   phylostratigraphy, Phytozome v5.1 functional annotation, HAP1/HAP2 syntelog Ka/Ks, and a
-  652-sample RNA-seq expression atlas drawn from 28 curated studies.
+  652-sample RNA-seq expression atlas drawn from 28 curated studies. Later releases add
+  tandem-array and paralog duplication context, predicted protein disorder and
+  ESMFold-derived secondary structure with mass-spectrometry peptide evidence, and 46,141
+  reciprocal one-to-one orthologs to Populus trichocarpa derived from the same synteny run.
 type: dataset
 authors:
   - family-names: Hsieh
@@ -14,6 +17,7 @@ authors:
   - name: "Claude (Anthropic)"
     alias: "software assistance"
 repository-code: "https://github.com/ChenHsieh/poplar-717-atlas"
+url: "https://chenhsieh.github.io/poplar-717-atlas/"
 keywords:
   - Populus
   - hybrid poplar
@@ -23,5 +27,5 @@ keywords:
   - lineage-specific genes
   - expression atlas
 license-url: "https://github.com/ChenHsieh/poplar-717-atlas/blob/main/LICENSE"
-version: "0.2.0"
-date-released: "2026-09-04"
+version: "0.3.11"
+date-released: "2026-09-08"
