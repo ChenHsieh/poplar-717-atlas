@@ -104,3 +104,23 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
       `detection_failure_plausible`. `check.mjs` renders a flagged gene, a clean gene, and
       separately asserts neither forbidden field ever appears in the rendered page text.
       Screenshots reviewed for both. See CHANGELOG.md 0.3.9.
+
+- [x] **24 — build integrity, 2026-09-08.** Three defects that every check passed through,
+      found by diffing two rebuilds against each other rather than by a check. The facet
+      index was stale after the leaf-tissue patch (54,705 wrong tau, 16,321 wrong top
+      tissue) and Browse contradicted the gene page; 834 PANTHER accessions carried an
+      arbitrary member gene's subfamily name, redrawn on every build; and the search index
+      was reshuffled every build by `set` iteration under randomised string hashing.
+      `validate_data.py` now recomputes every facet row and column instead of sampling two
+      columns of every 997th gene, and was confirmed to fire on the stale file before being
+      trusted. See CHANGELOG.md 0.3.11.
+
+      **The rule that generalises:** any patcher that touches a shard field the facet index
+      carries must be followed by `build_facets.py` — it is last for a reason. The validator
+      now enforces this, so it fails loudly instead of shipping a Browse view that disagrees
+      with the gene pages it links to.
+
+- [ ] **25 — the checks cannot see a value that is stable and wrong.** Both defects above
+      rendered fine, validated fine, and were internally consistent. What caught them was
+      rebuilding twice and diffing. Worth doing after any change to a build script, and
+      worth a `scripts/` helper if it happens a third time.
