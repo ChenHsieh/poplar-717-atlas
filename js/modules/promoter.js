@@ -59,11 +59,70 @@ function familyStrip(cre, cm) {
     el('tbody', {}, ...rows));
 }
 
+// The chromatin card. Everything on it is a property of the P. TRICHOCARPA ORTHOLOG, not of
+// this gene -- the peaks were called on trichocarpa leaf nuclei and scored against trichocarpa
+// gene starts, and no chromatin data exists for 717 or for either parent. The wording says so
+// each time rather than once at the bottom, because a reader who lands mid-card is the reader
+// who would otherwise take it for 717's own promoter.
+//
+// `ex` gates the rest, and that is the whole reason the card is trustworthy. The data is LEAF
+// ONLY: a gene silent in leaf correctly carries no promoter mark there, so showing "no ATAC
+// peak" for a silent gene would read as an absence of regulation when it is an absence of
+// relevant data. The source analysis's first run failed its own gate for exactly this reason.
+function chromatinCard(g) {
+  const a = g.atac;
+  const p = g.ptri;
+  if (!a || !p || !p.id) return null;
+  const link = el('a', {
+    href: `https://phytozome-next.jgi.doe.gov/report/gene/Ptrichocarpa_v4_1/${p.id}`,
+    target: '_blank', rel: 'noopener', class: 'mono' }, p.id);
+
+  if (!a.ex) {
+    return el('div', { class: 'card' },
+      el('h2', {}, 'Chromatin', el('span', { class: 'tag' }, 'ortholog, P. trichocarpa leaf')),
+      el('p', { class: 'muted', style: 'margin:0;font-size:13px' },
+        'This gene\u2019s P. trichocarpa ortholog ', link, ' is not expressed in the leaf '
+        + 'libraries these chromatin data come from, so its promoter marks are not '
+        + 'interpretable. A silent gene correctly carries no active-promoter mark, which says '
+        + 'nothing about whether the gene has a promoter. Nothing is shown rather than showing '
+        + 'four zeros that would read as an absence of regulation.'));
+  }
+
+  const rows = [
+    ['Accessible chromatin', a.acr, 'an ATAC-seq accessible region that is genic or within 2 kb'],
+    ['H3K4me3', a.k4, 'the active-promoter mark, at this gene\u2019s own start'],
+    ['Own promoter', a.own, 'both of the above, so the promoter signal is this locus\u2019s own'],
+    ['H3K36me3 over the body', a.k36, 'the elongation signature, across the gene body'],
+  ];
+  return el('div', { class: 'card' },
+    el('h2', {}, 'Chromatin', el('span', { class: 'tag' }, 'ortholog, P. trichocarpa leaf')),
+    el('p', { class: 'sub', style: 'margin:0 0 10px' },
+      'Measured on the ortholog ', link, ', which is expressed in leaf at ',
+      el('span', { class: 'mono' }, a.rpk.toFixed(1)), ' RPK.'),
+    el('table', { class: 'data' },
+      el('tbody', {}, ...rows.map(([label, v, note]) => el('tr', {},
+        el('td', {}, label),
+        el('td', {}, v
+          ? el('span', { class: 'badge' },
+              el('i', { class: 'dot', style: 'background:var(--c-nonsyn)' }), 'present')
+          : el('span', { class: 'muted' }, 'absent')),
+        el('td', { class: 'muted', style: 'font-size:11.5px' }, note))))),
+    el('p', { class: 'muted', style: 'font-size:11px;margin:8px 0 0' },
+      'From GSE128434, a 13-species comparative chromatin atlas (Lu, Marand, Schmitz and '
+      + 'colleagues, 2019), reprocessed here. Three limits, all of which matter for reading a '
+      + 'single row. It is the ORTHOLOG\u2019s chromatin: nothing here was measured on 717, and '
+      + 'no chromatin data exists for this hybrid or for either parent species. It is LEAF '
+      + 'only, so a mark absent here may be present in another tissue. And accessibility and '
+      + 'H3K4me3 establish that a locus has a promoter, never where transcription starts \u2014 '
+      + 'only a method that sequences 5\u2032 ends can do that, and none exists for any Populus.'));
+}
+
 function geneCard(g, man) {
   const cre = g.cre;
   const cm = man && man.cre;
-  if (!cre || !cm) return null;
-  return el('div', { class: 'card' },
+  const chrom = chromatinCard(g);
+  if (!cre || !cm) return chrom;
+  const promoter = el('div', { class: 'card' },
     el('h2', {}, 'Promoter', el('span', { class: 'tag' }, 'JASPAR motif scan')),
     el('p', { class: 'sub', style: 'margin:0 0 10px' },
       `${(cre.gc * 100).toFixed(1)}% GC over the ${cm.promoter_window_bp} bp upstream of the TSS`,
@@ -79,6 +138,19 @@ function geneCard(g, man) {
       'not a confirmed or gene-specific regulatory element. Families are built from very different ',
       'numbers of matrices, so bars are normalized per matrix; raw hit counts are not comparable ',
       'across families on their own.'));
+  if (!chrom) return promoter;
+  const frag = document.createDocumentFragment();
+  frag.append(promoter, chrom);
+  return frag;
 }
 
-export default { id: 'promoter', label: 'Promoter', geneCard };
+export default {
+  id: 'promoter',
+  label: 'Promoter',
+  geneCard,
+  filters: [
+    { id: 'atac', label: 'Ortholog has accessible chromatin', options: ['yes', 'no'],
+      // only among leaf-expressed orthologs -- for a silent one the answer is not defined
+      test: (g, v) => (g.atac && g.atac.ex ? (g.atac.acr ? 'yes' : 'no') : null) === v },
+  ],
+};

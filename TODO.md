@@ -163,17 +163,35 @@ first, ahead of anything new.
       omega at all (0 of 343 / 0 of 338 have any ortholog) — render that as a stated absence,
       not a blank.
 
-- [ ] **30 — chromatin (GSE128434 ATAC / H3K4me3). DEFERRED, reason recorded.** Real
+- [x] **30 — SHIPPED 2026-09-10, data 0.4.1.** Deferred at first for the right reason, then
+      re-read and shipped under a framing that removes it. The analysis runs ENTIRELY INSIDE
+      *P. trichocarpa* -- peaks called on trichocarpa leaf, scored against trichocarpa gene
+      starts -- so this is a property **of the ortholog**, and the card says so in words rather
+      than once in a footnote. That sidesteps the promoter-synteny assertion that the first
+      reading worried about: nothing here claims to describe the 717 gene's own promoter.
+      Reaches 45,869 genes (71.7%) through the reciprocal 1:1 map, attached only where the
+      ortholog call is 1:1 -- an ambiguous ortholog is not a licence to take a top hit.
+      `ex` (expressed in leaf) gates every mark, because the data is leaf-only and a silent
+      gene correctly carries no promoter mark; showing four zeros there would read as an
+      absence of regulation. Gated on the source's own published numbers: the 81.5% conserved
+      leaf-expressed H3K4me3 rate its gate turns on, and all eight cells of its effect table. Real
       reprocessed peak calls exist for 34,140 *Potri* loci and the atlas owns the 1:1 ortholog
       join. Deferred because a promoter is a *positional* feature: carrying an ATAC call across
       an ortholog edge asserts promoter synteny that the ortholog call does not establish. Same
       reasoning that closed TODO 20's expression join, plus that. Unblocks on a syntenic
       promoter check per pair, or on chromatin data for 717 itself.
 
-- [ ] **31 — PS19 triage scores (PSAURON / PlantCAD2). DEFERRED until 26 lands.** Sound layer,
+- [ ] **31 — PS19 triage scores (PSAURON / PlantCAD2). STILL DEFERRED, and the reason changed.**
+      26 has landed, which was the stated blocker, but it made the mismatch concrete rather
+      than removing it: the source tables cover 451 HAP1 + 430 HAP2 genes, the pre-correction
+      PS19 set, of which 179 are now PS18 and some are out of the pool entirely. The scores
+      themselves are per-gene and stratum-independent, so they stay valid gene by gene; what
+      does not survive is the *decoy floor*, which was built for that specific set and is what
+      makes "beats the floor" mean anything. Needs the floor re-cut against the corrected
+      membership upstream, not a re-join here. Sound layer,
       but keyed to a PS19 membership that item 26 changes by a fifth.
 
-- [ ] **32 — pangenome presence across 31 genomes. BLOCKED, jobs running.** Annotation-free
+- [ ] **32 — pangenome presence across 31 genomes. STILL BLOCKED 2026-09-10.** Annotation-free
       tblastn of pool + matched control against 31 *Populus*/Salicaceae assemblies — presence
       that does not depend on any annotator's ORF policy, which is the known weakness of the
       synteny layer. `pang_tblastn` / `pang_tbsoft` / `pang_hap1self` were still running on

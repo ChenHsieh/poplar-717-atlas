@@ -272,3 +272,121 @@ omega sits from its own.
 The reciprocal-best-hit orthologs behind the new Ka/Ks layer were compared against the atlas's
 own GENESPACE syntenic 1:1 *Potri* calls: **42,858 agree, 583 differ, 98.7%**. Those 583 genes
 carry a note on their card rather than being silently dropped or silently trusted.
+
+---
+
+## F. Other public data, in *Populus* and beyond — what exists, and what is worth adding
+
+The question "what other public data could this atlas carry" was answered on 2026-09-09 by a
+live census of ProteomeXchange, SRA, NCBI BioProject and PRIDE, in
+`ms2lsg_wt_proteomics/docs/RESOURCE_CENSUS_20260909.md`. Every count there was queried that day
+with the query recorded, not recalled. This section records what it means **for the atlas**,
+which is a different question from what it means for the chapter.
+
+The organising fact: the pool is **genus-level**. PS18 means *Populus*-specific, so by its own
+definition a PS18 gene has orthologs in other *Populus* species, and every other *Populus*
+species is a legitimate assay platform. That does **not** extend to PS19, which is hybrid-only
+by construction — no other species can carry it, so no other species' data can test it.
+
+### Proteomics — 50 datasets exist, 5 are ingested
+
+| repository | Salicaceae datasets |
+|---|---|
+| PRIDE | 25 |
+| iProX | 14 |
+| MassIVE | 11 |
+
+Vendor format, not size, decides what is usable: only **14 of 25** PRIDE datasets are Thermo,
+i.e. convertible with the parser this pipeline has. 7 are Waters, 3 Bruker, 1 SCIEX, and none
+of those has a working Linux reader here.
+
+That fact retires two datasets this atlas used to serve through Tier 1 and named as future
+targets. **PXD023826 is Waters SYNAPT G2-Si** — not attemptable with this toolchain at all, and
+its 159 GB was never the real obstacle. **PXD064017 is Bruker timsTOF HT** as well as DIA, which
+matters because all three Tier 1 hits came from it: those three hits cannot currently be
+followed up by re-search at all.
+
+One dataset is worth naming for a different reason. **PXD058986's depositors searched it against
+`PtremulaxPopulusalbaHAP1_717_v5.1.protein.fa` themselves** — the same 717 proteome this
+project's re-search built by hand, and the only one of the 25 to do so. It is a chitin
+affinity purification, so it is an enriched subproteome rather than a whole-proteome survey.
+
+**Verdict: worth a second round, and it is cheap.** Four more aspen-clade experiments come to
+about 8 GB, two of them already in peak-list form. The atlas's layer would go from five
+datasets to nine without new method development. Not done in this release because the searches
+have to run first, in the analysis that owns them.
+
+### Population genomics — the axis 717 structurally cannot supply
+
+717 is a clone and carries no polymorphism. Its parents' species do, heavily: **8,030 WGS runs**
+across *Populus*, including 622 for *P. tremula* and 208 for *P. alba*, in organised panels
+(SwAsp, NordAsp, PRJNA996882 and others).
+
+Paired with the Ka/Ks layer this release just shipped, within-species diversity would give an
+MK-style polymorphism-plus-divergence contrast, which is a materially stronger statement than
+either alone. That work (`k2_popconstraint`) was submitted on 2026-09-10 and its alignment array
+is still running.
+
+**The trap to carry when it lands, because it will look like a result:** low coverage at a locus
+is not evidence of absence, it is also what divergence looks like. Reads fail to map because
+sequence has diverged, and young genes are exactly where that is worst. Any absence call needs
+the mapping-rate decay curve measured on length- and GC-matched conserved controls at the same
+phylogenetic distance, and the pool reported against that curve rather than against zero. This
+is the abSENSE problem of section A2 reappearing one level down, at read level.
+
+**Verdict: the single most valuable thing still missing.** Blocked on the run, not on a decision.
+
+### Ribo-seq — re-verified as zero, and that is load-bearing
+
+Re-queried 2026-09-09 rather than inherited: **zero** ribosome-profiling runs for *Populus*
+(txid3689) and **zero** for *Salix*. A `RIP-Seq` query returns 16 *Populus* runs, but RNA
+immunoprecipitation is a different assay and must not be allowed to leak into a Ribo-seq claim.
+
+This is why the proteomics layer of section B1 is the translation evidence rather than one
+input to it: there is no other. **Verdict: nothing to add. Recorded so the question is not
+re-asked.**
+
+### Chromatin — one dataset in the clade, now ingested
+
+GSE128434 is the only ATAC-seq or ChIP-seq for anything in Salicaceae. It is now shipped as an
+ortholog property (section B3 revised). **Verdict: exhausted — there is no second dataset.**
+
+### Assemblies for presence/absence — already on disk, and unused for this
+
+`/work/cjtlab/` holds a real genome FASTA for all 12 panel genotypes, and several species appear
+**more than once as independent genotypes** (two *P. trichocarpa*, two *P. tremula*, three
+*P. alba*, two *P. deltoides*, two *S. purpurea*). No download is needed.
+
+That within-species structure has only ever been used as the annotator-artifact meter. It has
+never been used for gene-level presence/absence of the pool, which is a different and sharper
+question: a gene called *Populus*-specific in 717 but absent from one of two conspecific
+genotypes is **segregating** presence/absence, and that says something about what kind of thing
+it is.
+
+Three traps, each of which produces a confident and wrong "absent from this species":
+
+1. **Absence from an assembly's annotation is annotator policy, not biology.** Search the
+   assembly sequence; never diff shipped protein sets. Thirteen of thirty panel annotations
+   cannot contain a species-specific gene at all, yet collectively report 8,283 of them.
+2. **Pick the assembly by size, not by name match.** A concurrent session's inventory silently
+   selected an 18S file for *P. nigra*, an organelle-only FASTA for one *P. trichocarpa*
+   genotype, a `test.fa` for *P. tremula* and a single scaffold for another. Each would have
+   produced a confident absence for every query. Gate at ≥ 100 Mb before searching.
+3. ***P. nigra*'s largest FASTA is reverse-complemented on 11 of 19 chromosomes.** Harmless for
+   strand-agnostic presence/absence; wrong for anything positional.
+
+**Verdict: this is exactly what the blocked item 32 is running.** See section C.
+
+### Other plants
+
+Deliberately not pursued, and the reason is the same one that governs section B3. The atlas is
+keyed on 717 gene models. Data from another species reaches a 717 gene only through an ortholog
+edge, and each edge crossed weakens what the value means: *P. trichocarpa* is one edge away and
+already stretches the claim to "a property of the ortholog". *Arabidopsis* is many. The atlas
+already carries the right kind of link to that world — a best-Arabidopsis-hit locus and GO
+terms per gene — which points a reader at TAIR rather than importing TAIR's measurements and
+relabelling them as this gene's.
+
+The one exception worth revisiting is a **cross-plant de novo / young-gene reference set**, if
+one is wanted for context rather than per gene. That is a module, not a layer, and it needs a
+decision before it needs code.

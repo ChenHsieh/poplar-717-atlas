@@ -43,6 +43,7 @@ STAGES=(
   "repo|patch_proteomics_v2.py|proteomics re-search, genome-wide (after build_layers, which writes the Tier-1 shape this replaces)"
   "repo|patch_kaks.py|Ka/Ks vs P. trichocarpa"
   "repo|build_cre.py|promoter/CRE layer"
+  "repo|patch_chromatin.py|GSE128434 chromatin at the P. trichocarpa ortholog (after build_crossspecies)"
   "onedrive|build_combat.py|ComBat-seq view (after build_expression)"
   "onedrive|build_contrasts.py|contrast index (after build_expression)"
   "onedrive|build_locus.py|locus tiles + genome map"

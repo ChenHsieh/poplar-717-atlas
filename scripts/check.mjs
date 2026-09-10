@@ -155,6 +155,16 @@ await check('gene-no-ortholog', '#/gene/PtXaAlbH.17G052200',
 await check('browse-omega-column', '#/browse',
   { expect: ['\u03c9', 'MS', 'Peptide-detected'], wait: 1200 });
 
+// Chromatin (TODO 30). Two cases, and the second is the point of the layer: a gene whose
+// ortholog is SILENT in leaf must not render four absent marks, which would read as an
+// absence of regulation when it is an absence of relevant data.
+await check('gene-chromatin', '#/gene/PtXaTreH.01G000700',
+  { expect: ['Chromatin', 'P. trichocarpa leaf', 'Accessible chromatin', 'H3K4me3',
+             'RPK', 'never where transcription starts'], wait: 1000 });
+await check('gene-chromatin-silent', '#/gene/PtXaTreH.01G000100',
+  { expect: ['Chromatin', 'not expressed in the leaf libraries',
+             'would read as an absence of regulation'], wait: 1000 });
+
 await check('module-protein', '#/module/protein',
   { expect: ['Protein', 'ESMFold', 'pLDDT proxy', 'never pooled', 'peptide',
              'r = −0.49', 'run length', 'monotonically with gene age',

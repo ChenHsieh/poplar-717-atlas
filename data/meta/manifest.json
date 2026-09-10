@@ -13,6 +13,19 @@
   }
  },
  "built": "2026-09-05T11:22:45-0400",
+ "chromatin": {
+  "accessible_region_definition": "genic or within 2 kb of the start, replicates merged -- the source paper's own classification. A 500 bp window fails, because 55% of conserved gene starts have their nearest accessible region more than 2 kb away, which is that paper's headline finding about distal elements in plants.",
+  "genes_whose_ortholog_is_ambiguous": 6329,
+  "genes_without_a_1to1_ortholog": 11762,
+  "leaf_expressed": 42012,
+  "n_genes": 45869,
+  "n_loci": 23466,
+  "scope": "A property OF THE P. TRICHOCARPA ORTHOLOG, not of the 717 gene. No chromatin data exists for 717 or for either parent species. Attached only where the ortholog call is reciprocal 1:1.",
+  "silent_in_leaf": 3857,
+  "source": "GEO GSE128434 (Lu, Marand, Schmitz et al., Nature Plants 2019), P. trichocarpa leaf: ATAC-seq, H3K4me3, H3K36me3, and matched RNA-seq",
+  "the_standing_limit": "ATAC and H3K4me3 establish THAT a locus has a promoter, never WHERE transcription starts. Only a 5'-end method does that, and none exists for any Populus.",
+  "why_expression_gates_it": "The chromatin is leaf only. A gene silent in leaf correctly carries no promoter mark there, so an absent mark says nothing about the gene unless you know it was expressed. The source analysis's first run failed its own gate for exactly this reason."
+ },
  "corrections": [
   {
    "after_tissue_wt_control_n": {
@@ -92,7 +105,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.4.0",
+ "data_version": "0.4.1",
  "duplication": {
   "ks_by_rank": {
    "12": {

@@ -9,6 +9,60 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.4.1 — 2026-09-10 — Chromatin, as a property of the ortholog
+
+The only ATAC-seq or ChIP-seq that exists for anything in Salicaceae: GEO GSE128434 (Lu, Marand,
+Schmitz and colleagues, *Nature Plants* 2019), *P. trichocarpa* leaf, reprocessed on Sapelo2.
+45,869 genes (71.7%) now carry accessible-chromatin, H3K4me3, H3K36me3 and own-promoter calls.
+
+**It is the ortholog's chromatin, and the card says so in words rather than in a footnote.** The
+analysis runs entirely inside *P. trichocarpa* — peaks called on trichocarpa leaf nuclei, scored
+against trichocarpa gene starts. Nothing was measured on 717, and no chromatin data exists for
+this hybrid or for either parent species. This release first deferred the layer over exactly
+that: carrying a promoter call across an ortholog edge asserts promoter synteny that a
+reciprocal-ortholog call does not establish. Scoping the claim to the ortholog removes the
+assertion instead of tolerating it.
+
+Attached only where the ortholog call is reciprocal 1:1. An ambiguous ortholog is not a licence
+to take a top hit, and the patcher asserts it never lands on one. A *P. trichocarpa* locus
+reaches at most two atlas genes, one per haplotype, which is what a phased diploid should give;
+22,403 loci reach both.
+
+**Leaf expression gates every mark on the card.** The chromatin is leaf-only, so a gene silent in
+leaf correctly carries no active-promoter mark, and rendering four absent marks would read as an
+absence of regulation when it is an absence of relevant data. 3,857 of the attached genes are in
+that state and say so instead. This is the same discipline as the proteomics detectability
+column in 0.4.0, and the source analysis's own first run failed its own gate for precisely this
+reason — along with a 500 bp window that had to be widened to 2 kb, because 55% of conserved
+gene starts have their nearest accessible region further away than that, which is the source
+paper's own headline finding about distal elements in plants. Both corrections are recorded in
+the provenance rather than absorbed, since changing a criterion after a gate fails is how
+gate-shopping happens.
+
+Gated on the source's published numbers before writing: the **81.5%** conserved leaf-expressed
+H3K4me3 rate that its own gate turns on, and all eight cells of its Populus-specific versus
+matched-conserved effect table. All nine reproduce exactly.
+
+Two columns are dropped at ingestion. `rank` is a *P. trichocarpa* phylostratum from a different
+genEra run, and a column called `rank` sitting on a 717 gene page would be read as the 717 rank.
+`is_matched_control` is an analysis-internal sampling flag.
+
+### Also: a survey of what other public data is worth adding
+
+`docs/DATA_AUDIT_2026-09-10.md` gains a section answering that directly, from a live census of
+ProteomeXchange, SRA, BioProject and PRIDE run on 2026-09-09. In short: 50 Salicaceae proteomics
+datasets exist and five are ingested, with **vendor format rather than size** the constraint —
+only 14 of 25 PRIDE datasets are Thermo. That retires two datasets this atlas used to serve
+through Tier 1 and had named as next targets: PXD023826 is Waters and PXD064017 is Bruker, and
+neither is readable here at all. It matters beyond bookkeeping, because all three Tier 1 hits
+came from PXD064017 and so cannot currently be followed up by re-search.
+
+*Populus* **Ribo-seq was re-verified as zero**, in both *Populus* and *Salix* — which is why the
+mass-spec layer is the translation evidence rather than one input to it. Population genomics is
+the largest thing still missing (8,030 WGS runs across the genus, against a clone that carries no
+polymorphism by construction) and pairs with 0.4.0's Ka/Ks into a polymorphism-plus-divergence
+contrast; that run was submitted on 2026-09-10 and is still going.
+
 ## 0.4.0 — 2026-09-10 — The published pool was withdrawn upstream, and two new layers
 
 A minor-version bump rather than a patch, because the first item changes a number the site has
