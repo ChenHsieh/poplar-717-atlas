@@ -219,11 +219,33 @@ Do not ingest. Recorded so a later reader knows these exist and why they are abs
 |---|---|---|
 | **pangenome presence** (`pangenome_lsg_run/`) | annotation-free tblastn of pool + control proteins against **31 Populus/Salicaceae genomes** — presence/absence that does not depend on any annotator's ORF policy, which is the known weakness of the current synteny layer | `pang_tblastn`, `pang_tbsoft` and `pang_hap1self` **still running**; a concurrent session is committing to the source repo hourly |
 | **population constraint** (`k2_popconstraint/`) | per-gene constraint from *Populus* resequencing | submitted 2026-09-10, `k2_index` running |
-| **selection tests** (`lsg_selection/`) | codon-model selection tests on pool genes | alignments staged, results not written |
+| **selection tests** (`lsg_selection/`) | HyPhy FEL / MEME / BUSTED on pool genes | **finished 2026-09-10 00:17 — and assessed as NOT a layer.** See below. |
 
 The pangenome panel is the most valuable of the three and the one to pick up first when it
 lands. Note it is queries-only (pool plus matched control, ~3,400 proteins), not genome-wide,
-so it will be a pool card like `qc`, not a facet.
+so it will be a pool card like `qc`, not a facet. As of 2026-09-10 it has produced 54 raw
+per-genome tblastn tables and no roll-up; `pang_tblastn`, `pang_tbsoft` and `pang_hap1self`
+were still running and a concurrent session owns the directory.
+
+### The selection tests finished during this sweep, and are still not a layer
+
+`lsg_selection/` completed a 98-task HyPhy array at 00:17 on 2026-09-10 — site-level FEL and
+MEME plus gene-level BUSTED. It is not ingested, for two reasons that are about scale and
+about the result, not about timing:
+
+- **98 genes**, 43 focal and 40 control, of which 83 produced output and **34 form complete
+  matched pairs**. That is a pilot. A gene card that exists for 34 of 63,960 genes is not a
+  layer, it is a footnote with a database behind it.
+- **Its own power covariate separates the arms.** Tree length — substitutions per site, which
+  is how much evidence each alignment actually contains — differs between focal and control at
+  Cliff's delta **+0.643, p = 4.8e-07**. The focal arm has nearly twice the median branch
+  length. Every readout here is downstream of that, and the analysis is visibly still working
+  through it. Ingesting a per-gene selection call now would publish a number whose own author
+  is still deciding what it measures.
+
+Worth revisiting if it is scaled to the pool and the tree-length confound is matched rather
+than reported. The finished Ka/Ks layer (section B2) already covers the same question at
+52,232 genes with a simpler estimator, which is the right trade for an atlas.
 
 ---
 
@@ -390,3 +412,25 @@ relabelling them as this gene's.
 The one exception worth revisiting is a **cross-plant de novo / young-gene reference set**, if
 one is wanted for context rather than per gene. That is a module, not a layer, and it needs a
 decision before it needs code.
+
+
+---
+
+## G. What to pick up next, in order
+
+1. **Pangenome presence** (item 32) when the tblastn arrays finish — annotation-free
+   presence/absence across 31 genomes is the direct answer to the known weakness of the
+   synteny layer, which is that absence from an annotation is annotator policy.
+2. **Population constraint** when `k2_popconstraint` lands. Paired with the Ka/Ks now
+   shipped it gives a polymorphism-plus-divergence contrast. Carry the mapping-bias trap
+   from section F into the read of it.
+3. **The four cheap aspen-clade proteomics datasets** (~8 GB), which would take the peptide
+   layer from five datasets to nine on species closer to 717 than the deepest one currently in.
+4. **PS19 triage** (item 31) once its decoy floor is re-cut against the corrected membership.
+
+And one standing item that is not a layer: **read
+`ms2lsg_wt_proteomics/docs/CORRECTIONS.md` periodically.** The pool correction that opened
+this audit was adopted upstream on 2026-09-09 and this atlas published the withdrawn version
+for four days, with every check green throughout — because every check compares the atlas
+against itself. Nothing here watches the source repositories for retractions. That is the
+gap this sweep found, and it will recur.

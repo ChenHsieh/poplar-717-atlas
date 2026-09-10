@@ -191,6 +191,14 @@ first, ahead of anything new.
       membership upstream, not a re-join here. Sound layer,
       but keyed to a PS19 membership that item 26 changes by a fifth.
 
+- [ ] **33 — HyPhy selection tests (`lsg_selection/`). ASSESSED, not a layer.** The 98-task
+      array finished 2026-09-10 00:17. Not ingested: 98 genes / 34 complete matched pairs is a
+      pilot, and its own power covariate separates the arms (tree length, Cliff's delta +0.643,
+      p 4.8e-07 — the focal arm has nearly twice the median branch length). Every readout is
+      downstream of that and the analysis is visibly still working through it. Revisit if it
+      scales to the pool and matches on tree length rather than reporting it. Item 29's Ka/Ks
+      already answers the same question at 52,232 genes.
+
 - [ ] **32 — pangenome presence across 31 genomes. STILL BLOCKED 2026-09-10.** Annotation-free
       tblastn of pool + matched control against 31 *Populus*/Salicaceae assemblies — presence
       that does not depend on any annotator's ORF policy, which is the known weakness of the
