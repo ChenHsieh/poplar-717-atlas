@@ -39,6 +39,15 @@ const FILTERS = [
     test: (r, v) => (r.tandem ? 'yes' : 'no') === v },
   { id: 'changed', label: 'Reclassified vs old panel', kind: 'select', options: ['yes', 'no'],
     test: (r, v) => (r.changed ? 'yes' : 'no') === v },
+  // w is stored as an integer per-mille. -1 means no reciprocal-best P. trichocarpa ortholog
+  // and -2 means a pair exists but omega could not be estimated; both are real states, so a
+  // threshold filter must exclude them rather than treat them as 0.
+  { id: 'w_min', label: 'ω ≥', kind: 'number', placeholder: '1.0', step: '0.1',
+    test: (r, v) => r.w >= 0 && r.w / 1000 >= +v },
+  { id: 'w_max', label: 'ω ≤', kind: 'number', placeholder: '0.1', step: '0.1',
+    test: (r, v) => r.w >= 0 && r.w / 1000 <= +v },
+  { id: 'ms', label: 'Peptide-detected', kind: 'select', options: ['yes', 'no'],
+    test: (r, v) => (r.ms > 0 ? 'yes' : 'no') === v },
 ];
 
 const state = { values: {}, page: 0, rows: null, ids: null, matches: [] };
@@ -73,13 +82,24 @@ function resultsTable() {
       el('td', {}, r.top || '—'),
       el('td', { class: 'num' }, r.npres === 0
         ? el('span', { class: 'muted', title: 'OrthoFinder assigned no orthogroup' }, 'none')
-        : r.npres + '/12'));
+        : r.npres + '/12'),
+      el('td', { class: 'num' }, r.w >= 0
+        ? (r.w / 1000).toFixed(3)
+        : el('span', { class: 'muted',
+            title: r.w === -1 ? 'no reciprocal-best P. trichocarpa ortholog'
+                              : 'ortholog found, but omega could not be estimated' },
+            r.w === -1 ? 'no ortholog' : 'n/e')),
+      el('td', { class: 'num' }, r.ms > 0
+        ? `${r.ms}/5`
+        : el('span', { class: 'muted' }, '—')));
   });
   return el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
     el('thead', {}, el('tr', {}, el('th', {}, 'Gene'), el('th', {}, 'Chr'),
       el('th', {}, 'Synteny class'), el('th', { class: 'num' }, 'PS'),
       el('th', { class: 'num' }, 'τ'), el('th', {}, 'Peak tissue'),
-      el('th', { class: 'num' }, 'Genomes'))),
+      el('th', { class: 'num' }, 'Genomes'),
+      el('th', { class: 'num', title: 'Ka/Ks against the best P. trichocarpa ortholog' }, 'ω'),
+      el('th', { class: 'num', title: 'mass-spec datasets with a peptide, of 5' }, 'MS'))),
     el('tbody', {}, ...body)));
 }
 
@@ -94,13 +114,17 @@ function download(name, text) {
 
 function exportTSV() {
   const head = ['gene_id', 'haplotype', 'chr', 'synteny_class', 'phylostratum', 'tau',
-                'peak_tissue', 'genomes_in_orthogroup', 'has_allele', 'in_tandem_array'];
+                'peak_tissue', 'genomes_in_orthogroup', 'has_allele', 'in_tandem_array',
+                'omega_vs_ptrichocarpa', 'ms_datasets_detected_of_5'];
   const lines = [head.join('\t')];
   for (const i of state.matches) {
     const r = state.rows[i];
     lines.push([state.ids[i], r.hap, r.chr ?? '', r.cls ?? '', r.ps ?? '',
       r.tau == null ? '' : r.tau.toFixed(3), r.top ?? '', r.npres ?? '',
-      r.allele ? 'yes' : 'no', r.tandem ? 'yes' : 'no'].join('\t'));
+      r.allele ? 'yes' : 'no', r.tandem ? 'yes' : 'no',
+      // an empty cell would read as "not measured"; these are measured absences
+      r.w >= 0 ? (r.w / 1000).toFixed(4) : (r.w === -1 ? 'no_ortholog' : 'not_estimable'),
+      r.ms >= 0 ? r.ms : ''].join('\t'));
   }
   download(`717atlas_selection_${state.matches.length}genes.tsv`, lines.join('\n'));
 }

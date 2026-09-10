@@ -187,6 +187,12 @@ export function facetRow(facets, i) {
     tandem: !!o.tandem,
     npres: o.npres,   // 0 means OrthoFinder assigned no orthogroup at all
     amb: !!o.amb,
+    // Kept as the raw integer per-mille, negatives included: -1 is "no reciprocal-best
+    // P. trichocarpa ortholog" and -2 is "pair exists, omega not estimable". Both are real
+    // states rather than missing data, so decoding them to null here would let a threshold
+    // filter silently treat them as zero.
+    w: o.w,
+    ms: o.ms,         // datasets (of 5) with a peptide at 1% FDR; -1 if the gene has no record
   };
 }
 

@@ -18,7 +18,16 @@ function qcSummary(qc) {
       ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
           'This is about the reliability of the age call, not the gene — an ancestral homolog '
           + 'could exist and be undetectable at this sensitivity. It does not mean the gene is old.')
-      : null));
+      : null,
+    el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+      'How well calibrated is that? Measured for the first time in September 2026: abSENSE\u2019s '
+      + 'nominal 99% prediction intervals contain 87 to 88% of true bitscores overall, but only '
+      + '59 to 61% at Salix purpurea — and every abSENSE flag on this pool is a prediction at '
+      + 'Salix purpurea, because that is the boundary species a Populus-specific call is made '
+      + 'against. The bias there is about +19 bitscore units, in the direction that makes an '
+      + 'absence look more surprising than it is. So this flag over-calls rather than '
+      + 'under-calls a young gene. That figure is also the optimistic bound: it is measured on '
+      + 'genes that do have a Salix homolog, which are by definition not the genes in this pool.')));
   if (qc.wgd) {
     flags.push(el('div', {}, el('span', { class: 'badge' }, 'WGD-era Ks'),
       ' minimum Ks falls in the salicoid-WGD era — may be an ohnolog, not a novelty.'));
@@ -39,8 +48,8 @@ function qcSummary(qc) {
       ? el('div', { class: 'muted' }, 'No evidence-quality flag raised on this gene.')
       : el('div', {}, ...flags),
     el('div', { class: 'muted', style: 'font-size:11px;margin-top:4px' },
-      'Flags, not filters — the published LSG pool (842 HAP1 + 883 HAP2) is unchanged by '
-      + 'this data; every claim about this gene should cite the flag alongside it.'));
+      'Flags, not filters — nothing here removes or renumbers a gene, and the pool size is '
+      + 'never set by these fields; every claim about this gene should cite the flag alongside it.'));
 }
 
 function geneCard(g) {
@@ -62,6 +71,31 @@ function geneCard(g) {
     add('LSG pool', p.rank >= LSG_MIN
       ? el('strong', {}, `yes — PS${p.rank}`)
       : el('span', { class: 'muted' }, `no (pool is PS ≥ ${LSG_MIN})`));
+  }
+  if (p.frz && p.frz.rank != null) {
+    const left = p.frz.lsg && !(p.rank >= LSG_MIN);
+    add('Changed in Sept 2026',
+      el('div', {},
+        el('div', {}, `The withdrawn 12-genome panel placed this gene at PS${p.frz.rank}`,
+          p.frz.name ? ` (${p.frz.name})` : '', '. It is now ',
+          el('strong', {}, `PS${p.rank}`), p.name ? ` (${p.name})` : '', '.'),
+        left
+          ? el('div', { style: 'margin-top:3px' },
+              el('span', { class: 'badge' }, 'left the pool'),
+              ' this gene was a lineage-specific candidate under the old panel and is not one now.')
+          : null,
+        (p.frz.rank === 19 && p.rank === 18)
+          ? el('div', { style: 'margin-top:3px' },
+              'It moved from the hybrid-only stratum to the Populus-wide one, and stayed in the '
+              + 'pool. 179 genes made exactly this move; none moved the other way.')
+          : null,
+        el('div', { class: 'muted', style: 'font-size:12px;margin-top:3px' },
+          'Why: Idesia polycarpa is the only Salicaceae genome available from outside Saliceae, '
+          + 'and it was missing from the original panel — a gap sitting exactly where a '
+          + 'Populus-specific call gets made, since a gene kept in Idesia but lost in Salix reads '
+          + 'as Populus-specific. Adding it moved 766 genes and took 114 out of the pool, and it '
+          + 'put none in. Movement in one direction only is what you expect from adding real '
+          + 'homology signal rather than from noise.')));
   }
   if (g.qc) {
     kv.append(el('dt', {}, 'Evidence quality'), el('dd', {}, qcSummary(g.qc)));

@@ -48,6 +48,8 @@ def main():
         x = r.get("x") or {}
         ann = r.get("ann") or {}
         flags = syn.get("flags") or {}
+        ks = r.get("ks") or {}
+        ms = (r.get("prot") or {}).get("ms") or {}
         rows.append([
             0 if hap == "hap1" else 1,
             idx(chrs, r.get("chr")),
@@ -64,11 +66,19 @@ def main():
             # `or -1` collapsed it to null and the browse table showed those genes as "—".
             len(r.get("pres") or []),
             1 if ps.get("amb") else 0,
+            # omega vs P. trichocarpa, as an integer per-mille so the JSON stays short.
+            # -1 means "no reciprocal-best ortholog", which is a real state, not missing data:
+            # a hybrid-only gene has nothing to measure against. -2 means a pair exists but
+            # omega could not be estimated (Ks of 0).
+            (-1 if ks.get("no") else
+             (int(round(ks["w"] * 1000)) if ks.get("w") is not None else -2)),
+            # datasets (of 5) in which a peptide from this gene was identified at 1% FDR
+            (ms.get("n") if ms.get("n") is not None else -1),
         ])
 
     out = {
         "cols": ["hap", "chr", "cls", "ps", "tau", "top", "allele", "at", "changed",
-                 "tandem", "npres", "amb"],
+                 "tandem", "npres", "amb", "w", "ms"],
         "vocab": {"chr": chrs, "cls": clss, "top": tops},
         "rows": rows,
     }
@@ -79,6 +89,8 @@ def main():
     print(f"facets: {len(rows)} rows x {len(out['cols'])} cols -> {size/1e6:.2f} MB raw")
     print(f"  chr vocab {len(chrs)}  class vocab {len(clss)}  tissue vocab {len(tops)}")
     print(f"  with tau: {sum(1 for r in rows if r[4] >= 0)}   in LSG pool: {sum(1 for r in rows if r[3] >= 18)}")
+    print(f"  with omega: {sum(1 for r in rows if r[12] >= 0)}   "
+          f"peptide-detected: {sum(1 for r in rows if r[13] > 0)}")
 
     man_path = f"{data}/meta/manifest.json"
     man = json.load(open(man_path))

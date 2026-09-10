@@ -9,6 +9,145 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.4.0 — 2026-09-10 — The published pool was withdrawn upstream, and two new layers
+
+A minor-version bump rather than a patch, because the first item changes a number the site has
+been publishing since it went live. Sweep of every Sapelo2 job that finished 2026-09-08 to
+2026-09-10 and every scratch directory touched in that window; full survey and the verdicts
+that did *not* result in a layer are in `docs/DATA_AUDIT_2026-09-10.md`.
+
+### The LSG pool moved from 842/883 to 776/835, and the site was serving the withdrawn one
+
+Upstream withdrew the frozen 12-genome pool on 2026-09-09 (`ms2-lsg docs/CORRECTIONS.md` C2,
+"Decision: ADOPTED (Chen, 2026-09-09)"). The atlas kept publishing it for four days, including
+in Browse facets, the phylostratigraphy ladder and the `ps.lsg` flag on every gene.
+
+*Idesia polycarpa* is the only Salicaceae genome available from outside Saliceae and was never
+in the panel — a sampling gap sitting exactly where a *Populus*-specific call is made, because
+a gene kept in *Idesia* but lost in *Salix* reads as *Populus*-specific. Adding it moves 766
+genes, takes 114 out of the pool, and puts **none** in. One-directional movement is what adding
+real homology signal looks like; a noisy rerun would move genes both ways.
+
+**179 genes move PS19 → PS18 and stay in the pool, and none move the other way**, so pool
+composition goes from 51.0% PS19 / 49.0% PS18 to 42.3% / 57.7%. The site labels PS19
+"hybrid-only", so before this it showed a stratum name upstream no longer assigns to a fifth of
+that arm. PS18 and PS19 are still never pooled.
+
+The correction is **shown, not swapped**: a gene whose rank moved carries the withdrawn call
+under `ps.frz` and its page says what changed and why. Numbers published against the frozen
+pool are correct statements about that pool and are not retracted — they have to name it.
+
+Three consequences worth stating rather than absorbing quietly:
+
+- **The QC layer is cut against the withdrawn pool.** `sources/lsg_qc_flags.tsv.gz` has 1,725
+  rows; 114 are now for genes outside the pool. The source's own scope rule settles it — "a
+  non-pool gene has no young-age claim to qualify" — so those rows are dropped. Nothing is
+  lost: `ps.frz` still records that those genes used to be candidates.
+- **The arithmetic closes on the nose.** Restricting `qc_clean` to the corrected pool gives
+  exactly **1,214**, which is the chapter's independently derived `qc_survivor`. The sidecar
+  written on 2026-09-06 predicted a 13-gene gap between them; it closes. Two quantities reached
+  by different routes landing on the same set is a real check on the correction.
+- **`tax_rep` moved for 1,251 genes whose rank did not.** It is a percentage over the panel and
+  the panel gained a genome. A re-scaling, not a re-call, and counted rather than changed
+  silently.
+
+`PtXaTreH.05G120200` (one of the two headline candidates upstream) is among the 114 that left:
+rank 18 → 17, it has an *Idesia* homolog.
+
+### The abSENSE flags now carry their calibration
+
+`qc.hdf` and `qc.verdict` shipped with no statement of how well calibrated they are. That was
+measured for the first time on 2026-09-09, over 868,127 predicted-versus-observed bitscore
+pairs. Point predictions are excellent (r 0.981/0.983). The intervals are not: nominal 99%
+prediction intervals contain 87–88% of true scores overall — and only **0.610 / 0.594 at
+*Salix purpurea***, which is the boundary species every flag on this pool is predicted at, with
+a **+19 bitscore bias in the direction that over-calls `surprising_absence`**. That is also the
+optimistic bound: it is in-sample, and measured on genes that *have* a *Salix* homolog and are
+therefore not LSGs.
+
+Nothing is retracted — the pool correction does not rest on abSENSE at all. The number now
+travels with the flag on the gene page.
+
+### Proteomics: a real re-search replaces a string match
+
+`prot.ms` held Tier-1 evidence: a 717 protein's tryptic peptides string-matched against peptide
+tables a third party built by searching a **different species'** database. A negative there is
+uninformative by construction — a peptide unique to 717 could never have appeared in that
+database.
+
+Replaced by the re-search: the same class of raw spectra searched against a database that does
+contain the 717 proteins (98,659 targets), Sage 0.14.7, 1% peptide **and** spectrum FDR, across
+**five** public *Populus* datasets. Genome-wide, so a blank now means something.
+
+Detection is monotone with gene age — 42.28% ancient, 12.78% conserved, 6.14% rosid, 2.93%
+Salicaceae, 0.12% pool — which is the shape expected if the assay tracks real protein abundance
+and conservation rather than noise.
+
+It ships with the denominator that makes an absence readable: `abl` says whether the gene has
+any fully-tryptic peptide in the searchable window at all. A protein with none is invisible
+however abundant it is, and that is a composition property on which young genes differ from old
+ones. 54 genes are undetectable this way and say so on their own page. The control does not
+move the headline (pool 0.0% either way) — which is a different statement from not running it.
+
+Stated losses: PXD023826 and PXD064017 were covered by Tier 1 and are not covered here (one is
+DIA and needs a different engine, the other a vendor format). A Sage 1% FDR is not an MSFragger
+1% FDR. Three of the five datasets are other *Populus* species whose samples contain no 717
+protein, so a hit there says the gene *family* is translated somewhere in *Populus*.
+
+### New: Ka/Ks against *Populus trichocarpa*
+
+52,232 genes (81.7%) gain an interspecific ω. The atlas's only selection-adjacent number before
+was HAP1↔HAP2 dS, which compares two haplotypes of one clone.
+
+ω rises monotonically with youth — **0.235 / 0.327 / 0.475 / 0.566 / 0.720** from most ancient
+to the *Populus*-specific pool — and stays well below the neutral 1. Young genes here are
+constrained, just less constrained. Pairing rate falls with youth (87.6% → 39.1%), so a young
+stratum's figure is measured on its more conserved members. **PS19 has no ω at all**: 1 of 681
+genes has any pair, which is structural rather than missing, and renders as a stated absence.
+
+**The estimator was chosen by measurement.** NG86 and YN00 ω correlate at **r = 0.07 to 0.36
+per gene** on these alignments while their class medians agree to within 0.06 — median dS is
+about 0.04, close enough that the maximum-likelihood estimate is unstable gene by gene. Class
+agreement was hiding per-gene disagreement, which matters because an atlas is a per-gene
+resource. NG86 is the one with external support: r = **0.937** against the atlas's existing,
+independently derived allele ω, where YN00 gives **0.083**. NG86 ships as the value; YN00 ships
+only to show the spread where they disagree.
+
+### An existing layer audited, for free
+
+The new pipeline covers the HAP1↔HAP2 pair the allele card has served since v0.2, independently.
+The two **agree on the partner gene for 100.0% of 50,656 genes** — two orthology methods, one
+syntenic and one reciprocal-best, with no disagreement at all. Their ω differs by ~20% at the
+median, and the evidence says the instability is on the new pipeline's YN00 side, not the
+card's. Nothing retracted; the card now carries the corroboration and the number.
+
+Separately, the reciprocal-best *Potri* orthologs behind the new layer agree with the atlas's
+GENESPACE syntenic 1:1 calls for **42,858 of 43,441 genes (98.7%)**. The 583 that differ carry
+a note on their card rather than being silently trusted or dropped.
+
+### Checks
+
+Four new data checks, and each was confirmed to **fail** on deliberately broken input before
+being trusted: the manifest pool total against the shard pool, the phylostratigraphy ladder
+against the shard ranks stratum by stratum, no embargoed LSG candidate label reaching any shard
+(searched as text, so a rename cannot dodge it), and `ps.frz` existing only where the two
+panels disagree.
+
+`validate_data.py` also gained a width assertion on the facet comparison. It compared columns
+with `zip()`, which truncates to the shorter list — so a column added to `build_facets.py`
+without being added there would have been compared against nothing and passed silently. Two
+columns were added this release, which is exactly when that would have bitten.
+
+Both new source tables are **gated at generation**: each aggregates its own per-gene output
+back to gene class and refuses to write unless it reproduces the owning analysis's published
+summary table — 84 cells for proteomics, 11 for Ka/Ks. Where the Ka/Ks gate disagreed on 5
+cells, the cause was diagnosed (that table counts each HAP1↔HAP2 pair once per partner gene, so
+its n is exactly twice a per-gene-keyed count) rather than worked around.
+
+Eight new render checks, including the two that matter most: a gene that left the pool must say
+so, and a gene that *could not have been detected* must not render like one that was looked for
+and missed.
+
 ## 0.3.11 — 2026-09-08 — Three silent defects in the build itself
 
 No new layers. Everything here is a correction to data that was already shipping, found by

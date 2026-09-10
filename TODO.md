@@ -124,3 +124,78 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
       rendered fine, validated fine, and were internally consistent. What caught them was
       rebuilding twice and diffing. Worth doing after any change to a build script, and
       worth a `scripts/` helper if it happens a third time.
+
+## v0.6 — the 2026-09-10 source sweep (see `docs/DATA_AUDIT_2026-09-10.md`)
+
+Twelve analyses moved on Sapelo2 between 2026-09-08 and 2026-09-10. Two of them do not add a
+layer, they **qualify a layer this atlas already publishes on a live public site** — those go
+first, ahead of anything new.
+
+- [x] **26 — SHIPPED 2026-09-10, data 0.4.0.** The pool the atlas serves (842/883,
+      frozen 12-species panel) was **withdrawn upstream on 2026-09-09** and replaced by
+      776/835 (`docs/CORRECTIONS.md` C2, marked ADOPTED by Chen). Source
+      `pipeline/out/lsg_pool_idesia.tsv.gz` carries `rank` and `frozen_rank` side by side, so
+      **show the correction, do not silently swap it**. 179 genes move PS19 -> PS18 and stay in
+      the pool; none move the other way, so the site's "hybrid-only" label is currently wrong
+      for a fifth of the PS19 arm. Ship `rank`, `frozen_rank` and the two movement flags; keep
+      `canonical_label` / `group` out — those are the 10 embargoed candidate names (TODO 22's
+      hold, unchanged).
+
+- [x] **27 — SHIPPED 2026-09-10.** `qc.hdf` / `qc.verdict` ship
+      today with no statement of how well calibrated they are. Now measured: nominal 99%
+      prediction intervals cover 87-88% globally but only **0.610 / 0.594 at *Salix purpurea***,
+      the boundary species every pool flag is predicted at, with a **+19 bitscore bias in the
+      direction that over-calls `surprising_absence`**. And that is the optimistic bound — it is
+      in-sample, on genes that have a *Salix* homolog and therefore are not LSGs. Nothing is
+      retracted; the number has to travel with the flag.
+
+- [x] **28 — SHIPPED 2026-09-10.**
+      `prot.ms` currently holds a Tier-1 result whose negative is uninformative by construction
+      (a 717-specific peptide could never appear in a table built from another species'
+      database). Tier 2 re-searched the raw spectra against a database that contains the 717
+      proteins, across five public *Populus* datasets, genome-wide, 1% peptide+spectrum FDR.
+      Ship it **with the per-gene detectability denominator** — without it "not detected" and
+      "could not have been detected" render identically.
+
+- [x] **29 — SHIPPED 2026-09-10.** 52,232 genes (81.7%) with omega against reciprocal-best
+      *P. trichocarpa* orthologs, NG86 and YN00. The atlas's only selection-adjacent number
+      today is HAP1<->HAP2 dS, which compares two haplotypes of one clone. PS19 has **no**
+      omega at all (0 of 343 / 0 of 338 have any ortholog) — render that as a stated absence,
+      not a blank.
+
+- [ ] **30 — chromatin (GSE128434 ATAC / H3K4me3). DEFERRED, reason recorded.** Real
+      reprocessed peak calls exist for 34,140 *Potri* loci and the atlas owns the 1:1 ortholog
+      join. Deferred because a promoter is a *positional* feature: carrying an ATAC call across
+      an ortholog edge asserts promoter synteny that the ortholog call does not establish. Same
+      reasoning that closed TODO 20's expression join, plus that. Unblocks on a syntenic
+      promoter check per pair, or on chromatin data for 717 itself.
+
+- [ ] **31 — PS19 triage scores (PSAURON / PlantCAD2). DEFERRED until 26 lands.** Sound layer,
+      but keyed to a PS19 membership that item 26 changes by a fifth.
+
+- [ ] **32 — pangenome presence across 31 genomes. BLOCKED, jobs running.** Annotation-free
+      tblastn of pool + matched control against 31 *Populus*/Salicaceae assemblies — presence
+      that does not depend on any annotator's ORF policy, which is the known weakness of the
+      synteny layer. `pang_tblastn` / `pang_tbsoft` / `pang_hap1self` were still running on
+      2026-09-10 and a concurrent session owns that directory. Pool-scoped (~3,400 queries), so
+      it lands as a card like `qc`, not as a facet.
+
+### What landing 26-29 actually taught, kept because it generalises
+
+- **A source repo's own correction log is a layer this atlas depends on, and nothing was
+  watching it.** The pool was withdrawn upstream on 2026-09-09 and the site kept serving the
+  withdrawn one until this sweep found it four days later. Every check passed throughout,
+  because they all check the atlas against itself. Worth a periodic read of
+  `ms2lsg_wt_proteomics/docs/CORRECTIONS.md` rather than waiting for the next sweep.
+- **Class-level agreement can hide per-gene disagreement.** NG86 and YN00 omega agree on every
+  class median to within 0.06 and correlate at r = 0.07 to 0.36 gene by gene. A summary table
+  would have shown nothing wrong. An atlas is a per-gene resource, so a per-gene check is the
+  one that counts — compare against an independent estimate of the same quantity, not against
+  the same pipeline's own summary.
+- **`zip()` in a validator is a silent truncation.** The facet check compared columns with
+  `zip`, so any column added to the builder and not to the validator would have been checked
+  against nothing. Two columns were added this release. Assert widths before comparing values.
+- **The cheapest real check is "does my roll-up reproduce the number its owner published".**
+  Both new source tables are gated that way, 84 cells and 11 cells. The Ka/Ks gate failed 5
+  cells on the first run; the cause was a factor-of-two double count in the published table's
+  own keying, found by looking rather than by loosening the tolerance.

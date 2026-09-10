@@ -124,9 +124,41 @@ await check('gene-lsg-qc-clean', '#/gene/PtXaTreH.01G001500',
   console.log(`\n### lsg-qc:no-forbidden-fields  ${clean ? 'OK' : 'FAIL'}`);
   await fp.close();
 }
+// --- v0.6: the pool correction (TODO 26/27), the re-search (28) and Ka/Ks (29) ---------
+// Each of these renders something the site did not say before, so each gets a case. The
+// pool one matters most: the site published the withdrawn pool for four days, and a check
+// that only asserts "a pool number renders" would have passed throughout.
+await check('gene-left-the-pool', '#/gene/PtXaTreH.05G120200',
+  { expect: ['Changed in Sept 2026', 'PS18', 'left the pool',
+             'lineage-specific candidate under the old panel'], wait: 900 });
+await check('gene-ps19-to-ps18', '#/gene/PtXaAlbH.17G073600',
+  { expect: ['Changed in Sept 2026', 'hybrid-only stratum to the Populus-wide one',
+             '179 genes made exactly this move'], wait: 900 });
+// The abSENSE calibration must travel with the flag, not sit in a doc nobody opens.
+await check('gene-absense-calibration', '#/gene/PtXaTreH.12G056600',
+  { expect: ['Evidence quality', 'Salix purpurea', '59 to 61%',
+             'over-calls rather than under-calls'], wait: 900 });
+await check('gene-peptide-detected', '#/gene/PtXaAlbH.17G050300',
+  { expect: ['Peptide evidence', 'detected in', 'spectrum match',
+             'tryptic peptide', 'P. tomentosa'], wait: 1000 });
+// A gene that could not have been found is not the same as one that was looked for and
+// missed. If these two ever render identically the layer has lost its point.
+await check('gene-undetectable', '#/gene/PtXaAlbH.17G041200',
+  { expect: ['Peptide evidence', 'undetectable',
+             'could not have been found however abundant'], wait: 1000 });
+await check('gene-selection', '#/gene/PtXaTreH.05G120200',
+  { expect: ['Selection', 'vs P. trichocarpa', 'Potri.', 'codons', 'purifying selection',
+             'Nei'], wait: 900 });
+await check('gene-no-ortholog', '#/gene/PtXaAlbH.17G052200',
+  { expect: ['Selection', 'not defined for this gene', 'structural rather than missing',
+             'nothing to measure against'], wait: 900 });
+await check('browse-omega-column', '#/browse',
+  { expect: ['\u03c9', 'MS', 'Peptide-detected'], wait: 1200 });
+
 await check('module-protein', '#/module/protein',
   { expect: ['Protein', 'ESMFold', 'pLDDT proxy', 'never pooled', 'peptide',
-             'r = −0.49', 'run length'] });
+             'r = −0.49', 'run length', 'monotonically with gene age',
+             'undetectable this way', 'contain no 717 protein'] });
 await check('gene-protein', '#/gene/PtXaTreH.01G000100',
   { expect: ['Protein', 'Predicted disorder', 'Duplication class'], wait: 1000 });
 await check('module-about', '#/module/about',

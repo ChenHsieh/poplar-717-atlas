@@ -210,6 +210,50 @@ def main():
     check("manifest lsg_qc.pool_genes matches the shard count", want_qc == n_qc,
           f"manifest {want_qc} vs {n_qc} genes carrying qc")
 
+    # ---- the Idesia-corrected pool (TODO 26) ----------------------------------------------
+    # Three checks, and the second is the one that matters. The atlas shipped a withdrawn pool
+    # for four days because nothing compared the manifest's AGGREGATES against the per-gene
+    # records they summarise -- the same shape as TODO 24's stale facet index. Aggregates get
+    # recomputed here from the shards, never trusted.
+    pool_by_hap = Counter()
+    for gid, (hap, _, rec) in genes.items():
+        if ((rec.get("ps") or {}).get("rank") or -1) >= 18:
+            pool_by_hap[hap] += 1
+    want_pool = ((man.get("lsg_pool") or {}).get("canonical") or {}).get("total")
+    check("manifest lsg_pool total matches the shard pool",
+          want_pool == sum(pool_by_hap.values()),
+          f"manifest {want_pool} vs {sum(pool_by_hap.values())} genes at PS >= 18 "
+          f"({dict(pool_by_hap)})")
+
+    ladder = (man.get("phylostrat") or {}).get("ladder") or {}
+    lad_bad = []
+    for hap in ("hap1", "hap2"):
+        shard_ranks = Counter((rec.get("ps") or {}).get("rank")
+                              for gid, (h, _, rec) in genes.items() if h == hap)
+        for row in ladder.get(hap, []):
+            if shard_ranks.get(row["rank"], 0) != row["n"]:
+                lad_bad.append((hap, row["rank"], row["n"], shard_ranks.get(row["rank"], 0)))
+    check("phylostrat ladder counts match the shard ranks, every stratum", not lad_bad,
+          f"{len(lad_bad)} strata disagree (hap, rank, manifest, shards): {lad_bad[:4]}"
+          if lad_bad else f"{sum(len(v) for v in ladder.values())} strata")
+
+    # The embargoed candidate names must not reach a shard under ANY key -- searched as text,
+    # not by key name, so a rename cannot dodge it. Same construction as the qc check above.
+    EMBARGOED = ("canonical_label", "LSG1.14g", "LSG2.10g", "LSG3.6g", "LSG4.5g",
+                 "LSG5.3g", "LSG6.2g", "LSG7.4g", "XO_quartet", "XO2g", "XO14g")
+    label_bad = [gid for gid, (_, _, rec) in genes.items()
+                 if any(f in json.dumps(rec) for f in EMBARGOED)]
+    check("no embargoed LSG candidate label reaches any shard", not label_bad,
+          f"{len(label_bad)} records, e.g. {label_bad[:3]}" if label_bad else "")
+
+    # ps.frz is the withdrawn call, and exists only where the two panels disagree.
+    frz = [gid for gid, (_, _, rec) in genes.items() if (rec.get("ps") or {}).get("frz")]
+    frz_same = [gid for gid in frz
+                if (genes[gid][2]["ps"]["frz"] or {}).get("rank") == genes[gid][2]["ps"]["rank"]]
+    check("ps.frz appears only where the corrected and withdrawn ranks differ", not frz_same,
+          f"{len(frz_same)} genes carry a frz identical to their rank" if frz_same
+          else f"{len(frz)} genes changed rank")
+
     # CRE / promoter layer: every gene must carry it, family counts must sum to the
     # stored total, and TATA position (when set) must lie inside the promoter window.
     cre_missing = [g for g, (_, _, r) in genes.items() if "cre" not in r]
@@ -318,6 +362,8 @@ def main():
             syn, ps = r.get("syn") or {}, r.get("ps") or {}
             x, ann = r.get("x") or {}, r.get("ann") or {}
             flags = syn.get("flags") or {}
+            ks = r.get("ks") or {}
+            ms = (r.get("prot") or {}).get("ms") or {}
             def vi(name, v):
                 return vocab[name].index(v) if v in vocab[name] else -1
             return [
@@ -333,7 +379,18 @@ def main():
                 1 if flags.get("ar") else 0,
                 len(r.get("pres") or []),
                 1 if ps.get("amb") else 0,
+                (-1 if ks.get("no") else
+                 (int(round(ks["w"] * 1000)) if ks.get("w") is not None else -2)),
+                (ms.get("n") if ms.get("n") is not None else -1),
             ]
+
+        # zip() truncates to the shorter list, so a column added to build_facets.py without
+        # being added here would be compared against nothing and pass silently. Assert the
+        # widths agree first -- the check below is only meaningful if they do.
+        check("the validator covers every facet column",
+              len(facet_row("hap1", genes[idx[0]][2], fac["vocab"])) == len(fac["cols"]),
+              f"validator reproduces {len(facet_row('hap1', genes[idx[0]][2], fac['vocab']))} "
+              f"of {len(fac['cols'])} columns -- add the new one here")
 
         by_col = Counter()
         for k, gid in enumerate(idx):

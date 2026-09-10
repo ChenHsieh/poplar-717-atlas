@@ -92,7 +92,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.3.11",
+ "data_version": "0.4.0",
  "duplication": {
   "ks_by_rank": {
    "12": {
@@ -165,7 +165,7 @@
   }
  },
  "facets": {
-  "bytes": 1808225,
+  "bytes": 2173393,
   "cols": [
    "hap",
    "chr",
@@ -178,9 +178,32 @@
    "changed",
    "tandem",
    "npres",
-   "amb"
+   "amb",
+   "w",
+   "ms"
   ],
   "n_rows": 63960
+ },
+ "kaks": {
+  "estimator": "NG86 (Nei-Gojobori 1986) for the per-gene value",
+  "median_omega_by_class": {
+   "LSG_PS18_populus": 0.7204,
+   "PS13_15": 0.4748,
+   "PS16_17": 0.5662,
+   "PS1_2": 0.2351,
+   "PS3_12": 0.3272
+  },
+  "n_genes": 52232,
+  "n_without_an_ortholog": 11728,
+  "ortholog_agreement_with_syntenic_call": {
+   "different": 583,
+   "same": 42858
+  },
+  "ps19": "1 of 681 PS19 genes has any trichocarpa pair. A structural absence, not missing data -- a hybrid-only gene has no ortholog to measure against.",
+  "reading": "Monotone with youth and well below the neutral 1. Young genes are constrained, just less constrained -- not neutrally evolving, which is what a spurious open reading frame would look like.",
+  "selection_bias": "Pairing rate falls with youth (87.6% ancient, 39.1% PS18, ~0% PS19), so the young-gene omega is measured on the conserved end of its stratum and if anything understates the relaxation.",
+  "target": "Populus trichocarpa, reciprocal-best-hit ortholog",
+  "why_not_yn00": "NG86 and YN00 omega correlate at r = 0.07 to 0.36 PER GENE on these alignments while their class medians agree to within 0.06 -- median dS is about 0.04, too close for YN00 to be stable gene by gene. NG86 is the one with external support: r = 0.937 against the atlas's independently derived allele omega, against YN00's 0.083. yn00_omega ships only to show the spread, never as a per-gene answer."
  },
  "layers": {
   "applied": {
@@ -232,16 +255,81 @@
   "esmfold_note": "ESMFold structure covers 40,685 of 63,960 genes (64%). Absence is coverage, not a structural claim.",
   "proteomics_note": "Three independent PXD datasets, reported separately. Detection rates differ ~4x (3,989 / 18,739 / 21,449 genes), so a gene absent from one is not undetected."
  },
+ "lsg_pool": {
+  "adopted": "Chen, 2026-09-09; ms2-lsg docs/CORRECTIONS.md C2",
+  "canonical": {
+   "hap1": 776,
+   "hap2": 835,
+   "panel": "13 genomes, Idesia polycarpa added",
+   "total": 1611
+  },
+  "entered_pool": 0,
+  "genes_with_a_changed_rank": 766,
+  "genes_with_a_changed_tax_rep": 2017,
+  "left_pool": 114,
+  "not_licensed": "The corrected pool is not evidence that the surviving calls are modelled-safe. abSENSE corrects detection FAILURE (sensitivity); a missing genome is taxon SAMPLING (coverage). 86% of the genes Idesia removed were `no_prediction` in the frozen abSENSE run.",
+  "note": "PS18 and PS19 are never pooled. 179 genes moved PS19 -> PS18 and stayed in the pool; none moved the other way. Numbers published against the frozen pool are correct statements about that pool and are not retracted -- they must name it.",
+  "ps18_ps19": {
+   "HAP1_PS18": 433,
+   "HAP1_PS19": 343,
+   "HAP2_PS18": 497,
+   "HAP2_PS19": 338
+  },
+  "tax_rep_note": "tax_rep is the fraction of the panel's genomes represented in the gene's stratum, so it moves for genes whose RANK did not: the denominator went from 12 genomes to 13. Not a re-call, a re-scaling.",
+  "withdrawn": {
+   "hap1": 842,
+   "hap2": 883,
+   "panel": "12 genomes, frozen genEra panel",
+   "total": 1725
+  }
+ },
  "lsg_qc": {
+  "absense_calibration": {
+   "at_the_boundary_species": {
+    "coverage_of_nominal_99pct_PI_hap1": 0.61,
+    "coverage_of_nominal_99pct_PI_hap2": 0.594,
+    "direction": "abSENSE OVER-predicts what a Salix homolog would have scored. An expected score that is too high makes an observed absence look more surprising than it is, which under-estimates detection_failure_prob and over-calls surprising_absence.",
+    "median_bias_bitscore_hap1": 18.9,
+    "median_bias_bitscore_hap2": 19.2,
+    "species": "Salix purpurea -- the rank-18 boundary. Every HDF flag on this pool is a prediction at this species."
+   },
+   "for_contrast_in_genus": {
+    "Idesia polycarpa": 0.815,
+    "Populus nigra": 0.952,
+    "Populus trichocarpa": 0.982
+   },
+   "global_fit": {
+    "coverage_of_nominal_99pct_PI_hap1": 0.8806,
+    "coverage_of_nominal_99pct_PI_hap2": 0.8715,
+    "mean_abs_error_bitscore": 44.5,
+    "pearson_r_hap1": 0.9814,
+    "pearson_r_hap2": 0.9827
+   },
+   "headline": "abSENSE flags are worst calibrated at exactly the boundary that defines this pool, and biased in the direction that over-calls a young gene. Quote the flag with this number, never alone.",
+   "measured": "2026-09-09, abSENSE --predall over 868,127 predicted-vs-observed bitscore pairs (ms2-lsg analyses/absense_hdf, jobs 48015768_1/_2)",
+   "not_retracted": "Nothing in the QC layer is withdrawn by this, and the pool correction does not rest on abSENSE at all -- 776/835 comes from genEra ranks with Idesia added. What is qualified is the per-gene HDF flag and any statement resting on it.",
+   "this_is_the_optimistic_bound": "It is measured in-sample, and on the wrong genes: a Salix pair only exists for a gene that HAS a Salix homolog, which by definition is not an LSG. For a real PS18 gene the Salix prediction is pure out-of-sample extrapolation. 0.59-0.61 is what the model achieves at that boundary on the easy cases."
+  },
   "flags": {
+   "absense_reject": 190,
+   "qc_clean": 1214,
+   "synteny_contested_any": 70,
+   "tblastn_retract": 200,
+   "wgd_flagged": 36
+  },
+  "flags_on_the_withdrawn_pool": {
    "absense_reject": 281,
+   "note": "the same five counts over all 1,725 source rows, i.e. against the frozen pool these flags were cut for. Kept so numbers already published against that pool stay checkable.",
    "qc_clean": 1227,
    "synteny_contested_any": 106,
    "tblastn_retract": 228,
    "wgd_flagged": 45
   },
-  "note": "flags, not filters -- the LSG pool size (842 HAP1 + 883 HAP2) is unchanged by this data and must never be filtered by these fields.",
-  "pool_genes": 1725
+  "note": "flags, not filters -- nothing here removes, renumbers or filters a gene, and the atlas must not use these fields to shrink the pool count. The pool size is set by data/meta manifest.lsg_pool, never by these flags.",
+  "pool_genes": 1611,
+  "rows_dropped_out_of_corrected_pool": 114,
+  "source_pool": "This file was cut against the WITHDRAWN frozen pool (1,725 rows). Rows for genes the Idesia-corrected panel took out of the pool are dropped here, per the source's own scope rule that a non-pool gene has no young-age claim to qualify. The withdrawn call stays visible on those genes under ps.frz.",
+  "source_rows": 1725
  },
  "modules": [
   "core",
@@ -262,54 +350,54 @@
  "phylostrat": {
   "by_rank": {
    "hap1": {
-    "1": 22769,
-    "10": 789,
-    "11": 856,
-    "12": 279,
-    "13": 110,
-    "14": 33,
-    "15": 73,
-    "16": 105,
-    "17": 154,
-    "18": 392,
-    "19": 450,
+    "1": 22770,
+    "10": 763,
+    "11": 862,
+    "12": 273,
+    "13": 126,
+    "14": 31,
+    "15": 71,
+    "16": 216,
+    "17": 92,
+    "18": 433,
+    "19": 343,
     "2": 2422,
     "3": 507,
     "4": 519,
     "5": 381,
-    "6": 1268,
-    "7": 209,
-    "8": 134,
-    "9": 655,
-    "NA": 32
+    "6": 1415,
+    "7": 164,
+    "8": 105,
+    "9": 617,
+    "NA": 27
    },
    "hap2": {
     "1": 22538,
-    "10": 746,
-    "11": 859,
-    "12": 276,
-    "13": 113,
-    "14": 30,
-    "15": 61,
-    "16": 100,
-    "17": 171,
-    "18": 454,
-    "19": 429,
+    "10": 727,
+    "11": 856,
+    "12": 271,
+    "13": 131,
+    "14": 26,
+    "15": 55,
+    "16": 208,
+    "17": 98,
+    "18": 497,
+    "19": 338,
     "2": 2386,
     "3": 503,
     "4": 523,
     "5": 355,
-    "6": 1257,
-    "7": 201,
-    "8": 127,
-    "9": 676,
+    "6": 1395,
+    "7": 164,
+    "8": 103,
+    "9": 631,
     "NA": 18
    }
   },
   "ladder": {
    "hap1": [
     {
-     "n": 22769,
+     "n": 22770,
      "name": "cellular organisms",
      "rank": 1
     },
@@ -334,72 +422,72 @@
      "rank": 5
     },
     {
-     "n": 1268,
+     "n": 1415,
      "name": "Embryophyta",
      "rank": 6
     },
     {
-     "n": 209,
+     "n": 164,
      "name": "Tracheophyta",
      "rank": 7
     },
     {
-     "n": 134,
+     "n": 105,
      "name": "Euphyllophyta",
      "rank": 8
     },
     {
-     "n": 655,
+     "n": 617,
      "name": "Spermatophyta",
      "rank": 9
     },
     {
-     "n": 789,
+     "n": 763,
      "name": "Magnoliopsida",
      "rank": 10
     },
     {
-     "n": 856,
+     "n": 862,
      "name": "Mesangiospermae",
      "rank": 11
     },
     {
-     "n": 279,
+     "n": 273,
      "name": "Pentapetalae",
      "rank": 12
     },
     {
-     "n": 110,
+     "n": 126,
      "name": "rosids",
      "rank": 13
     },
     {
-     "n": 33,
+     "n": 31,
      "name": "fabids",
      "rank": 14
     },
     {
-     "n": 73,
+     "n": 71,
      "name": "Malpighiales",
      "rank": 15
     },
     {
-     "n": 105,
+     "n": 216,
      "name": "Salicaceae",
      "rank": 16
     },
     {
-     "n": 154,
+     "n": 92,
      "name": "Saliceae",
      "rank": 17
     },
     {
-     "n": 392,
+     "n": 433,
      "name": "Populus",
      "rank": 18
     },
     {
-     "n": 450,
+     "n": 343,
      "name": "Populus tremula x Populus alba",
      "rank": 19
     }
@@ -431,72 +519,72 @@
      "rank": 5
     },
     {
-     "n": 1257,
+     "n": 1395,
      "name": "Embryophyta",
      "rank": 6
     },
     {
-     "n": 201,
+     "n": 164,
      "name": "Tracheophyta",
      "rank": 7
     },
     {
-     "n": 127,
+     "n": 103,
      "name": "Euphyllophyta",
      "rank": 8
     },
     {
-     "n": 676,
+     "n": 631,
      "name": "Spermatophyta",
      "rank": 9
     },
     {
-     "n": 746,
+     "n": 727,
      "name": "Magnoliopsida",
      "rank": 10
     },
     {
-     "n": 859,
+     "n": 856,
      "name": "Mesangiospermae",
      "rank": 11
     },
     {
-     "n": 276,
+     "n": 271,
      "name": "Pentapetalae",
      "rank": 12
     },
     {
-     "n": 113,
+     "n": 131,
      "name": "rosids",
      "rank": 13
     },
     {
-     "n": 30,
+     "n": 26,
      "name": "fabids",
      "rank": 14
     },
     {
-     "n": 61,
+     "n": 55,
      "name": "Malpighiales",
      "rank": 15
     },
     {
-     "n": 100,
+     "n": 208,
      "name": "Salicaceae",
      "rank": 16
     },
     {
-     "n": 171,
+     "n": 98,
      "name": "Saliceae",
      "rank": 17
     },
     {
-     "n": 454,
+     "n": 497,
      "name": "Populus",
      "rank": 18
     },
     {
-     "n": 429,
+     "n": 338,
      "name": "Populus tremula x Populus alba",
      "rank": 19
     }
@@ -505,7 +593,40 @@
   "lsg_rank_min": 18,
   "n_ambiguous": 44,
   "n_founder": 63954,
-  "note": "LSG pool = rank >= 18 (PS18 Populus + PS19 hybrid-only), per the chapter definition. PS17 Saliceae is flanking context and is not in the pool."
+  "note": "LSG pool = rank >= 18 (PS18 Populus + PS19 hybrid-only), per the chapter definition. PS17 Saliceae is flanking context and is not in the pool. Ranks are the Idesia-corrected 13-genome panel adopted 2026-09-09; the withdrawn 12-genome call is kept per gene under ps.frz wherever the two disagree."
+ },
+ "proteomics": {
+  "age_gradient_pct": {
+   "LSG_pool": 0.12,
+   "PS13_15_rosids": 6.14,
+   "PS16_17_salicaceae": 2.93,
+   "PS1_2_ancient": 42.28,
+   "PS3_12_conserved": 12.78
+  },
+  "cross_species_caveat": "Three of the five datasets are other Populus species, whose samples contain no 717 protein. A hit there says the gene FAMILY is translated somewhere in Populus, not that 717's copy is.",
+  "datasets": {
+   "PXD002544": "Populus x canescens",
+   "PXD020099": "Populus tremula x tremuloides",
+   "PXD025418": "Populus tomentosa, xylem",
+   "PXD025636": "Populus trichocarpa",
+   "PXD058986": "Populus x canescens"
+  },
+  "detectability_note": "`abl` says whether the gene has any fully-tryptic peptide in the searchable window. Read it before reading a zero: a protein with none is invisible however abundant it is, and that is a composition property on which young genes differ.",
+  "engine_caveat": "A Sage 1% FDR is not an MSFragger 1% FDR. Report the engine with the number.",
+  "genes_with_a_hit": {
+   "hap1": 13398,
+   "hap2": 13244
+  },
+  "lsg_pool_genes_with_a_hit": 8,
+  "method": "raw-spectra re-search against a database CONTAINING the 717 proteins (98,659 targets), Sage 0.14.7, 1% peptide AND spectrum FDR",
+  "n_datasets": 5,
+  "supersedes": "Tier-1 string matching against three third-party peptide tables built from another species' database (PXD023826 / PXD025636 / PXD064017). A Tier-1 negative was uninformative by construction. PXD023826 and PXD064017 are not covered by this layer -- the replacement is deeper and interpretable, not a strict superset of datasets.",
+  "undetectable_by_construction": {
+   "hap1": 26,
+   "hap2": 28
+  },
+  "union_fdr_caveat": "1% per dataset ACCUMULATES over five datasets. Read a single-dataset singleton against the pooled false-peptide expectation, not one dataset's.",
+  "version": 2
  },
  "shards": {
   "hap1/Chr01/0": 249,

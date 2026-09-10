@@ -38,13 +38,23 @@ STAGES=(
   "sapelo2|build_layers.py|external genome-wide layers"
   "sapelo2|build_crossspecies.py|cross-species orthologs"
   "onedrive|patch_dup_v9_and_pav.py|duplication v9 + PAV (after build_duplication)"
-  "repo|patch_lsg_qc.py|LSG evidence-quality flags (after build_phylostrat)"
+  "repo|patch_pool_idesia.py|Idesia-corrected LSG pool (after build_phylostrat; MUST precede patch_lsg_qc)"
+  "repo|patch_lsg_qc.py|LSG evidence-quality flags (after patch_pool_idesia -- it drops rows for genes the corrected pool no longer holds)"
+  "repo|patch_proteomics_v2.py|proteomics re-search, genome-wide (after build_layers, which writes the Tier-1 shape this replaces)"
+  "repo|patch_kaks.py|Ka/Ks vs P. trichocarpa"
   "repo|build_cre.py|promoter/CRE layer"
   "onedrive|build_combat.py|ComBat-seq view (after build_expression)"
   "onedrive|build_contrasts.py|contrast index (after build_expression)"
   "onedrive|build_locus.py|locus tiles + genome map"
   "any|build_facets.py|facet index (MUST be last)"
 )
+# DELIBERATELY NOT STAGES: make_proteomics_v2_source.py and make_kaks_source.py. They read
+# /scratch analysis output and REGENERATE sources/*.tsv.gz, which is a different job from
+# building data/ -- the committed source file is the artifact, exactly as data/ is. Run them
+# by hand on Sapelo2 when the upstream analysis produces a new result, then run the matching
+# patch_*.py stage below. Both refuse to write unless they reproduce their owning analysis's
+# published summary table.
+#
 # DELIBERATELY NOT A STAGE: patch_leaf_tissue_analysis.py. It is a one-time correction to
 # already-shipped data; build_expression.py is fixed at source, so a real rebuild already
 # produces the corrected baseline and re-running the patch would be a no-op at best.

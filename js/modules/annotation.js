@@ -149,7 +149,81 @@ function alleleCard(g) {
     el('h2', {}, 'Allele', el('span', { class: 'tag' }, 'syntelog')), kv,
     el('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' },
       'Yang–Nielsen estimates over the HAP1↔HAP2 syntelog map (25,931 pairs), computed '
-      + 'independently of the GENESPACE run shown above.'));
+      + 'independently of the GENESPACE run shown above. A second, independent pipeline was '
+      + 'compared against these in September 2026: it picks the same partner gene for 100% of '
+      + 'the 50,656 genes both cover, and its Nei–Gojobori ω tracks the ω here at r = 0.94. '
+      + 'Its own Yang–Nielsen ω tracks it at only r = 0.08, and fails on a third of the pairs '
+      + '— at a median Ks near 0.03 that estimator is unstable gene by gene, so the '
+      + 'disagreement is on that side, not this one.'));
+}
+
+// Ka/Ks against Populus trichocarpa. New in v0.6 -- the allele card above compares two
+// haplotypes of ONE clone, which is a different and much shallower comparison than one
+// between species.
+//
+// NG86 is the per-gene value on purpose. On these alignments NG86 and YN00 omega correlate
+// at r = 0.07 to 0.36 gene by gene, while their class medians agree to within 0.06: median
+// dS is about 0.04, close enough that the maximum-likelihood estimate is unstable per gene.
+// The card shows both when they disagree rather than asserting a precision the data has not
+// got.
+function selectionCard(g) {
+  const k = g.ks;
+  if (!k) return null;
+  if (k.no) {
+    const ps = g.ps || {};
+    return el('div', { class: 'card' },
+      el('h2', {}, 'Selection', el('span', { class: 'tag' }, 'vs P. trichocarpa')),
+      el('p', { class: 'muted', style: 'margin:0;font-size:13px' },
+        'No reciprocal-best P. trichocarpa ortholog, so Ka/Ks is not defined for this gene.',
+        (ps.rank != null && ps.rank >= 19)
+          ? el('span', {}, ' That is structural rather than missing: this gene is placed in the '
+              + 'hybrid-only stratum, meaning no homolog was found in any other species, so '
+              + 'there is nothing to measure against. Only 1 of 681 genes in that stratum has '
+              + 'a pair at all.')
+          : el('span', {}, ' Genes lose their ortholog for ordinary reasons too — tandem arrays, '
+              + 'broken synteny, assembly gaps — so this is not evidence of absence.')));
+  }
+  const kv = el('dl', { class: 'kv' });
+  kv.append(el('dt', {}, 'Ortholog'),
+    el('dd', {}, el('a', {
+      href: `https://phytozome-next.jgi.doe.gov/report/gene/Ptrichocarpa_v4_1/${k.id}`,
+      target: '_blank', rel: 'noopener', class: 'mono' }, k.id),
+      k.ag === 0
+        ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+            'This best-hit ortholog is not the one this atlas\u2019s syntenic map names. The two '
+            + 'methods agree for 98.7% of genes; read this row with that in mind.')
+        : null));
+  if (k.n != null) {
+    kv.append(el('dt', {}, 'Alignment'),
+      el('dd', {}, el('span', { class: 'mono' }, fmt(k.n)), ' codons · ',
+        el('span', { class: 'mono' }, k.pid.toFixed(1) + '%'), ' identity'));
+  }
+  if (k.kss != null) kv.append(el('dt', {}, 'Ks'), el('dd', { class: 'mono' }, k.kss.toFixed(4)));
+  if (k.ka != null) kv.append(el('dt', {}, 'Ka'), el('dd', { class: 'mono' }, k.ka.toFixed(4)));
+  if (k.w != null) {
+    const spread = (k.w2 != null && Math.abs(k.w2 - k.w) > 0.15);
+    kv.append(el('dt', {}, '\u03c9 (Ka/Ks)'),
+      el('dd', {},
+        el('span', { class: 'mono' }, k.w.toFixed(3)), ' ',
+        el('span', { class: 'muted' }, k.w < 0.1 ? 'strong purifying selection'
+          : k.w < 1 ? 'purifying selection' : 'Ka exceeds Ks'),
+        spread
+          ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+              `A second estimator on the same alignment gives ${k.w2.toFixed(3)}. At this `
+              + 'divergence the two disagree gene by gene even though they agree on the '
+              + 'average, so treat a single gene\u2019s value as approximate.')
+          : null));
+  }
+  return el('div', { class: 'card' },
+    el('h2', {}, 'Selection', el('span', { class: 'tag' }, 'vs P. trichocarpa')), kv,
+    el('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' },
+      'Nei\u2013Gojobori estimates against the reciprocal-best P. trichocarpa ortholog, over '
+      + '52,232 of 63,960 genes. Across the gene set \u03c9 rises with how young a gene is '
+      + '\u2014 0.24 for the most ancient, 0.33 conserved, 0.47 rosid-level, 0.57 '
+      + 'Salicaceae-level, 0.72 for the Populus-specific pool \u2014 while staying well below '
+      + 'the 1 that neutral evolution would give. Young genes here are constrained, just less '
+      + 'constrained. Note the genes that pair up get fewer as they get younger, so a young '
+      + 'stratum\u2019s figure is measured on its more conserved members.'));
 }
 
 function presenceCard(g) {
@@ -176,7 +250,8 @@ function presenceCard(g) {
 function geneCard(g) {
   // Returns a fragment holding several cards; app.js appends whatever geneCard gives it.
   const frag = document.createDocumentFragment();
-  [annotationCard(g), alleleCard(g), presenceCard(g)].forEach((c) => c && frag.append(c));
+  [annotationCard(g), alleleCard(g), selectionCard(g), presenceCard(g)]
+    .forEach((c) => c && frag.append(c));
   return frag.childNodes.length ? frag : null;
 }
 

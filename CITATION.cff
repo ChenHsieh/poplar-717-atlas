@@ -9,6 +9,9 @@ abstract: >-
   tandem-array and paralog duplication context, predicted protein disorder and
   ESMFold-derived secondary structure with mass-spectrometry peptide evidence, and 46,141
   reciprocal one-to-one orthologs to Populus trichocarpa derived from the same synteny run.
+  Version 0.4.0 adopts an Idesia-corrected lineage-specific gene pool, replaces the peptide
+  layer with a five-dataset re-search of public Populus mass spectra against a 717-inclusive
+  database, and adds Ka/Ks against Populus trichocarpa for 52,232 genes.
 type: dataset
 authors:
   - family-names: Hsieh
@@ -27,5 +30,5 @@ keywords:
   - lineage-specific genes
   - expression atlas
 license-url: "https://github.com/ChenHsieh/poplar-717-atlas/blob/main/LICENSE"
-version: "0.3.11"
-date-released: "2026-09-08"
+version: "0.4.0"
+date-released: "2026-09-10"

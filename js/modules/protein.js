@@ -8,8 +8,15 @@
 //   * ESMFold covers 40,685 of 63,960 genes (64%). Absence is coverage, not a finding.
 import { el, fmt, pct } from '../core/dom.js';
 
-const PXD_LABEL = {
-  '023826': 'PXD023826', '025636': 'PXD025636', '064017': 'PXD064017',
+// The five re-searched datasets, and the species whose sample the spectra came from. Three
+// of them are other Populus species, whose samples contain no 717 protein at all -- a hit
+// there says the gene FAMILY is translated somewhere in Populus, not that 717's copy is.
+const MS_DATASETS = {
+  PXD025636: 'P. trichocarpa',
+  PXD020099: 'P. tremula x tremuloides',
+  PXD025418: 'P. tomentosa, xylem',
+  PXD002544: 'P. x canescens',
+  PXD058986: 'P. x canescens',
 };
 
 function bar(frac, color) {
@@ -48,21 +55,45 @@ function geneCard(g) {
 
   const ms = p.ms;
   if (ms) {
-    const keys = Object.keys(ms).sort();
-    const det = keys.filter((k) => ms[k][1]).length;
+    const names = Object.keys(MS_DATASETS);
+    const hit = new Set(ms.ds || []);
+    const undetectable = ms.abl === 0;
     add('Peptide evidence',
       el('div', {},
         el('div', { style: 'margin-bottom:5px' },
-          det ? el('strong', {}, `detected in ${det} of ${keys.length} datasets`)
-              : el('span', { class: 'muted' }, `not detected in any of ${keys.length} datasets`)),
+          ms.n
+            ? el('strong', {}, `detected in ${ms.n} of ${ms.of} datasets`)
+            : (undetectable
+                ? el('span', {}, el('span', { class: 'badge' }, 'undetectable'),
+                    ' this protein has no fully-tryptic peptide in the searchable mass range, '
+                    + 'so it could not have been found however abundant it is')
+                : el('span', { class: 'muted' }, `not detected in any of ${ms.of} datasets`))),
         el('table', { class: 'data' },
-          el('tbody', {}, ...keys.map((k) => el('tr', {},
-            el('td', { class: 'mono', style: 'font-size:11.5px' }, PXD_LABEL[k] || k),
-            el('td', {}, ms[k][1]
+          el('tbody', {}, ...names.map((k) => el('tr', {},
+            el('td', { class: 'mono', style: 'font-size:11.5px' }, k),
+            el('td', { class: 'muted', style: 'font-size:11.5px' }, MS_DATASETS[k]),
+            el('td', {}, hit.has(k)
               ? el('span', { class: 'badge' }, el('i', { class: 'dot', style: 'background:var(--c-nonsyn)' }), 'detected')
-              : el('span', { class: 'muted' }, 'not detected')),
-            el('td', { class: 'num muted', style: 'font-size:11.5px' },
-              ms[k][0] == null ? '—' : `${ms[k][0]} tryptic peptides possible`)))))));
+              : el('span', { class: 'muted' }, 'not detected')))))),
+        ms.n
+          ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:5px' },
+              `${fmt(ms.pep)} distinct peptide${ms.pep === 1 ? '' : 's'}, `
+              + `${fmt(ms.psm)} spectrum match${ms.psm === 1 ? '' : 'es'}`
+              + (ms.hs != null ? `, best hyperscore ${ms.hs.toFixed(1)}` : '')
+              + (ms.sp ? '. At least one peptide maps only to 717 proteins.'
+                       : '. No peptide here is unique to 717 — each also matches a P. trichocarpa protein.'))
+          : null,
+        (ms.n === 1 && ms.psm === 1)
+          ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:3px' },
+              'One spectrum, in one dataset. At a 1% false-discovery rate applied across five '
+              + 'searches, singletons like this are expected to occur by chance and should not '
+              + 'be cited on their own.')
+          : null,
+        ms.tw != null
+          ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:3px' },
+              `${fmt(ms.tw)} tryptic peptide${ms.tw === 1 ? '' : 's'} fall in the searchable `
+              + `range, ${fmt(ms.uq)} of them unique to this gene.`)
+          : null));
   }
 
   const card = el('div', { class: 'card' },
@@ -82,8 +113,13 @@ function geneCard(g) {
   }
   if (ms) {
     card.append(el('p', { class: 'muted', style: 'margin:8px 0 0;font-size:12px' },
-      'Three independent mass-spec datasets, kept separate: their genome-wide detection rates '
-      + 'differ about fourfold, so absence from one dataset is weak evidence on its own.'));
+      'Five public datasets of raw spectra, re-searched against a database that contains the '
+      + '717 proteins, at a 1% false-discovery rate on both peptides and spectra. That is what '
+      + 'makes a blank row here mean something: an earlier version of this page matched peptide '
+      + 'names against tables built from another species, where a 717-specific peptide could '
+      + 'never have appeared and "not detected" carried no information. Each dataset is kept '
+      + 'separate — their depths differ by sixteenfold — and the 1% error rate accumulates '
+      + 'across the five, so a single match in a single dataset is weak on its own.'));
   }
   return card;
 }
@@ -99,7 +135,10 @@ async function overview(man) {
     el('div', { class: 'stat-row' },
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(c['predicted disorder'])), el('div', { class: 'l' }, 'genes with disorder prediction')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(c['ESMFold structure'])), el('div', { class: 'l' }, 'with an ESMFold model (64%)')),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(c['proteomics PXD064017'])), el('div', { class: 'l' }, 'screened for peptides')),
+      el('div', { class: 'stat' }, el('div', { class: 'n' },
+        fmt(((man.proteomics || {}).genes_with_a_hit || {}).hap1
+            + ((man.proteomics || {}).genes_with_a_hit || {}).hap2)),
+        el('div', { class: 'l' }, 'observed as protein')),
     ),
     el('div', { class: 'card' },
       el('h2', {}, 'How to read this'),
@@ -121,9 +160,30 @@ async function overview(man) {
           + 'matters most for young, lineage-specific genes whose existence rests on gene '
           + 'prediction. Non-detection is weak: it also reflects tissue, abundance, and '
           + 'whether the protein yields observable tryptic peptides at all.'),
-        el('li', {}, el('strong', {}, 'The three datasets are never pooled. '),
-          'Their detection rates differ roughly fourfold, so pooling would let the deepest '
-          + 'dataset silently define the answer.'))),
+        el('li', {}, el('strong', {}, 'The five datasets are never pooled. '),
+          'Their depths differ by sixteenfold — 3,248 to 52,056 peptides — so pooling would '
+          + 'let the deepest dataset silently define the answer. The 1% false-discovery rate '
+          + 'also accumulates across five searches, so a single match in a single dataset is '
+          + 'expected to happen by chance somewhere in the genome.'),
+        el('li', {}, el('strong', {}, 'Absence has a denominator, and it is on the page. '),
+          'A protein with no fully-tryptic peptide in the searchable mass range cannot be '
+          + 'found however abundant it is, and that is a property of its lysine and arginine '
+          + 'content and its length — composition, on which young genes differ from old ones. '
+          + `Counting such a gene as "not detected" would inflate the negative. `
+          + `${fmt((man.proteomics || {}).undetectable_by_construction
+                    ? (man.proteomics.undetectable_by_construction.hap1
+                       + man.proteomics.undetectable_by_construction.hap2) : 0)} `
+          + 'genes are undetectable this way and say so on their own page.'),
+        el('li', {}, el('strong', {}, 'Detection falls monotonically with gene age. '),
+          '42.3% of the most ancient genes are observed, 12.8% of conserved ones, 6.1% of '
+          + 'rosid-level, 2.9% of Salicaceae-level, and 0.12% of the lineage-specific pool. '
+          + 'That ordering is what you would expect if the measurement tracks real protein '
+          + 'abundance and conservation rather than noise, which is the reason to trust the '
+          + 'low end of it.'),
+        el('li', {}, el('strong', {}, 'Three of the five samples contain no 717 protein. '),
+          'PXD025418 is P. tomentosa and PXD002544 and PXD058986 are P. x canescens. A '
+          + 'peptide matching a 717 gene in those says the gene family is translated somewhere '
+          + 'in Populus, not that this clone translates its own copy.'))),
   );
 }
 
@@ -136,8 +196,7 @@ export default {
     { id: 'ms_detected', label: 'Peptide-detected', options: ['yes', 'no'],
       test: (g, v) => {
         const ms = g.prot && g.prot.ms;
-        const any = ms && Object.values(ms).some((x) => x[1]);
-        return (any ? 'yes' : 'no') === v;
+        return ((ms && ms.n > 0) ? 'yes' : 'no') === v;
       } },
     { id: 'has_struct', label: 'Has ESMFold model', options: ['yes', 'no'],
       test: (g, v) => (g.prot && g.prot.ss ? 'yes' : 'no') === v },
