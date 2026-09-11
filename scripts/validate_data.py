@@ -9,7 +9,7 @@ the ID->shard convention is load-bearing for every gene page; a dangling express
 pointer would 404 only for the unlucky gene; an allele link to a nonexistent gene would be a
 dead end a reader hits before a maintainer does.
 """
-import json, os, re, sys
+import gzip, json, os, re, struct, sys
 from collections import Counter
 
 DATA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
@@ -31,6 +31,18 @@ def shard_of(gid):
     m = SCAF_RE.match(gid)
     if m:
         return ("hap1" if m.group(1) == "TreH" else "hap2"), "scaffolds"
+    return None
+
+STRUCT_SPAN = 2500   # mirrors patch_structure.py and js/core/data.js:structKey
+SCAF_NUM_RE = re.compile(r"^PtXa(TreH|AlbH)\.T(\d+)$")
+
+def struct_key(gid):
+    m = CHR_RE.match(gid)
+    if m:
+        return f"{'hap1' if m.group(1) == 'TreH' else 'hap2'}/Chr{m.group(2)}/{int(m.group(3)) // STRUCT_SPAN}"
+    m = SCAF_NUM_RE.match(gid)
+    if m:
+        return f"{'hap1' if m.group(1) == 'TreH' else 'hap2'}/scaffolds/{int(m.group(2)) // STRUCT_SPAN}"
     return None
 
 def main():
@@ -403,6 +415,40 @@ def main():
         check("facet values match the gene shards (all rows, all columns)", not by_col,
               f"stale columns: {worst}" if by_col
               else f"{len(idx)} rows x {len(fac['cols'])} cols")
+
+    # ---- 3D models (TODO 34): bucket rule, coverage, and agreement with the page's ss.n ----
+    sroot = f"{DATA}/struct"
+    if "structure" in man or os.path.isdir(sroot):
+        want = {gid for gid, (_, _, rec) in genes.items() if (rec.get("prot") or {}).get("ss")}
+        seen, wrong_bucket, wrong_n, bad_len = set(), [], [], []
+        for dp, _, fs in os.walk(sroot):
+            for fn in sorted(f for f in fs if f.endswith(".bin.gz")):
+                path = os.path.join(dp, fn)
+                key = os.path.relpath(path, sroot)[:-len(".bin.gz")]
+                raw = gzip.decompress(open(path, "rb").read())
+                (h,) = struct.unpack_from("<I", raw, 0)
+                head = json.loads(raw[4:4 + h])
+                end = 0
+                for gid, (off, n) in head["genes"].items():
+                    seen.add(gid)
+                    if struct_key(gid) != key:
+                        wrong_bucket.append(gid)
+                    ss = (genes[gid][2].get("prot") or {}).get("ss") if gid in genes else None
+                    if not ss or ss.get("n") != n:
+                        wrong_n.append(gid)
+                    end = max(end, off + 10 * n)
+                if end != len(raw) - 4 - h:
+                    bad_len.append(key)
+        check("every gene with an ESMFold model has a 3D model, and no other gene does",
+              seen == want, f"{len(want - seen)} missing, {len(seen - want)} extra")
+        check("every 3D model sits in the bucket its gene ID resolves to", not wrong_bucket,
+              f"{len(wrong_bucket)} misplaced")
+        check("every 3D model has the residue count its gene page states", not wrong_n,
+              f"{len(wrong_n)} disagree")
+        check("every 3D bucket's payload length matches its own index", not bad_len, str(bad_len[:3]))
+        check("manifest structure.genes matches the 3D buckets",
+              (man.get("structure") or {}).get("genes") == len(seen),
+              f"manifest {(man.get('structure') or {}).get('genes')} vs {len(seen)}")
 
     sdir = f"{DATA}/index/search"
     oob = 0

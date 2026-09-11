@@ -34,3 +34,15 @@ export const fillFor = (c) => {
 };
 
 export { CLASS_VAR };
+
+// pLDDT bands for the 3D model. The AlphaFold DB convention -- the bands and the colours --
+// so a reader who has seen one AlphaFold model reads this one without learning a legend.
+// Fixed hex rather than theme tokens because the convention IS the colour. Lower bounds are
+// inclusive, which makes "low" + "very low" exactly the card's "residues below 70".
+export const PLDDT_BANDS = [
+  { min: 90, label: 'very high', range: '≥ 90', color: '#0053D6' },
+  { min: 70, label: 'confident', range: '70 to 90', color: '#65CBF3' },
+  { min: 50, label: 'low', range: '50 to 70', color: '#FFDB13' },
+  { min: -Infinity, label: 'very low', range: '< 50', color: '#FF7D45' },
+];
+export const plddtBand = (v) => PLDDT_BANDS.findIndex((b) => v >= b.min);

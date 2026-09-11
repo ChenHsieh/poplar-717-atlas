@@ -9,6 +9,50 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.5.0 — 2026-09-10 — A 3D model on every modelled gene page
+
+Every gene with an ESMFold model (40,685 of 63,960, the same set the secondary-structure bars
+already cover) now has a "Show 3D model" button on its Protein card. It opens a C-alpha trace,
+one point per residue joined in chain order, coloured by the model's own per-residue confidence
+in the AlphaFold DB bands (≥ 90, 70 to 90, 50 to 70, < 50). A legend under the viewer states how
+many residues fall in each band, and hovering a residue gives its amino acid, pLDDT and DSSP
+state.
+
+**A trace, not the full-atom model, because of size.** The genome's full-atom models are 9.4 GB
+raw and 2.3 GB gzipped, measured on a 400-model random sample. That is over GitHub Pages' 1 GB
+published-site cap on its own, with `data/` already at 560 MB. Packed as a binary Cα trace with
+pLDDT, sequence and DSSP (10 bytes per residue, gzipped), all 40,685 models are **94.1 MB in
+2,577 files**, about 25 KB per fetch. 3Dmol.js 2.5.5 (BSD-3) is vendored and loaded only when a
+reader opens a model, so no page pays for a viewer it does not use.
+
+**The colour is the point for young genes.** 97% of the PS ≥ 18 pool has mean pLDDT below 70, so
+a lineage-specific gene's model is mostly yellow and orange. The card says what that means: the
+path of the chain there is not a prediction of shape. It is the visual form of the "coil tracks
+model confidence" warning this card already carried.
+
+**Gated on the numbers the page already showed, as identical strings.** `patch_structure.py`
+refuses to write unless every gene's per-residue arrays replay the source table
+`secondary_structure_summary.tsv` exactly: residue count, mean pLDDT, fraction below 70, and
+helix, strand and coil fractions, recomputed with the producer's own float32 arithmetic and
+formatted the same way. It also checks that every shard value is that table rounded to 3. Two
+looser gates were tried first and both failed, correctly. Checking the arrays against the shard
+at 0.00051 failed about 1,400 genes, because the shard is the 4-decimal table re-rounded to 3.
+Checking against the table at half a unit then failed one gene on mean pLDDT: float64 gives
+88.795005, the producer's float32 gives 88.794998. Loosening either tolerance would have passed.
+Replaying the producer's arithmetic passed every field of every gene. Each bucket is also decoded
+back and compared integer for integer, and a second run produced byte-identical files.
+
+**Found by screenshot, not by a check.** 3Dmol's default cartoon draws nothing for a C-alpha-only
+model. The first browser check asserted only that a canvas existed, and it passed on three blank
+canvases. The viewer now uses the trace style, which draws the chain but not helix or strand
+shapes, so the DSSP state moved into the hover readout. `check.mjs` now re-renders each model,
+counts painted pixels, and requires a pixel of every pLDDT colour the legend reports. A negative
+control (the same model under the default cartoon) reads 0.00% painted against 1.90% for the
+shipped style.
+
+Excluded: `PtXaTreH.08G115400`, whose ESMFold PDB is 0 bytes. It is also absent from the
+secondary-structure table, so coverage is unchanged. Provenance: `sources/structure_ca.provenance.json`.
+
 ## 0.4.1 — 2026-09-10 — Chromatin, as a property of the ortholog
 
 The only ATAC-seq or ChIP-seq that exists for anything in Salicaceae: GEO GSE128434 (Lu, Marand,

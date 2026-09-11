@@ -27,6 +27,73 @@ export function shardOf(geneId) {
 
 export const hapLabel = (h) => (h === 'hap1' ? 'HAP1 (TreH)' : 'HAP2 (AlbH)');
 
+// 3D models (TODO 34): a Calpha trace per modelled gene, ten times finer than the gene shards
+// (~15 models, ~25 KB per fetch). MIRRORS scripts/patch_structure.py:struct_key and
+// validate_data.py:struct_key -- change all three or none. The file format is documented in
+// patch_structure.py; this is its only reader.
+const STRUCT_SPAN = 2500;
+const SCAF_NUM_RE = /^PtXa(TreH|AlbH)\.T(\d+)$/;
+
+export function structKey(geneId) {
+  let m = CHR_RE.exec(geneId);
+  if (m) return `${m[1] === 'TreH' ? 'hap1' : 'hap2'}/Chr${m[2]}/${Math.floor(parseInt(m[3], 10) / STRUCT_SPAN)}`;
+  m = SCAF_NUM_RE.exec(geneId);
+  if (m) return `${m[1] === 'TreH' ? 'hap1' : 'hap2'}/scaffolds/${Math.floor(parseInt(m[2], 10) / STRUCT_SPAN)}`;
+  return null;
+}
+
+const structCache = new Map();
+function fetchStructBucket(key) {
+  if (!structCache.has(key)) {
+    const p = fetch(`data/struct/${key}.bin.gz`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`${r.status} data/struct/${key}.bin.gz`);
+        return r.arrayBuffer();
+      })
+      .then((buf) => {
+        // Inflate only if the bytes are still gzip: a server that sets Content-Encoding on
+        // .gz would already have had the browser inflate them.
+        const b = new Uint8Array(buf, 0, 2);
+        if (b[0] !== 0x1f || b[1] !== 0x8b) return buf;
+        return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+      })
+      .catch((e) => { structCache.delete(key); throw e; });
+    structCache.set(key, p);
+  }
+  return structCache.get(key);
+}
+
+/** One gene's model: {n, ca: Float32Array(3n) in Angstrom, pl: Float32Array(n), seq, ss}.
+ *  Null when the gene has no ESMFold model. */
+export async function loadStructure(geneId) {
+  const key = structKey(geneId);
+  if (!key) return null;
+  const buf = await fetchStructBucket(key);
+  const dv = new DataView(buf);
+  const h = dv.getUint32(0, true);
+  const head = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, h)));
+  const ent = head.genes[geneId];
+  if (!ent) return null;
+  const [off, n] = ent;
+  const p = 4 + h + off;
+  const ca = new Float32Array(3 * n);
+  let x = 0, y = 0, z = 0;
+  for (let i = 0; i < n; i++) {          // residue 0 is absolute, the rest are deltas
+    x += dv.getInt16(p + 6 * i, true);
+    y += dv.getInt16(p + 6 * i + 2, true);
+    z += dv.getInt16(p + 6 * i + 4, true);
+    ca[3 * i] = x * head.unit; ca[3 * i + 1] = y * head.unit; ca[3 * i + 2] = z * head.unit;
+  }
+  const pl = new Float32Array(n);
+  for (let i = 0; i < n; i++) pl[i] = dv.getUint16(p + 6 * n + 2 * i, true) / 100;
+  const ascii = new TextDecoder('ascii');
+  return {
+    n, ca, pl,
+    seq: ascii.decode(new Uint8Array(buf, p + 8 * n, n)),
+    ss: ascii.decode(new Uint8Array(buf, p + 9 * n, n)),
+  };
+}
+
 const cache = new Map();
 const inflight = new Map();
 

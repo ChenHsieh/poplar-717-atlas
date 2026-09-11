@@ -7,6 +7,98 @@
 //     is the single easiest mistake to make with this table.
 //   * ESMFold covers 40,685 of 63,960 genes (64%). Absence is coverage, not a finding.
 import { el, fmt, pct } from '../core/dom.js';
+import { loadStructure } from '../core/data.js';
+import { PLDDT_BANDS, plddtBand } from '../core/palette.js';
+
+// ---- 3D model (TODO 34) ----
+// A Calpha trace, not the full-atom model: the genome's full-atom models are 2.3 GB gzipped,
+// over what a static Pages site may host. 3Dmol.js is vendored and fetched only when a reader
+// asks for a model, so no gene page pays ~540 KB for a viewer it does not open.
+let viewerLib = null;
+function load3Dmol() {
+  if (window.$3Dmol) return Promise.resolve(window.$3Dmol);
+  if (!viewerLib) {
+    viewerLib = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'js/vendor/3dmol/3Dmol-min.js';
+      s.onload = () => (window.$3Dmol ? resolve(window.$3Dmol)
+        : reject(new Error('3Dmol.js loaded but did not register')));
+      s.onerror = () => { viewerLib = null; reject(new Error('could not load 3Dmol.js')); };
+      document.head.append(s);
+    });
+  }
+  return viewerLib;
+}
+
+const AA3 = {
+  A: 'ALA', R: 'ARG', N: 'ASN', D: 'ASP', C: 'CYS', Q: 'GLN', E: 'GLU', G: 'GLY', H: 'HIS',
+  I: 'ILE', L: 'LEU', K: 'LYS', M: 'MET', F: 'PHE', P: 'PRO', S: 'SER', T: 'THR', W: 'TRP',
+  Y: 'TYR', V: 'VAL', X: 'UNK',
+};
+const SS_NAME = { H: 'helix', E: 'strand', '-': 'coil' };
+const rj = (v, w) => String(v).padStart(w);
+
+/** A Calpha-only PDB with pLDDT as the B-factor. No HELIX / SHEET records: 3Dmol's default
+ *  cartoon draws NOTHING for a Calpha-only model (found by screenshot, 2026-09-10, after a
+ *  check that only asserted a canvas existed had passed), and the 'trace' style that does
+ *  draw it ignores secondary structure. The DSSP state is in the hover readout instead. */
+function caPdb(m) {
+  const out = [];
+  for (let i = 0; i < m.n; i++) {
+    const f = (v) => rj(v.toFixed(3), 8);
+    out.push(`ATOM  ${rj(i + 1, 5)}  CA  ${AA3[m.seq[i]] || 'UNK'} A${rj(i + 1, 4)}    `
+      + `${f(m.ca[3 * i])}${f(m.ca[3 * i + 1])}${f(m.ca[3 * i + 2])}`
+      + `  1.00${rj(m.pl[i].toFixed(2), 6)}           C`);
+  }
+  out.push('END');
+  return out.join('\n');
+}
+
+let liveViewer = null;   // one WebGL context at a time; browsers cap how many a page may hold
+
+function bandCounts(m) {
+  const c = PLDDT_BANDS.map(() => 0);
+  for (let i = 0; i < m.n; i++) c[plddtBand(m.pl[i])]++;
+  return c;
+}
+
+async function openModel(geneId, holder) {
+  const [lib, m] = await Promise.all([load3Dmol(), loadStructure(geneId)]);
+  if (!m) {
+    holder.append(el('p', { class: 'muted' }, 'No 3D model is stored for this gene.'));
+    return;
+  }
+  const counts = bandCounts(m);
+  const readoutDefault = 'Drag to rotate, scroll or pinch to zoom. Hover a residue for its confidence and DSSP state.';
+  const readout = el('div', { class: 'mono struct-readout' }, readoutDefault);
+  const stage = el('div', { class: 'struct-stage', role: 'img',
+    'aria-label': `C-alpha trace of the ESMFold model, ${m.n} residues, coloured by pLDDT` });
+  holder.append(
+    stage, readout,
+    el('div', { class: 'struct-legend' }, ...PLDDT_BANDS.map((b, k) => el('span', { class: 'struct-key' },
+      el('i', { class: 'dot', style: `background:${b.color}` }),
+      `${b.label} (${b.range}) `,
+      el('span', { class: 'mono' }, `${fmt(counts[k])} · ${((100 * counts[k]) / m.n).toFixed(0)}%`)))),
+    el('p', { class: 'muted', style: 'margin:6px 0 0;font-size:12px' },
+      `${fmt(m.n)} residues. One point per residue (the C-alpha atom), joined in chain order and `
+      + "coloured by the model's own per-residue confidence, pLDDT. Side chains and helix or strand "
+      + 'shapes are not drawn; hover a residue for its DSSP state, which is what the bars above '
+      + 'count. Where the trace is yellow or orange the model is guessing, and the path of the '
+      + 'chain there is not a prediction of shape.'));
+
+  if (liveViewer) { try { liveViewer.clear(); } catch (_) { /* already gone */ } }
+  const v = lib.createViewer(stage, { backgroundColor: 'white', backgroundAlpha: 0, antialias: true });
+  liveViewer = v;
+  stage.__viewer = v;   // read by scripts/check.mjs, which asserts pixels were actually drawn
+  v.addModel(caPdb(m), 'pdb');
+  v.setStyle({}, { cartoon: { style: 'trace', thickness: 0.5,
+    colorfunc: (a) => PLDDT_BANDS[plddtBand(a.b)].color } });
+  v.setHoverable({}, true,
+    (a) => { readout.textContent = `${a.resn} ${a.resi} · pLDDT ${a.b.toFixed(1)} · ${SS_NAME[m.ss[a.resi - 1]]}`; },
+    () => { readout.textContent = readoutDefault; });
+  v.zoomTo();
+  v.render();
+}
 
 // The five re-searched datasets, and the species whose sample the spectra came from. Three
 // of them are other Populus species, whose samples contain no 717 protein at all -- a hit
@@ -100,6 +192,24 @@ function geneCard(g) {
     el('h2', {}, 'Protein', el('span', { class: 'tag' }, 'predicted')), kv);
 
   if (ss) {
+    const holder = el('div', { class: 'struct-holder' });
+    const btn = el('button', {
+      type: 'button', class: 'struct-open',
+      onclick: async (e) => {
+        e.target.disabled = true; e.target.textContent = 'Loading model…';
+        try {
+          await openModel(g.id, holder);
+          e.target.remove();
+        } catch (err) {
+          e.target.disabled = false; e.target.textContent = 'Show 3D model';
+          holder.append(el('p', { class: 'muted' }, `Could not load the model: ${err.message}`));
+        }
+      },
+    }, 'Show 3D model');
+    card.append(btn, holder);
+  }
+
+  if (ss) {
     card.append(el('div', { class: 'warn' },
       el('strong', {}, 'Coil fraction tracks model confidence. '),
       'Across all 40,685 modelled genes, coil fraction correlates with mean pLDDT at r = −0.49, '
@@ -155,6 +265,10 @@ async function overview(man) {
           'No claim here is independent of ESMFold.'),
         el('li', {}, el('strong', {}, 'ESMFold coverage is 64%. '),
           'A gene without a model is not a gene without a structure.'),
+        el('li', {}, el('strong', {}, 'The 3D model is a C-alpha trace, coloured by pLDDT. '),
+          'One point per residue, no side chains, because the full-atom models for the genome '
+          + 'are too large for this static site. Yellow and orange mean the model is guessing, '
+          + 'and most of a lineage-specific gene\'s model is yellow and orange.'),
         el('li', {}, el('strong', {}, 'Peptide detection is asymmetric evidence. '),
           'Detection is strong evidence a predicted protein is real and translated — which '
           + 'matters most for young, lineage-specific genes whose existence rests on gene '
