@@ -206,6 +206,50 @@ first, ahead of anything new.
       2026-09-10 and a concurrent session owns that directory. Pool-scoped (~3,400 queries), so
       it lands as a card like `qc`, not as a facet.
 
+## v0.7 — a 3D model on every modelled gene page
+
+- [x] **34 — per-gene ESMFold structure viewer. BUILT 2026-09-10, data 0.5.0, on branch
+      `chen-structure-viewer` — not merged; merging to `main` is the public deploy.** 40,685
+      models, 94.1 MB in 2,577 buckets. See CHANGELOG 0.5.0. Two corrections to the plan below,
+      both found by the build: (i) the gate is exact string replay of the source table, not
+      "to stored rounding" -- both tolerance versions failed, correctly; (ii) no helix/strand
+      shapes -- 3Dmol's default cartoon draws NOTHING for a Calpha-only model (caught by
+      screenshot after a canvas-exists check passed three blank canvases), so the trace style
+      is used and DSSP moved to the hover readout. `check.mjs` now counts painted pixels per
+      pLDDT colour, with a negative control reading 0.00%.
+      Feasibility measured 2026-09-10 on a
+      400-model random sample of the 40,686 PDBs in `/scratch/ch29576/foldseek/results/hap{1,2}/esmfold/pdbs`:
+      full-atom is 9.4 GB raw / **2.3 GB gzipped — over GitHub Pages' 1 GB published-site cap
+      on its own** (`data/` is already 560 MB). A Cα trace is 0.31 GB even as gzipped PDB text,
+      and ~0.1 GB or less as a packed binary. So: **ship a Cα trace coloured by pLDDT, with
+      per-residue DSSP secondary structure**, not the full-atom model. The pLDDT colouring is the
+      honest companion of the card's existing "coil tracks model confidence" warning: 97% of the
+      PS>=18 pool has mean pLDDT < 70, and a young gene's model should *look* like a guess.
+  - [x] **34a — source.** `scripts/make_structure_source.py` (Sapelo2, sbatch array, the
+        `esmfold_cor` env for pydssp): per gene, Cα xyz at 0.01 nm, CA pLDDT, sequence, and
+        per-residue pydssp c3 with the SAME backbone parser as
+        `sequence_features/scripts/ss_content.py`. Writes `/scratch/ch29576/atlas_structure_ca/`
+        (outside the repo -- `sources/` is published by Pages) + a sidecar
+        `sources/structure_ca.provenance.json` with a sha256 over the PDB listing. One PDB is 0 bytes
+        (`PtXaTreH.08G115400`) and is absent from the SS table too; it stays absent.
+  - [x] **34b — gate, then write.** `scripts/patch_structure.py` refuses to write unless the
+        per-residue arrays reproduce what the atlas ALREADY publishes for every one of the
+        40,685 genes: `ss.n` exactly, `ss.plddt` / `ss.low` / `ss.h` / `ss.e` to their stored
+        rounding. Writes `data/struct/<hap>/<Chr>/<n // 2500>.bin.gz` buckets (rule mirrored in
+        `patch_structure.py`, `js/core/data.js`, `validate_data.py`), and `manifest.structure`.
+  - [x] **34c — viewer.** 3Dmol.js 2.5.5 (BSD-3) vendored under `js/vendor/`, loaded only when a
+        reader clicks "Show 3D model" — no third-party script on page load. pLDDT bands
+        (>90 / 70-90 / 50-70 / <50, the AlphaFold DB convention) go in `palette.js`; hover gives
+        residue, amino acid, pLDDT; the card states it is a Cα trace and not the full model.
+  - [x] **34d — checks.** `validate_data.py`: every gene with `prot.ss` has a bucket entry and
+        none without; `check.mjs`: open the viewer on a confident gene and on a PS>=18 gene,
+        assert a canvas and zero console errors. Screenshots looked at, both themes.
+  - [x] **34e — release.** VERSION / CHANGELOG / CITATION bump; commit on a branch, push, and
+        leave the merge to `main` (= the public deploy) for Chen.
+  - [ ] **34f — Chen: merge `chen-structure-viewer` to deploy.** Before merging, note `main`
+        moved while this was built (another session committed TODO edits); rebase first.
+        Also worth doing once: open one model on a phone -- the checks run desktop viewport only.
+
 ### What landing 26-29 actually taught, kept because it generalises
 
 - **A source repo's own correction log is a layer this atlas depends on, and nothing was
@@ -225,3 +269,23 @@ first, ahead of anything new.
   Both new source tables are gated that way, 84 cells and 11 cells. The Ka/Ks gate failed 5
   cells on the first run; the cause was a factor-of-two double count in the published table's
   own keying, found by looking rather than by loosening the tolerance.
+
+## Candidate layers from the ms2-lsg RNA-seq fusion test (noted 2026-09-10, NOT started)
+
+Source: ms2-lsg PR #19, `analyses/piggyback_rnaseq_junctions/` (94 paired-end libraries,
+5.6 billion unique alignments, both haplotypes, corrected 776/835 pool). Held until Chen
+decides and PR #19 is reviewed. Ingest the usual way: `sources/` + provenance sidecar, a
+`patch_*.py` that gates on re-deriving the PR's own published summary, then `build_facets.py`.
+
+- [ ] **RNA-seq gene-model evidence: possible split model.** 1,435 adjacent pairs (2,629
+      genes) carry 3+ spliced reads joining an exon of one gene to an exon of its neighbour;
+      40 pairs (79 genes) show the exact splitter signature (junction = the intergenic gap).
+      Floor is 0 across 21,070 opposite-strand pairs, so the flag is specific. Show as an arc
+      in the locus view and a gene-card note. FLAG, NOT FILTER. 11,322 same-strand pairs were
+      too shallow to test: absence of the flag must not read as "confirmed separate".
+- [ ] **Intron support per gene.** Annotated introns seen / total across 94 libraries. 89% of
+      multi-exon genes have all introns seen; LSGs 52.6% all, 37.2% none. Confounded with
+      depth (below ~20 reads, detection < 27%), so it must ship beside the gene's read count
+      and the power curve, or it reads as evidence against LSG gene models.
+- Not worth shipping: read-pair spanning and gap occupancy (weak, not elevated against the
+  matched control); per-base coverage (6.6 GB of BAM slices, wrong for a static site).

@@ -171,6 +171,80 @@ await check('module-protein', '#/module/protein',
              'undetectable this way', 'contain no 717 protein'] });
 await check('gene-protein', '#/gene/PtXaTreH.01G000100',
   { expect: ['Protein', 'Predicted disorder', 'Duplication class'], wait: 1000 });
+// --- v0.7: the 3D model (TODO 34). Driven, not just rendered: click the button, wait for
+// the WebGL canvas, and require the legend's per-band residue counts to sum to the residue
+// count the card states -- the on-figure numbers have to add up, not merely appear. One
+// confident gene and one PS>=18 gene, whose model is mostly below 70 and must say so.
+async function checkModel(name, geneId, { theme = null, expect = [] } = {}) {
+  const mp = await browser.newPage({ viewport: { width: 1180, height: 900 },
+    colorScheme: theme === 'dark' ? 'dark' : 'light' });
+  const errs = [];
+  mp.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
+  mp.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
+  mp.on('requestfailed', (r) => errs.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`));
+  await mp.goto(base + '/#/gene/' + geneId, { waitUntil: 'networkidle' });
+  await mp.waitForTimeout(900);
+  const btn = await mp.$('button.struct-open');
+  if (!btn) errs.push('no "Show 3D model" button');
+  else { await btn.scrollIntoViewIfNeeded(); await btn.click(); }
+  await mp.waitForSelector('.struct-stage canvas', { timeout: 20000 }).catch(() => errs.push('no canvas'));
+  await mp.waitForTimeout(1000);
+  // A canvas existing is not a model being drawn: the first version of this check passed on
+  // three blank canvases (3Dmol's default cartoon renders nothing for a Calpha-only model).
+  // So re-render through the viewer, and count painted pixels and which pLDDT colours appear.
+  const px = await mp.evaluate(async () => {
+    const v = document.querySelector('.struct-stage')?.__viewer;
+    if (!v) return { painted: 0, bands: [] };
+    const img = new Image();
+    img.src = v.pngURI();
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    const want = ['#0053D6', '#65CBF3', '#FFDB13', '#FF7D45']
+      .map((h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16)));
+    const seen = want.map(() => 0);
+    let painted = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 128) continue;
+      painted++;
+      want.forEach((w, k) => {
+        if (Math.abs(d[i] - w[0]) + Math.abs(d[i + 1] - w[1]) + Math.abs(d[i + 2] - w[2]) < 90) seen[k]++;
+      });
+    }
+    return { painted: painted / (d.length / 4), bands: seen };
+  });
+  const r = await mp.evaluate(() => {
+    const holder = document.querySelector('.struct-holder');
+    const keys = [...document.querySelectorAll('.struct-key .mono')]
+      .map((s) => parseInt(s.textContent.replace(/,/g, ''), 10));
+    const m = /([\d,]+) residues\./.exec(holder ? holder.innerText : '');
+    const c = document.querySelector('.struct-stage canvas');
+    return { text: holder ? holder.innerText.toLowerCase() : '', keys,
+      sum: keys.reduce((a, b) => a + b, 0), n: m ? parseInt(m[1].replace(/,/g, ''), 10) : null,
+      w: c ? c.width : 0, h: c ? c.height : 0 };
+  });
+  const stage = await mp.$('.struct-stage');
+  if (stage) await stage.screenshot({ path: `${outdir}/${name}.png` });
+  const missing = expect.filter((e) => !r.text.includes(e.toLowerCase()));
+  // every band the legend says has residues must show up as pixels of that colour
+  const bandsDrawn = r.keys.every((k, i) => k === 0 || px.bands[i] > 0);
+  const ok = !errs.length && !missing.length && r.keys.length === 4 && r.n > 0 && r.sum === r.n
+    && r.w > 0 && r.h > 0 && px.painted > 0.005 && bandsDrawn;
+  if (!ok) failures++;
+  console.log(`\n### ${name}  ${ok ? 'OK' : 'FAIL'}  n=${r.n} bands=${JSON.stringify(r.keys)} canvas=${r.w}x${r.h}`
+    + ` painted=${(100 * px.painted).toFixed(2)}% band-pixels=${JSON.stringify(px.bands)}`);
+  errs.forEach((e) => console.log('   !! ' + e));
+  missing.forEach((m) => console.log(`   !! expected text not found: "${m}"`));
+  await mp.close();
+}
+await checkModel('model-confident', 'PtXaTreH.01G021800',
+  { expect: ['233 residues', 'very high', 'helix or strand shapes are not drawn'] });
+await checkModel('model-lsg', 'PtXaTreH.01G001500', { expect: ['112 residues', 'the model is guessing'] });
+await checkModel('model-confident-dark', 'PtXaTreH.01G021800', { theme: 'dark' });
+
 await check('module-about', '#/module/about',
   { expect: ['About & provenance', 'Known limitations', 'HAP2 domain annotation is thin',
              'audited out', 'derived here, not imported', 'Sources'] });
