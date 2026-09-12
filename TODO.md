@@ -17,7 +17,7 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
 - [x] **6 — module: duplication.** Tandem arrays (genome-wide) + 1,346 tier-2 paralog pairs
       with dS. HAP1↔HAP2 dS shipped earlier as the allele card. **No WGD ohnolog call** — none
       computed, and inferring one from a stratum-selected subset would be invalid.
-- [ ] **7 — module: expression.** UNBLOCKED 2026-09-01 — `ms2_genespace/expression/` holds the
+- [x] **7 — module: expression. COMPLETE 2026-09-12**, when 7e landed in 0.6.1. Original note: UNBLOCKED 2026-09-01 — `ms2_genespace/expression/` holds the
       652-sample v3 rerun (supersedes the 531). Design: `docs/EXPRESSION_DESIGN.md`. Sub-steps:
   - [x] **7a — data build.** `samples.json`, `studies.json`, expression buckets (250 genes,
         TPM 2dp), gene-shard summary (`x.t` tissue medians over WT controls, tau, bucket ptr),
@@ -65,13 +65,13 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
 - [x] **19 — allele-specific expression. CLOSED, deliberately not built.** Chen did not pursue
       the analysis; `ase_analysis/` has no per-gene table. Building one would generate a new
       result from an abandoned analysis and publish it as established. See `docs/DATA_AUDIT.md`.
-- [ ] ~~19-old~~ `ase_analysis/` holds per-chromosome separated
+- ~~19-old~~ (superseded, kept for the record) `ase_analysis/` holds per-chromosome separated
       reads but no per-gene table yet. The most distinctive thing a haplotype-resolved atlas
       could show, and the one major layer still missing.
 - [x] **20 — cross-species ortholog SHIPPED; the expression join deliberately not.** 46,141
       reciprocal 1:1 Potri orthologs with Phytozome links. The 377-sample expression matrix is
       not merged: different genome, annotation and pipeline.
-- [ ] ~~20-old~~ P. trichocarpa xylem (377 samples, Potri ids) joined
+- ~~20-old~~ (superseded, kept for the record) P. trichocarpa xylem (377 samples, Potri ids) joined
       through the synteny orthogroups.
 - [x] **21 — SHIPPED 2026-09-06.** Both files were already in the mirror, under names the
       2026-09-05 audit never searched for -- `hemizygous_pav_diamond.csv` (PAV) and
@@ -246,9 +246,15 @@ first, ahead of anything new.
         assert a canvas and zero console errors. Screenshots looked at, both themes.
   - [x] **34e — release.** VERSION / CHANGELOG / CITATION bump; commit on a branch, push, and
         leave the merge to `main` (= the public deploy) for Chen.
-  - [ ] **34f — Chen: merge `chen-structure-viewer` to deploy.** Before merging, note `main`
-        moved while this was built (another session committed TODO edits); rebase first.
-        Also worth doing once: open one model on a phone -- the checks run desktop viewport only.
+  - [x] **34f — MERGED AND DEPLOYED 2026-09-12**, at Chen's explicit request ("pull and merge
+        all branches"). Merge commit `16027c8`; the 3D viewer has been public since data 0.5.0.
+        `main` had indeed moved, and a plain merge was taken rather than a rebase -- the only
+        conflicts were screenshots `main` had deleted and imgbot had re-compressed, resolved in
+        favour of the deletion.
+  - [ ] **34g — the 3D model has never been rendered at phone viewport.** Split out of 34f
+        because that part is genuinely undone, and it matters more now than when it was written:
+        the viewer is PUBLIC as of today, and `check.mjs` drives a desktop viewport only. There
+        is already a `locus-phone` case to copy the pattern from.
 
 ### What landing 26-29 actually taught, kept because it generalises
 
