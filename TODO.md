@@ -277,13 +277,13 @@ Source: ms2-lsg PR #19, `analyses/piggyback_rnaseq_junctions/` (94 paired-end li
 decides and PR #19 is reviewed. Ingest the usual way: `sources/` + provenance sidecar, a
 `patch_*.py` that gates on re-deriving the PR's own published summary, then `build_facets.py`.
 
-- [ ] **RNA-seq gene-model evidence: possible split model.** 1,435 adjacent pairs (2,629
+- [x] **RNA-seq gene-model evidence: possible split model. SHIPPED 0.7.0.** Flag on 2,629 genes, arc in the locus view, gap coverage shipped as the discriminator, 9,079 untestable genes labelled as such. The numbers below were WRONG and were recomputed: 1,435/2,629 is the exon-boundary tier, not the any-junction tier (5,126/9,200), and the exact-gap tier is 42 pairs not 40. Original note: 1,435 adjacent pairs (2,629
       genes) carry 3+ spliced reads joining an exon of one gene to an exon of its neighbour;
       40 pairs (79 genes) show the exact splitter signature (junction = the intergenic gap).
       Floor is 0 across 21,070 opposite-strand pairs, so the flag is specific. Show as an arc
       in the locus view and a gene-card note. FLAG, NOT FILTER. 11,322 same-strand pairs were
       too shallow to test: absence of the flag must not read as "confirmed separate".
-- [ ] **Intron support per gene.** Annotated introns seen / total across 94 libraries. 89% of
+- [x] **Intron support per gene. SHIPPED 0.7.0.** 50,631 genes, with the read count and the depth warning beside every ratio, and the source's intron count asserted equal to the atlas's own gs.in on all 50,631. Original note: Annotated introns seen / total across 94 libraries. 89% of
       multi-exon genes have all introns seen; LSGs 52.6% all, 37.2% none. Confounded with
       depth (below ~20 reads, detection < 27%), so it must ship beside the gene's read count
       and the power curve, or it reads as evidence against LSG gene models.

@@ -9,6 +9,70 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.7.0 — 2026-09-12 — What the RNA-seq says about the gene models themselves
+
+Two layers from 94 public RNA-seq libraries, both flags and neither a filter. They answer a
+question the atlas could not previously ask: is this gene model actually supported by reads, and
+is it one gene or two?
+
+### Introns observed, with the depth that decides whether the question was answerable
+
+Per gene: how many annotated introns were seen as spliced reads, out of how many, and the read
+count. 50,631 multi-exon genes; the other 13,329 are single-exon and have no intron to detect.
+
+89.6% of conserved multi-exon genes have every intron observed. Lineage-specific genes: 52.6%
+all, 37.2% none. **That gap is mostly depth, not gene-model quality**, and the card says so
+rather than leaving the number to imply otherwise. Below 20 reads fewer than 27% of annotated
+introns are detected even for models that are certainly correct; above 5,000 reads it is 98.8%.
+A gene with 0 reads showing "0 of 4 introns seen" is being described by its expression, not by
+its annotation, so the read count ships beside the fraction and a shallow gene gets an explicit
+warning instead of a bare ratio.
+
+The source's intron count was checked against the atlas's own `gs.in`, derived independently
+from the v5.1 GFF3 longest isoform: **50,631 of 50,631 agree, 100.00%**. The patcher asserts it
+per gene, because if the two ever diverge the layers are describing different gene models.
+
+### Whether a neighbour is really the same gene
+
+1,435 adjacent pairs carry three or more spliced reads joining an annotated exon boundary of one
+gene to one of the other — 2,629 genes flagged. The readout is specific: **zero of 27,276
+opposite-strand pairs clear it**, where fusion is impossible.
+
+**This is not a lineage-specific problem, and the card says so on every flagged gene.** 1,422 of
+the 1,435 pairs are two conserved genes; only 13 involve a lineage-specific one. At matched gap
+and depth, lineage-specific pairs are fused *less* often than conserved ones, 0.96% against
+3.61%.
+
+**Gap coverage is shipped because without it the flag overcalls.** An intron is spliced out, so
+a genuine split shows a junction with almost no coverage inside the gap; heavy gap coverage means
+readthrough, where the annotation is defensible and only the transcription is untidy. The
+owning analysis's own counter-example, `PtXaAlbH.17G082500`, has 9,630 exon-boundary junctions
+and 121,932 reads inside the gap. No threshold is applied — the published analysis set none, so
+both counts are shown.
+
+**9,079 genes had no adjacent pair deep enough to test at all**, and they say so. Absence of a
+flag must never read as "confirmed separate genes".
+
+A dashed arc joins the two genes in the locus view when both are on screen, labelled with the
+junction count. It is drawn only when both partners are visible: half an arc would imply a
+location it cannot support.
+
+### The TODO's own numbers were wrong, and were recomputed rather than quoted
+
+It claimed "1,435 adjacent pairs (2,629 genes) carry 3+ spliced reads" and "40 pairs (79 genes)
+show the exact splitter signature". Recomputed: 1,435 / 2,629 is the **exon-boundary** tier, and
+the any-junction tier is 5,126 pairs / 9,200 genes — the two figures had been filed under the
+wrong tiers. The owning analysis's stricter exact-gap tier is 42 pairs, not 40. Every figure
+shipped here is recomputed from the tables and asserted on build.
+
+### Panel and provenance
+
+The 94-library panel is frozen, and an 827-library expansion was running as this shipped. Using
+the frozen panel is safe rather than merely convenient: the expansion carries its own
+`panel94` equivalence gate, and it passes with 0 of 16 matched cells and 0 of 20 arm rows
+differing. Each haplotype was aligned to its own genome, so HAP1 and HAP2 are not independent
+replicates and are never pooled.
+
 ## 0.6.2 — 2026-09-12 — The home page was contradicting every other page
 
 `summary.ps_rank` is a third copy of the phylostrata distribution, written by `build_data.py`

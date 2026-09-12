@@ -295,6 +295,25 @@ await check('gene-promoter-positions-withheld', '#/gene/PtXaTreH.01G040100',
   { expect: ['Motif positions are withheld for this gene',
              'contradict the bars'], wait: 1200 });
 
+// RNA-seq gene-model evidence. Five cases, and three of them exist to stop the card
+// overclaiming: a shallow gene must say so rather than read as a broken model, an untestable
+// gene must say so rather than look clean, and a readthrough locus must not read as a split.
+await check('genemodel-supported', '#/gene/PtXaAlbH.17G050000',
+  { expect: ['Gene model, from RNA-seq', '13 of 13',
+             'Every annotated intron is supported'], wait: 1200 });
+await check('genemodel-too-shallow', '#/gene/PtXaAlbH.09G000200',
+  { expect: ['Too shallow to conclude anything', 'fewer than 27%',
+             'not evidence against the gene model'], wait: 1200 });
+await check('genemodel-split-clean', '#/gene/PtXaAlbH.17G059000',
+  { expect: ['Possible split model', 'Reads inside the intergenic gap',
+             'nearly empty of reads', 'not a lineage-specific problem'], wait: 1200 });
+await check('genemodel-split-readthrough', '#/gene/PtXaAlbH.17G082500',
+  { expect: ['Possible split model', 'readthrough transcription',
+             'No threshold is applied'], wait: 1200 });
+await check('genemodel-not-testable', '#/gene/PtXaAlbH.17G050200',
+  { expect: ['Not testable for this gene', 'not evidence',
+             '9,079 genes are in this position'], wait: 1200 });
+
 await check('module-about', '#/module/about',
   { expect: ['About & provenance', 'Known limitations', 'HAP2 domain annotation is thin',
              'audited out', 'derived here, not imported', 'Sources'] });

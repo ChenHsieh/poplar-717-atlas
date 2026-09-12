@@ -249,6 +249,40 @@ def main():
           f"{len(lad_bad)} strata disagree (hap, rank, manifest, shards): {lad_bad[:4]}"
           if lad_bad else f"{sum(len(v) for v in ladder.values())} strata")
 
+    # ---- RNA-seq gene-model evidence -------------------------------------------------------
+    # The intron count comes from a spliced-read pipeline; gs.in comes from the v5.1 GFF3
+    # longest isoform. They are independent derivations of the same quantity and agree on all
+    # 50,631 genes. If they ever diverge, the two layers are describing different gene models
+    # and the card would be attaching read evidence to the wrong structure.
+    gm_bad = [(gid, (rec.get("gs") or {}).get("in"), rec["gm"]["in"]["n"])
+              for gid, (_h, _p, rec) in genes.items()
+              if rec.get("gm", {}).get("in") is not None
+              and (rec.get("gs") or {}).get("in") is not None
+              and (rec.get("gs") or {}).get("in") != rec["gm"]["in"]["n"]]
+    check("gene-model intron count matches the annotation's own gs.in", not gm_bad,
+          f"{len(gm_bad)} disagree, e.g. {gm_bad[:3]}" if gm_bad
+          else f"{sum(1 for _g, (_h, _p, r) in genes.items() if r.get('gm', {}).get('in'))} genes")
+
+    # introns seen can never exceed introns annotated
+    gm_over = [gid for gid, (_h, _p, rec) in genes.items()
+               if rec.get("gm", {}).get("in")
+               and rec["gm"]["in"]["seen"] > rec["gm"]["in"]["n"]]
+    check("introns observed never exceeds introns annotated", not gm_over,
+          f"{len(gm_over)} genes, e.g. {gm_over[:3]}" if gm_over else "")
+
+    # a split flag must name a real gene, and evaluable pairs cannot exceed total pairs
+    gm_flag = [gid for gid, (_h, _p, rec) in genes.items() if rec.get("gm", {}).get("sp")]
+    gm_dangling = [gid for gid in gm_flag if genes[gid][2]["gm"]["sp"]["p"] not in genes]
+    check("every split-model partner is a real gene", not gm_dangling,
+          f"{len(gm_dangling)} dangling, e.g. {gm_dangling[:3]}" if gm_dangling else "")
+    want_flag = ((man.get("gene_model") or {}).get("split_model") or {}).get("flagged_genes")
+    check("manifest gene_model.split_model.flagged_genes matches the shards",
+          want_flag == len(gm_flag), f"manifest {want_flag} vs {len(gm_flag)} genes")
+    gm_nev = [gid for gid, (_h, _p, rec) in genes.items()
+              if rec.get("gm") and rec["gm"].get("nev", 0) > rec["gm"].get("np", 0)]
+    check("evaluable adjacent pairs never exceed total adjacent pairs", not gm_nev,
+          f"{len(gm_nev)} genes, e.g. {gm_nev[:3]}" if gm_nev else "")
+
     # summary.ps_rank is a third copy of the strata distribution and the HOME PAGE reads it.
     # It was stale for three versions while the ladder beside it was correct, so it gets the
     # same treatment: recomputed from the shards, never trusted.
