@@ -59,8 +59,10 @@ async function check(name, hash, { expect = [], theme = null, wait = 700 } = {})
 }
 
 await check('home', '#/',
+  // the NUMBER, not just the label: the home page showed the withdrawn 1,725 for three
+  // versions while every other page said 1,611, and asserting the label caught nothing
   { expect: ['63,960', 'Start here', 'Browse all genes', 'Modules', 'Before you cite anything',
-             'lineage-specific candidates'] });
+             'lineage-specific candidates', '1,611'] });
 await check('gene-lsg4', '#/gene/PtXaTreH.05G120200',
   { expect: ['PtXaTreH.05G120200', 'Chr05', 'Synteny', 'Populus', 'Dispensable'] });
 await check('gene-private', '#/gene/PtXaTreH.01G006100',

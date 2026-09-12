@@ -190,6 +190,27 @@ def main():
     ps_man["ladder"] = {h: [{"rank": rk, "name": names[rk], "n": by_rank[h][str(rk)]}
                             for rk in sorted(names)]
                         for h in ("hap1", "hap2")}
+    # summary.ps_rank is a THIRD copy of the same distribution, written by build_data.py (which
+    # wipes data/genes and so cannot run here) and read by the HOME PAGE to compute
+    # "lineage-specific candidates". It was missed when the ladder was fixed, and the home page
+    # spent three versions showing the withdrawn 1,725 while every other page said 1,611.
+    # Recomputed here from the same counts, so the two cannot diverge again.
+    # TWO CONVENTIONS for "no rank", both pre-existing and both correct for their consumer:
+    # phylostrat.by_rank uses "NA" (phylostrat.js reads `.NA`), summary.ps_rank uses "None"
+    # (what build_data.py wrote, and what validate_data.py and check_aggregates.py compare
+    # against). Translate rather than propagate, or this writes a key its readers do not know.
+    summ = man.setdefault("summary", {})
+    merged = Counter()
+    for hcnt in by_rank.values():
+        for k, v in hcnt.items():
+            merged["None" if k == "NA" else k] += v
+    ge18 = lambda d: sum(v for k, v in (d or {}).items() if k.isdigit() and int(k) >= 18)
+    old_ps = summ.get("ps_rank")
+    summ["ps_rank"] = dict(sorted(merged.items()))
+    if old_ps != summ["ps_rank"]:
+        print(f"summary.ps_rank recomputed; home-page PS>=18 total "
+              f"{ge18(old_ps)} -> {ge18(merged)}")
+
     new_lsg = sum(by_rank[h][str(rk)] for h in ("hap1", "hap2") for rk in range(18, 20))
     print(f"phylostrat ladder recomputed from the shards: LSG total {old_lsg} -> {new_lsg}")
     assert new_lsg == 1611, f"ladder disagrees with the shards: {new_lsg}"

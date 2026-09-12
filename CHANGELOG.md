@@ -9,6 +9,30 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.6.2 — 2026-09-12 — The home page was contradicting every other page
+
+`summary.ps_rank` is a third copy of the phylostrata distribution, written by `build_data.py`
+— the stage that wipes `data/genes` and therefore cannot run on this machine — and the home
+page computes "lineage-specific candidates (PS >= 18)" by summing it. When the LSG pool was
+corrected on 2026-09-10 the patcher fixed `phylostrat.ladder` and `phylostrat.by_rank` and
+missed this one, so **the live home page showed the withdrawn 1,725 while every other page in
+the atlas showed 1,611**, through 0.6.0 and 0.6.1.
+
+The staleness was not confined to the pool: every stratum was wrong, because the correction
+moved 766 genes across many strata (17->16, 9->6, 18->16 and others), and five genes that had
+no rank gained one. `None` went 50 -> 45.
+
+Found by building the helper that TODO 25 has been asking for since 0.3.11, and which its own
+text said would be warranted "if it happens a third time". It was the third time.
+`scripts/check_aggregates.py` recomputes every shard-derivable manifest aggregate and diffs it,
+because the shards are the artifact and everything else is a summary of them. It is now a step
+in `build_all.sh`, and `validate_data.py` gates `ps_rank` the same way it already gates the
+ladder beside it.
+
+`check.mjs` now asserts the home page's lineage-specific **number**, not just its label. The
+existing assertion checked for the words "lineage-specific candidates" and so passed happily
+through three versions of a wrong count.
+
 ## 0.6.1 — 2026-09-12 — The Browse filter that was missing since v0.2
 
 `expressed-in` was listed as pending under step 7e and had quietly never been built, because it

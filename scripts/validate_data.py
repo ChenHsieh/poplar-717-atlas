@@ -249,6 +249,20 @@ def main():
           f"{len(lad_bad)} strata disagree (hap, rank, manifest, shards): {lad_bad[:4]}"
           if lad_bad else f"{sum(len(v) for v in ladder.values())} strata")
 
+    # summary.ps_rank is a third copy of the strata distribution and the HOME PAGE reads it.
+    # It was stale for three versions while the ladder beside it was correct, so it gets the
+    # same treatment: recomputed from the shards, never trusted.
+    shard_ps = Counter()
+    for gid, (_h, _p, rec) in genes.items():
+        r = (rec.get("ps") or {}).get("rank")
+        shard_ps[str(r) if r is not None else "None"] += 1
+    man_ps = (man.get("summary") or {}).get("ps_rank") or {}
+    ps_bad = {k: (man_ps.get(k), shard_ps.get(k)) for k in set(man_ps) | set(shard_ps)
+              if man_ps.get(k) != shard_ps.get(k)}
+    check("manifest summary.ps_rank matches the shard ranks", not ps_bad,
+          f"{len(ps_bad)} strata disagree, e.g. {dict(list(ps_bad.items())[:4])}" if ps_bad
+          else f"{len(shard_ps)} strata")
+
     # The embargoed candidate names must not reach a shard under ANY key -- searched as text,
     # not by key name, so a rename cannot dodge it. Same construction as the qc check above.
     EMBARGOED = ("canonical_label", "LSG1.14g", "LSG2.10g", "LSG3.6g", "LSG4.5g",

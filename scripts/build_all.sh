@@ -135,6 +135,8 @@ else
   python3 scripts/validate_data.py
 fi
 
+echo; echo "== shard-derivable aggregates =="; python3 scripts/check_aggregates.py
+
 echo; echo "== version consistency =="; python3 scripts/check_version.py
 
 echo
