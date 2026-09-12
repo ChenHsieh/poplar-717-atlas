@@ -199,7 +199,7 @@ first, ahead of anything new.
       scales to the pool and matches on tree length rather than reporting it. Item 29's Ka/Ks
       already answers the same question at 52,232 genes.
 
-- [ ] **32 — pangenome presence across 31 genomes. STILL BLOCKED 2026-09-10.** Annotation-free
+- [ ] **32 — pangenome presence across 31 genomes. BLOCKER CHANGED 2026-09-12: the jobs are DONE, the roll-up is not.** The queue is empty -- `pang_tblastn`, `pang_tbsoft` and `pang_hap1self` have all finished -- and `pangenome_lsg_run/` holds 58 per-genome `tblastn/` tables plus 58 `tblastn_softmask/` ones. But there is still no combined per-gene table: the only top-level output is `genome_inventory.tsv`. So this is waiting on the owning session to reduce those 116 files to a presence call, not on compute. Do not reduce them here -- that directory belongs to another session and the length-matching and `-seg` masking decisions are theirs. Related, from the same family: **population constraint is also still unfinished** -- `k2_popconstraint/` has only `sitesets_summary.json` and an UNINDEXED `all_sites.vcf.gz`, because `k2_call` (job 48041814) failed when bcftools refused to index it ("Unsorted positions on sequence #1"); its 24 upstream alignments completed, so it needs a sort pass, not a rerun.  Earlier note: Annotation-free
       tblastn of pool + matched control against 31 *Populus*/Salicaceae assemblies — presence
       that does not depend on any annotator's ORF policy, which is the known weakness of the
       synteny layer. `pang_tblastn` / `pang_tbsoft` / `pang_hap1self` were still running on
