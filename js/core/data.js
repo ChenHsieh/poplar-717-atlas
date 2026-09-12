@@ -260,6 +260,9 @@ export function facetRow(facets, i) {
     // filter silently treat them as zero.
     w: o.w,
     ms: o.ms,         // datasets (of 5) with a peptide at 1% FDR; -1 if the gene has no record
+    // decoded from the file's own vocab rather than a hardcoded order, so the bit meaning
+    // can never drift from what build_facets.py wrote
+    xin: (v.xin || []).filter((_t, k) => (o.xin >> k) & 1),
   };
 }
 

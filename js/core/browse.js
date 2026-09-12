@@ -52,6 +52,12 @@ const FILTERS = [
     test: (r, v) => r.w >= 0 && r.w / 1000 <= +v },
   { id: 'ms', label: 'Peptide-detected', kind: 'select', options: ['yes', 'no'],
     test: (r, v) => (r.ms > 0 ? 'yes' : 'no') === v },
+  // The threshold is in the label on purpose: "expressed" is not an absolute property, and a
+  // filter that hides its cutoff invites reading it as one.
+  { id: 'xin', label: 'Expressed in (>1 TPM)', kind: 'select',
+    options: ['leaf_young', 'leaf', 'leaf_old', 'xylem', 'bark', 'root', 'stem', 'bud',
+              'catkin', 'callus'],
+    test: (r, v) => r.xin.includes(v) },
 ];
 
 const state = { values: {}, page: 0, rows: null, ids: null, matches: [] };

@@ -391,6 +391,10 @@ def main():
                 1 if flags.get("ar") else 0,
                 len(r.get("pres") or []),
                 1 if ps.get("amb") else 0,
+                sum(1 << i for i, t in enumerate(
+                    ['leaf_young', 'leaf', 'leaf_old', 'xylem', 'bark', 'root', 'stem',
+                     'bud', 'catkin', 'callus'])
+                    if (x.get("t") or {}).get(t) is not None and (x["t"][t] or 0) > 1.0),
                 (-1 if ks.get("no") else
                  (int(round(ks["w"] * 1000)) if ks.get("w") is not None else -2)),
                 (ms.get("n") if ms.get("n") is not None else -1),

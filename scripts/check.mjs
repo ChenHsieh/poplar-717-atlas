@@ -260,6 +260,8 @@ await checkModel('model-confident-dark', 'PtXaTreH.01G021800', { theme: 'dark' }
 // a filtered view legible get their own cases.
 await check('browse-deeplink-chips', '#/browse?ps=18',
   { expect: ['Phylostratum =', 'Clear all', 'MS is indirect'], wait: 1400 });
+await check('browse-expressed-in', '#/browse?xin=xylem',
+  { expect: ['Expressed in (>1 TPM)', 'Clear all'], wait: 1400 });
 await check('browse-proxy-statement', '#/browse',
   { expect: ['MS is indirect', 'only 12% match exactly one 717 gene',
              'measured absence'], wait: 1400 });

@@ -9,6 +9,22 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.6.1 — 2026-09-12 — The Browse filter that was missing since v0.2
+
+`expressed-in` was listed as pending under step 7e and had quietly never been built, because it
+could not be: the facet index carried tau and the single peak tissue, and nothing per-tissue.
+It has one now — a 10-bit mask, one integer per gene rather than ten columns, adding 0.25 MB raw
+to a 2.42 MB index. The bit order lives in the facet file's own `vocab` so the client decodes it
+from the builder's own definition and the two cannot drift.
+
+**The threshold is in the filter's label**, "Expressed in (>1 TPM)", not hidden in a build
+script: a filter that conceals its cutoff invites reading "expressed" as an absolute property of
+the gene. >1 TPM over the WT-control baseline is the same convention the chromatin layer already
+uses for "expressed in leaf". 53,704 genes clear it in at least one tissue and 10,256 in none.
+
+Found by checking rather than remembering: the TODO claimed three filters were outstanding, and
+two of them (`tau_min`, `top`) had in fact shipped.
+
 ## 0.6.0 — 2026-09-12 — Every page earns its place
 
 Chen's review of the live site: several module pages were dead ends showing bars and stats with

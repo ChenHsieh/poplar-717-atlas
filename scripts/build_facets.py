@@ -17,6 +17,17 @@ from collections import Counter
 
 ATLAS = "/scratch/ch29576/poplar-717-atlas"
 
+# TODO 7e: "expressed in tissue Y" needs a per-tissue value, and the index carried only tau
+# and the single peak tissue. Ten booleans per gene is one 10-bit integer, 0.26 MB raw over
+# 63,960 genes, rather than ten columns. The ORDER lives in the file's own vocab so the
+# client never hardcodes it and the two cannot drift.
+#
+# THE THRESHOLD IS DECLARED, NOT BURIED: median TPM > 1 across the WT-control baseline -- the
+# same ">1" convention the chromatin layer already uses for "expressed in leaf". It is shown
+# in the filter's own label so nobody reads "expressed" as an absolute claim.
+XIN_TISSUES = ['leaf_young', 'leaf', 'leaf_old', 'xylem', 'bark', 'root', 'stem', 'bud', 'catkin', 'callus']
+XIN_MIN_TPM = 1.0
+
 def main():
     data = os.path.join(ATLAS, "data")
     order = json.load(open(f"{data}/index/genes.json"))
@@ -66,6 +77,9 @@ def main():
             # `or -1` collapsed it to null and the browse table showed those genes as "—".
             len(r.get("pres") or []),
             1 if ps.get("amb") else 0,
+            sum(1 << i for i, t in enumerate(XIN_TISSUES)
+                if (x.get("t") or {}).get(t) is not None
+                and (x["t"][t] or 0) > XIN_MIN_TPM),
             # omega vs P. trichocarpa, as an integer per-mille so the JSON stays short.
             # -1 means "no reciprocal-best ortholog", which is a real state, not missing data:
             # a hybrid-only gene has nothing to measure against. -2 means a pair exists but
@@ -78,8 +92,8 @@ def main():
 
     out = {
         "cols": ["hap", "chr", "cls", "ps", "tau", "top", "allele", "at", "changed",
-                 "tandem", "npres", "amb", "w", "ms"],
-        "vocab": {"chr": chrs, "cls": clss, "top": tops},
+                 "tandem", "npres", "amb", "xin", "w", "ms"],
+        "vocab": {"chr": chrs, "cls": clss, "top": tops, "xin": XIN_TISSUES},
         "rows": rows,
     }
     p = f"{data}/index/facets.json"
@@ -89,8 +103,10 @@ def main():
     print(f"facets: {len(rows)} rows x {len(out['cols'])} cols -> {size/1e6:.2f} MB raw")
     print(f"  chr vocab {len(chrs)}  class vocab {len(clss)}  tissue vocab {len(tops)}")
     print(f"  with tau: {sum(1 for r in rows if r[4] >= 0)}   in LSG pool: {sum(1 for r in rows if r[3] >= 18)}")
-    print(f"  with omega: {sum(1 for r in rows if r[12] >= 0)}   "
-          f"peptide-detected: {sum(1 for r in rows if r[13] > 0)}")
+    print(f"  with omega: {sum(1 for r in rows if r[13] >= 0)}   "
+          f"peptide-detected: {sum(1 for r in rows if r[14] > 0)}")
+    print(f"  expressed (>{XIN_MIN_TPM} TPM) in at least one tissue: "
+          f"{sum(1 for r in rows if r[12])}   in none: {sum(1 for r in rows if not r[12])}")
 
     man_path = f"{data}/meta/manifest.json"
     man = json.load(open(man_path))
