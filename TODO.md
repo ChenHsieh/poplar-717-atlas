@@ -251,7 +251,7 @@ first, ahead of anything new.
         `main` had indeed moved, and a plain merge was taken rather than a rebase -- the only
         conflicts were screenshots `main` had deleted and imgbot had re-compressed, resolved in
         favour of the deletion.
-  - [ ] **34g — the 3D model has never been rendered at phone viewport.** Split out of 34f
+  - [x] **34g — DONE 2026-09-12, and it found a real bug.** `model-phone` renders the viewer at 375x667 (deviceScaleFactor 2, isMobile, hasTouch) and asserts what a desktop viewport cannot see. Everything passed except the opening button, which was **32px** against the site's own 44px floor -- an explicit value in `.struct-open`, now raised. Original note: Split out of 34f
         because that part is genuinely undone, and it matters more now than when it was written:
         the viewer is PUBLIC as of today, and `check.mjs` drives a desktop viewport only. There
         is already a `locus-phone` case to copy the pattern from.

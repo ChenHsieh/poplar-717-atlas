@@ -314,6 +314,72 @@ await check('genemodel-not-testable', '#/gene/PtXaAlbH.17G050200',
   { expect: ['Not testable for this gene', 'not evidence',
              '9,079 genes are in this position'], wait: 1200 });
 
+// --- 34g: the 3D model at PHONE viewport ---------------------------------------------------
+// The viewer went public on 2026-09-12 having only ever been rendered at 1180x900. A desktop
+// viewport cannot see the three ways a WebGL canvas fails on a phone: the page gains horizontal
+// scroll, the canvas is laid out wider than its container, or the control that opens it is
+// below the 44px touch floor. Pixels are still counted the same way as the desktop cases,
+// because a canvas existing is not a model being drawn -- that mistake already passed three
+// blank canvases once.
+{
+  const pp = await browser.newPage({ viewport: { width: 375, height: 667 },
+    deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  const perrs = [];
+  pp.on('console', (m) => { if (m.type() === 'error') perrs.push('console: ' + m.text()); });
+  pp.on('pageerror', (e) => perrs.push('pageerror: ' + e.message));
+  await pp.goto(base + '/#/gene/PtXaTreH.01G021800', { waitUntil: 'networkidle' });
+  await pp.waitForTimeout(1000);
+  const btn = await pp.$('button.struct-open');
+  let btnMin = 0;
+  if (!btn) perrs.push('no "Show 3D model" button at phone viewport');
+  else {
+    const bb = await btn.boundingBox();
+    btnMin = bb ? Math.min(bb.width, bb.height) : 0;
+    await btn.scrollIntoViewIfNeeded();
+    await btn.click();
+  }
+  await pp.waitForSelector('.struct-stage canvas', { timeout: 20000 })
+    .catch(() => perrs.push('no canvas at phone viewport'));
+  await pp.waitForTimeout(1200);
+  const pr = await pp.evaluate(async () => {
+    const stage = document.querySelector('.struct-stage');
+    const cv = stage && stage.querySelector('canvas');
+    const v = stage && stage.__viewer;
+    let painted = 0;
+    if (v) {
+      const img = new Image();
+      img.src = v.pngURI();
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const cx = c.getContext('2d');
+      cx.drawImage(img, 0, 0);
+      const d = cx.getImageData(0, 0, c.width, c.height).data;
+      let on = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i] >= 128) on++;
+      painted = on / (d.length / 4);
+    }
+    const sb = stage ? stage.getBoundingClientRect() : null;
+    const cb = cv ? cv.getBoundingClientRect() : null;
+    return {
+      painted,
+      overflow: cb && sb ? +(cb.width - sb.width).toFixed(1) : null,
+      hscroll: document.documentElement.scrollWidth
+        > document.documentElement.clientWidth + 1,
+      stageW: sb ? Math.round(sb.width) : 0,
+    };
+  });
+  const ok = !perrs.length && pr.painted > 0.002 && !pr.hscroll
+    && pr.overflow !== null && pr.overflow <= 1 && btnMin >= 44;
+  if (!ok) failures++;
+  console.log(`\n### model-phone  ${ok ? 'OK' : 'FAIL'}  painted=${(pr.painted * 100).toFixed(2)}%`
+    + ` stage=${pr.stageW}px canvasOverflow=${pr.overflow}px hscroll=${pr.hscroll}`
+    + ` openBtn=${btnMin}px`);
+  perrs.slice(0, 4).forEach((e) => console.log('   !! ' + e));
+  await pp.screenshot({ path: `${outdir}/model-phone.png`, fullPage: false });
+  await pp.close();
+}
+
 await check('module-about', '#/module/about',
   { expect: ['About & provenance', 'Known limitations', 'HAP2 domain annotation is thin',
              'audited out', 'derived here, not imported', 'Sources'] });

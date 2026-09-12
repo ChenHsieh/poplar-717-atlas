@@ -9,6 +9,26 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## The 3D viewer's open button was too small to tap
+
+Rendered the model at a phone viewport for the first time -- after it had already gone public --
+and the layout was fine in every respect but one: painted pixels 6.4%, canvas within its
+container, no horizontal page scroll, and an opening button of **32px**, below the 44px touch
+floor this site enforces everywhere else and which the `locus-phone` check has asserted for
+months.
+
+The 32px was explicit in the stylesheet, not an omission, so this overrides a deliberate value
+on purpose: `.locus-btn` sets 44px, the locus check enforces it, and one control opting out is
+the kind of inconsistency nobody notices from a desktop.
+
+`model-phone` now drives 375x667 at deviceScaleFactor 2 with isMobile and hasTouch, asserting
+painted pixels through the viewer's own `pngURI` (a canvas existing is not a model being drawn),
+no horizontal scroll, the canvas not laid out wider than its container, and the opening control
+at or above 44px. Written as its own helper so the three desktop model cases keep their exact
+behaviour.
+
+Site only -- `data/` is untouched and the data version stays 0.7.0.
+
 ## 0.7.0 — 2026-09-12 — What the RNA-seq says about the gene models themselves
 
 Two layers from 94 public RNA-seq libraries, both flags and neither a filter. They answer a

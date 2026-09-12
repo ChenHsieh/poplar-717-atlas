@@ -145,8 +145,15 @@ table.data tr:hover td { background: var(--panel-2); }
   border-radius: 0 6px 6px 0; font-size: 12.5px; color: var(--ink-2); margin: 12px 0; }
 .muted { color: var(--ink-3); }
 /* 3D model on the protein card (TODO 34). Fixed height: the WebGL canvas sizes to its box. */
-.struct-open { margin-top: 10px; font-size: 12px; padding: 4px 9px; border: 1px solid var(--line-2);
-  border-radius: 5px; background: var(--panel-2); color: var(--ink); cursor: pointer; min-height: 32px; }
+/* 44px, not 32: this control was shipped with an explicit min-height of 32px, which is below
+   the touch floor the rest of this site enforces (.locus-btn below, and the locus-phone check
+   asserts it). Found by rendering the 3D viewer at 375x667 for the first time AFTER it went
+   public -- painted pixels, canvas fit and page overflow were all fine; only the button that
+   opens it was too small to tap. Changing someone's explicit value deliberately, for
+   consistency with the standard the project already checks. */
+.struct-open { margin-top: 10px; font-size: 12px; padding: 4px 12px; border: 1px solid var(--line-2);
+  border-radius: 5px; background: var(--panel-2); color: var(--ink); cursor: pointer;
+  min-height: 44px; min-width: 44px; }
 .struct-stage { position: relative; width: 100%; height: 380px; margin-top: 10px;
   border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2); overflow: hidden; }
 .struct-readout { font-size: 12px; color: var(--ink-2); margin-top: 6px; min-height: 1.4em; }
