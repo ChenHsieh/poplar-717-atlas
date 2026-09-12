@@ -131,7 +131,8 @@ function geneCard(g) {
   const thisLabel = g.hap === 'hap1' ? 'HAP1 (TreH)' : 'HAP2 (AlbH)';
 
   const card = el('div', { class: 'card' },
-    el('h2', {}, 'Mirror', el('span', { class: 'tag' }, 'both haplotypes')));
+    el('h2', {}, `This locus on ${otherLabel.split(' ')[0]} too`,
+      el('span', { class: 'tag' }, 'both haplotypes, facing')));
   const stage = el('div', { class: 'locus-stage', style: `height:${H}px` });
   const canvas = el('canvas', { class: 'locus-canvas' });
   stage.append(canvas);
@@ -228,4 +229,4 @@ function geneCard(g) {
   return card;
 }
 
-export default { id: 'mirror', label: 'Mirror', geneCard };
+export default { id: 'mirror', label: 'Both haplotypes', geneCard };

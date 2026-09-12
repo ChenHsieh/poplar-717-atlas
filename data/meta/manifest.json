@@ -92,6 +92,25 @@
   },
   "n_genes": 63960,
   "not_included": "per-matrix enrichment statistics and LSG-vs-control comparisons; those are population-level chapter results, not per-gene facts",
+  "positions": {
+   "families": "the nine named TF families only; `other` (457 matrices) is excluded as not meaningful to draw per-motif",
+   "gate": "every shipped gene's positions aggregate exactly to its cre.fam counts, asserted on every build",
+   "genes_with_positions": 63907,
+   "genes_withheld": 44,
+   "measure": "bp from the transcription start to the motif's 5' (far) edge, within the 1 kb promoter window",
+   "positions_by_family": {
+    "AP2_ERF": 224867,
+    "ARF": 56187,
+    "MADS": 67012,
+    "MYB": 358731,
+    "NAC": 386044,
+    "SPL": 84850,
+    "TCP": 16345,
+    "WRKY": 676141,
+    "bZIP": 63662
+   },
+   "why_some_are_withheld": "Upstream scanned a 3 kb window and took the 1 kb slice, with a greedy non-overlapping pass global over 3 kb. Only the 1 kb FASTA is on this cluster, so a motif near the boundary can be resolved differently: 45 of 63,960 genes disagree on a named family, all in the direction of this scan finding MORE hits. Those genes are withheld rather than shown with positions that contradict published counts."
+  },
   "promoter_scanned_bp": 3000,
   "promoter_window_bp": 1000,
   "source": "ms2-lsg pipeline/s08d_promoter_cre_genomewide.py, reviewed 2026-09-06",
@@ -105,7 +124,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.5.0",
+ "data_version": "0.6.0",
  "duplication": {
   "ks_by_rank": {
    "12": {
@@ -231,6 +250,7 @@
    "te": 63923
   },
   "coverage": {
+   "ESMFold 3D model (C-alpha trace)": 40685,
    "ESMFold structure": 40685,
    "TE distance (re-derived from v5.1 repeatmask GFF3)": 63923,
    "duplication class": 63960,
@@ -243,8 +263,7 @@
    "proteomics PXD023826": 57845,
    "proteomics PXD025636": 57845,
    "proteomics PXD064017": 57845,
-   "tandem arrays (union set)": "13663 genes in 4371 arrays",
-   "ESMFold 3D model (C-alpha trace)": 40685
+   "tandem arrays (union set)": "13663 genes in 4371 arrays"
   },
   "dup_class_dist": {
    "A": 7,
@@ -634,6 +653,22 @@
   "lsg_pool_genes_with_a_hit": 8,
   "method": "raw-spectra re-search against a database CONTAINING the 717 proteins (98,659 targets), Sage 0.14.7, 1% peptide AND spectrum FDR",
   "n_datasets": 5,
+  "peptide_detail": {
+   "gene_dataset_pairs_with_no_717_specific_peptide": 54264,
+   "gene_dataset_pairs_with_no_peptide_unique_to_the_gene": 51585,
+   "genes": 26642,
+   "how_indirect_it_usually_is": {
+    "max_717_genes_per_peptide": 142,
+    "measured_on": "PXD025636, the deepest of the five datasets",
+    "median_717_genes_per_peptide": 2,
+    "peptides_also_in_the_ptrichocarpa_proteome_pct": 94.2,
+    "peptides_mapping_to_exactly_one_717_gene_pct": 11.9,
+    "reading": "For most genes the assignment rests on a peptide that is neither species-specific nor gene-specific. That does not make the protein absent; it makes 'this gene's product was observed' the wrong reading of it. The card now shows which kind of evidence each gene has."
+   },
+   "per_gene_per_dataset": "n peptides, n PSMs, best hyperscore, how many peptides are unique to this gene, how many are absent from the P. trichocarpa proteome, and up to 3 example peptides",
+   "rows": 59698,
+   "why": "'detected in N of 5 datasets' hid the difference between a peptide unique to this gene and absent from every other species, and a peptide shared with P. trichocarpa and with dozens of other 717 genes. Those are different claims."
+  },
   "supersedes": "Tier-1 string matching against three third-party peptide tables built from another species' database (PXD023826 / PXD025636 / PXD064017). A Tier-1 negative was uninformative by construction. PXD023826 and PXD064017 are not covered by this layer -- the replacement is deeper and interpretable, not a strict superset of datasets.",
   "undetectable_by_construction": {
    "hap1": 26,
@@ -977,6 +1012,19 @@
    "sha256_16": "see sources/cre_promoter_hits.provenance.json"
   }
  },
+ "structure": {
+  "buckets": 2577,
+  "bytes": 94050357,
+  "excluded": {
+   "PtXaTreH.08G115400": "ESMFold PDB is 0 bytes; also absent from the SS table"
+  },
+  "gate": "per-residue arrays reproduce n_residues, mean_plddt, frac_plddt_lt70, helix_frac and strand_frac of secondary_structure_summary.tsv to half a unit of its last decimal, for every gene; and every shard ss value is that table rounded to 3 decimals",
+  "genes": 40685,
+  "hap1": 16502,
+  "hap2": 24183,
+  "span": 2500,
+  "what": "ESMFold Calpha trace (0.1 A), per-residue pLDDT, sequence and pydssp c3 secondary structure. Not the full-atom model: that is 2.3 GB gzipped, over the Pages site cap."
+ },
  "summary": {
   "by_chr": {
    "hap1/Chr01": 3761,
@@ -1061,18 +1109,5 @@
   },
   "unstable": 639
  },
- "tier": "full",
- "structure": {
-  "genes": 40685,
-  "hap1": 16502,
-  "hap2": 24183,
-  "buckets": 2577,
-  "bytes": 94050357,
-  "span": 2500,
-  "what": "ESMFold Calpha trace (0.1 A), per-residue pLDDT, sequence and pydssp c3 secondary structure. Not the full-atom model: that is 2.3 GB gzipped, over the Pages site cap.",
-  "excluded": {
-   "PtXaTreH.08G115400": "ESMFold PDB is 0 bytes; also absent from the SS table"
-  },
-  "gate": "per-residue arrays reproduce n_residues, mean_plddt, frac_plddt_lt70, helix_frac and strand_frac of secondary_structure_summary.tsv to half a unit of its last decimal, for every gene; and every shard ss value is that table rounded to 3 decimals"
- }
+ "tier": "full"
 }

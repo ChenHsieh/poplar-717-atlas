@@ -117,6 +117,100 @@ function chromatinCard(g) {
       + 'only a method that sequences 5\u2032 ends can do that, and none exists for any Populus.'));
 }
 
+// ---- where the motifs actually sit (TODO 44) ---------------------------------------------
+// The card showed how MANY matches each family had and nothing about WHERE, so a proximal
+// TATA-adjacent site and one 900 bp upstream looked identical. `cre.pos` is bp from the
+// transcription start to each motif's 5' edge, within the 1 kb window, so the TSS is the
+// RIGHT edge here and upstream runs leftwards -- the orientation a promoter diagram is
+// normally drawn in.
+//
+// One hue for every tick, with the family named on its own lane. Families do not have a
+// fixed colour anywhere else in this atlas and inventing one here would start a palette that
+// nothing else honours.
+const WIN = 1000;
+
+function positionTrack(cre, cm) {
+  if (cre.posx) {
+    return el('p', { class: 'muted', style: 'font-size:12px;margin:10px 0 0' },
+      el('strong', {}, 'Motif positions are withheld for this gene. '),
+      'The position rescan disagreed with the published family counts here, by finding one or '
+      + 'two more matches than the counts above. Rather than draw positions that contradict '
+      + 'the bars directly above them, this gene shows none. 45 of 63,960 genes are in that '
+      + 'state, all for the same reason.');
+  }
+  const pos = cre.pos;
+  if (!pos || !Object.keys(pos).length) return null;
+  const fams = Object.keys(pos).sort((a, b) => pos[b].length - pos[a].length);
+  const W = 100;                       // percentage space; the SVG scales to the card
+  const LANE = 15, TOP = 16;
+  const h = TOP + fams.length * LANE + 16;
+  const xOf = (dist) => ((WIN - dist) / WIN) * W;
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const mk = (name, attrs) => {
+    const n = document.createElementNS(svgNS, name);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    return n;
+  };
+  const svg = mk('svg', { viewBox: `0 0 ${W} ${h}`, width: '100%', height: h,
+                          preserveAspectRatio: 'none', role: 'img',
+                          'aria-label': 'positions of transcription-factor family motif '
+                            + 'matches in the 1 kb promoter, transcription start at the right' });
+  // axis: TSS at the right, ticks every 250 bp
+  for (const bp of [1000, 750, 500, 250, 0]) {
+    const x = xOf(bp);
+    svg.append(mk('line', { x1: x, y1: TOP - 5, x2: x, y2: h - 12,
+                            stroke: 'var(--line)', 'stroke-width': 0.15,
+                            'stroke-dasharray': bp === 0 ? '' : '0.6 0.6' }));
+  }
+  for (const [i, fam] of fams.entries()) {
+    const y = TOP + i * LANE;
+    svg.append(mk('line', { x1: 0, y1: y + LANE / 2, x2: W, y2: y + LANE / 2,
+                            stroke: 'var(--line)', 'stroke-width': 0.1 }));
+    const famLabel = ((cm && cm.family_labels) || {})[fam] || fam;
+    for (const d of pos[fam]) {
+      const t = mk('line', { x1: xOf(d), y1: y + 2, x2: xOf(d), y2: y + LANE - 3,
+                             stroke: 'var(--accent)', 'stroke-width': 0.5 });
+      // an SVG tooltip is a <title> CHILD, and Element.append() returns undefined -- the
+      // earlier one-liner set .textContent on that undefined and threw on every gene page
+      const ttl = mk('title', {});
+      ttl.textContent = `${famLabel} match, \u2212${d} bp from the transcription start`;
+      t.append(ttl);
+      svg.append(t);
+    }
+  }
+  if (cre.tata && cre.tata.pos != null) {
+    svg.append(mk('line', { x1: xOf(cre.tata.pos), y1: TOP - 8, x2: xOf(cre.tata.pos), y2: h - 12,
+                            stroke: 'var(--c-priv)', 'stroke-width': 0.5 }));
+  }
+
+  const labels = el('div', { style: `display:grid;grid-template-rows:repeat(${fams.length},`
+    + `${LANE}px);font-size:11px;color:var(--ink-2);padding-top:${TOP}px;text-align:right;`
+    + 'padding-right:7px;white-space:nowrap' },
+    ...fams.map((f) => el('div', { style: `height:${LANE}px;line-height:${LANE}px` },
+      ((cm && cm.family_labels) || {})[f] || f,
+      el('span', { class: 'muted' }, ` ${pos[f].length}`))));
+
+  return el('div', { style: 'margin-top:10px' },
+    el('h3', { style: 'font-size:12.5px;margin:0 0 4px;color:var(--ink-2)' },
+      'Where those matches sit'),
+    el('div', { style: 'display:flex;align-items:flex-start' }, labels,
+      el('div', { style: 'flex:1;min-width:0' }, svg)),
+    el('div', { class: 'muted', style: 'display:flex;justify-content:space-between;'
+      + 'font-size:10.5px;margin-top:-10px' },
+      el('span', {}, '\u22121000 bp'), el('span', {}, '\u2212500'),
+      el('span', {}, 'transcription start')),
+    el('p', { class: 'muted', style: 'font-size:11px;margin:7px 0 0' },
+      'Each tick is one match, placed at the motif\u2019s far (5\u2032) edge; the '
+      + 'transcription start is at the right and upstream runs left. Lanes are ordered by how '
+      + 'many matches a family has, and the count is beside its name. Ticks share one colour '
+      + 'on purpose \u2014 the lane says which family it is.',
+      cre.tata && cre.tata.pos != null
+        ? el('span', {}, ' The single amber line is the canonical TATA box at '
+            + `\u2212${cre.tata.pos} bp.`)
+        : null));
+}
+
 function geneCard(g, man) {
   const cre = g.cre;
   const cm = man && man.cre;
@@ -132,6 +226,7 @@ function geneCard(g, man) {
     el('h3', { style: 'font-size:12.5px;margin:0 0 6px;color:var(--ink-2)' },
       'Transcription-factor family motif matches'),
     familyStrip(cre, cm),
+    positionTrack(cre, cm),
     el('p', { class: 'muted', style: 'font-size:11px;margin:8px 0 0' },
       'These are matches to JASPAR position-weight matrices for each family (log-odds ≥ 85% of a ',
       "matrix's own maximum score, both strands) — evidence a family's binding site COULD sit there, ",

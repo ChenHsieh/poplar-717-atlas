@@ -6,6 +6,7 @@
 // not be a filter anyone waits for.
 import { el, clear, fmt } from './dom.js';
 import { loadFacets, facetRow, loadGeneIndex } from './data.js';
+import { query, setQuery } from './router.js';
 import { saveSet, allSets, removeSet } from './geneset.js';
 
 const PAGE = 100;
@@ -23,6 +24,9 @@ const FILTERS = [
     test: (r, v) => r.cls === v },
   { id: 'ps_min', label: 'Phylostratum ≥', kind: 'number', placeholder: '18',
     test: (r, v) => r.ps != null && r.ps >= +v },
+  // exact, not >=: a stratum bar on the phylostratigraphy page means THAT stratum
+  { id: 'ps', label: 'Phylostratum =', kind: 'number', placeholder: '18',
+    test: (r, v) => r.ps === +v },
   { id: 'tau_min', label: 'τ ≥', kind: 'number', placeholder: '0.8', step: '0.05',
     test: (r, v) => r.tau != null && r.tau >= +v },
   { id: 'top', label: 'Peak tissue', kind: 'select',
@@ -55,6 +59,11 @@ const state = { values: {}, page: 0, rows: null, ids: null, matches: [] };
 function applyFilters() {
   const active = FILTERS.filter((f) => state.values[f.id] !== undefined
     && state.values[f.id] !== '' && state.values[f.id] !== null);
+  // Record the active filters in the URL so the view is shareable. setQuery uses
+  // replaceState, so this does NOT re-enter the router and rebuild the page.
+  try {
+    setQuery(Object.fromEntries(active.map((f) => [f.id, state.values[f.id]])));
+  } catch { /* URL bookkeeping is cosmetic; never let it break filtering */ }
   const out = [];
   for (let i = 0; i < state.rows.length; i++) {
     const r = state.rows[i];
@@ -129,19 +138,45 @@ function exportTSV() {
   download(`717atlas_selection_${state.matches.length}genes.tsv`, lines.join('\n'));
 }
 
+/** Build a Browse URL with filters pre-applied, for an overview chart to link to.
+ *  Exported so a module can say "these genes" without knowing how Browse stores state. */
+export function browseHref(params) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== '' && v != null)).toString();
+  return '#/browse' + (qs ? '?' + qs : '');
+}
+
 export async function browseView() {
   const root = el('div', {},
     el('h1', {}, 'Browse'),
     el('p', { class: 'sub' },
       'Filter all 63,960 genes across every module at once, then export the selection or keep '
-      + 'it as a named set. Filtering runs entirely in the browser over a 274 KB index.'));
+      + 'it as a named set. Filtering runs entirely in the browser over a 274 KB index.'),
+    // The omega and MS columns are the two here that are easiest to over-read, so the caveat
+    // sits next to the numbers rather than only in the provenance page.
+    el('p', { class: 'muted', style: 'font-size:12px;margin:-6px 0 14px' },
+      el('strong', {}, 'MS is indirect. '),
+      'It counts public Populus mass-spec datasets with a peptide matching this gene, not '
+      + 'observations of this gene\u2019s own protein: 94% of those peptides are also in the '
+      + 'P. trichocarpa proteome and only 12% match exactly one 717 gene. Open a gene to see '
+      + 'which kind of evidence it has. ',
+      el('strong', {}, '\u03c9 is Nei\u2013Gojobori against P. trichocarpa'),
+      ', blank where the gene has no reciprocal-best ortholog \u2014 a measured absence, not '
+      + 'missing data.'));
 
   const summary = el('div', { class: 'stat-row' });
   const tableHolder = el('div', {});
   const pager = el('div', { style: 'display:flex;gap:9px;align-items:center;margin-top:12px' });
   const setsHolder = el('div', {});
 
+  // a filter seeded from the URL must show in its widget, or Browse looks unfiltered
+  for (const [id, v] of Object.entries(state.values)) {
+    const w = inputs.get(id);
+    if (w) w.value = v;
+  }
+
   const render = () => {
+    drawChips();
     clear(summary).append(
       el('div', { class: 'stat' },
         el('div', { class: 'n' }, fmt(state.matches.length)),
@@ -168,6 +203,7 @@ export async function browseView() {
   const controls = el('div', {
     style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px',
   });
+  const inputs = new Map();
   for (const f of FILTERS) {
     const onchange = (e) => {
       const v = e.target.value;
@@ -182,9 +218,48 @@ export async function browseView() {
       : el('input', { type: 'number', step: f.step || '1', placeholder: f.placeholder || '',
           oninput: onchange,
           style: 'width:100%;padding:5px;border:1px solid var(--line-2);border-radius:5px;background:var(--surface);color:var(--ink);font-size:12.5px' });
+    inputs.set(f.id, input);
     controls.append(el('label', { style: 'display:block;font-size:11.5px;color:var(--ink-2)' },
       f.label, el('div', { style: 'margin-top:3px' }, input)));
   }
+
+  /** Active filters as removable chips. Without these, what is being filtered lives only in
+   *  a grid of 15 inputs and a reader arriving from a chart link (or a pasted URL) cannot see
+   *  why the count is 902 instead of 63,960. Removing a chip has to clear the widget too, not
+   *  just the state, or the two disagree. */
+  const chipRow = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0' });
+  const drawChips = () => {
+    clear(chipRow);
+    const active = FILTERS.filter((f) => state.values[f.id] !== undefined
+      && state.values[f.id] !== '' && state.values[f.id] !== null);
+    if (!active.length) return;
+    for (const f of active) {
+      const chip = el('button', {
+        class: 'locus-btn', type: 'button',
+        style: 'padding:0 9px;font-size:11.5px;height:26px',
+        title: 'Remove this filter',
+        onclick: () => {
+          delete state.values[f.id];
+          const w = inputs.get(f.id);
+          if (w) w.value = '';
+          applyFilters(); render();
+        },
+      }, `${f.label} ${String(state.values[f.id]).replace(/_/g, ' ')}  \u00d7`);
+      chipRow.append(chip);
+    }
+    chipRow.append(el('button', {
+      class: 'locus-btn', type: 'button',
+      style: 'padding:0 9px;font-size:11.5px;height:26px',
+      onclick: () => {
+        for (const f of FILTERS) {
+          delete state.values[f.id];
+          const w = inputs.get(f.id);
+          if (w) w.value = '';
+        }
+        applyFilters(); render();
+      },
+    }, `Clear all ${active.length}`));
+  };
 
   const renderSets = () => {
     clear(setsHolder);
@@ -234,13 +309,21 @@ export async function browseView() {
     }, 'Reset'));
 
   root.append(
-    el('div', { class: 'card' }, el('h2', {}, 'Filters'), controls, actions),
+    el('div', { class: 'card' }, el('h2', {}, 'Filters'), controls, chipRow, actions),
     summary,
     el('div', { class: 'card' }, tableHolder, pager),
     el('div', { class: 'card' }, el('h2', {}, 'Saved sets'), setsHolder));
 
   const [facets, ids] = await Promise.all([loadFacets(), loadGeneIndex()]);
   state.rows = facets.rows.map((_, i) => facetRow(facets, i));
+  // Seed from the URL so an overview chart can link straight to a filtered view, and so a
+  // filtered view can be bookmarked or pasted to someone else. Unknown keys are ignored
+  // rather than erroring: a stale link should degrade to a wider result, never to a crash.
+  {
+    const q = query();
+    const known = new Set(FILTERS.map((f) => f.id));
+    for (const [k, v] of Object.entries(q)) if (known.has(k)) state.values[k] = v;
+  }
   state.ids = ids;
   applyFilters();
   render();

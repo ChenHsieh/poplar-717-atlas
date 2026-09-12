@@ -1,6 +1,6 @@
 // Provenance page. Renders what the build actually recorded -- every source file with its
 // sha256 and mtime -- rather than a hand-maintained prose list that drifts from the data.
-import { el, fmt } from '../core/dom.js';
+import { el, fmt, pct } from '../core/dom.js';
 
 const SHORT = (p) => p.replace('/scratch/ch29576/', '').replace('/work/cjtlab/', 'work:');
 
@@ -40,6 +40,45 @@ function overview(man) {
         el('dt', {}, 'Phylostratigraphy'), el('dd', {}, 'genEra, 19 strata'),
         el('dt', {}, 'Annotation'), el('dd', {}, `${fmt(a.n_annotated)} genes; ${fmt(a.go_terms)} GO terms; ${fmt(a.n_allele)} with a HAP1↔HAP2 allele`),
         el('dt', {}, 'Expression'), el('dd', {}, `${fmt(e.n_samples)} samples, ${e.n_studies} studies, ${e.n_bioprojects} BioProjects, kallisto k21`))),
+
+    // TODO 45: the structured home for genome-wide numbers. Chen's review asked whether the
+    // stat-only module pages should fold in here. They earned their place instead, by becoming
+    // launchers into Browse -- so this is the one place that states every layer's COVERAGE,
+    // which is the number a reader actually needs and which no single module page showed.
+    el('div', { class: 'card' },
+      el('h2', {}, 'What each layer covers', el('span', { class: 'tag' }, 'genome-wide')),
+      el('p', { class: 'muted', style: 'font-size:12.5px;margin:0 0 10px' },
+        'Coverage is not uniform, and an absent value usually means a layer does not reach '
+        + 'that gene rather than that the gene lacks the property. Every figure below is out '
+        + 'of ' + fmt(man.n_genes) + ' genes.'),
+      el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
+        el('thead', {}, el('tr', {}, el('th', {}, 'Layer'), el('th', { class: 'num' }, 'Genes'),
+          el('th', { class: 'num' }, 'Share'), el('th', {}, 'What absence means'))),
+        el('tbody', {}, ...[
+          ['Synteny class', man.n_genes, 'Every gene is classified.'],
+          ['Phylostratum', man.n_genes - ((man.phylostrat || {}).by_rank ? 0 : 0),
+            'genEra returned no rank for 50 genes; they are excluded from the pool, not defaulted.'],
+          ['Expression baseline', (man.expression || {}).n_genes_with_baseline || null,
+            'A gene with an all-zero baseline has no tissue profile and no \u03c4.'],
+          ['Ka/Ks vs P. trichocarpa', (man.kaks || {}).n_genes,
+            'No reciprocal-best ortholog. Structural for the youngest stratum, which has none.'],
+          ['Peptide evidence', ((man.proteomics || {}).genes_with_a_hit
+            ? man.proteomics.genes_with_a_hit.hap1 + man.proteomics.genes_with_a_hit.hap2 : null),
+            'Not detected, or undetectable: no tryptic peptide in the searchable mass range.'],
+          ['ESMFold structure', ((man.layers || {}).coverage || {})['ESMFold structure'],
+            'No model was built. Coverage, not a structural claim.'],
+          ['Ortholog chromatin', (man.chromatin || {}).n_genes,
+            'No 1:1 P. trichocarpa ortholog, or the ortholog is silent in leaf.'],
+          ['Promoter motif scan', ((man.cre || {}) && man.n_genes),
+            'Every gene is scanned; family counts can legitimately be zero.'],
+        ].filter(([, n]) => n != null).map(([label, n, note]) => el('tr', {},
+          el('td', {}, label),
+          el('td', { class: 'num' }, fmt(n)),
+          el('td', { class: 'num' }, pct(n, man.n_genes)),
+          el('td', { class: 'muted', style: 'font-size:12px' }, note)))))),
+      el('p', { class: 'muted', style: 'font-size:11.5px;margin:10px 0 0' },
+        'Each module page carries its own distribution and links into Browse from it, so a '
+        + 'count here can always be turned into the actual gene list.')),
 
     el('div', { class: 'card' },
       el('h2', {}, 'Known limitations', el('span', { class: 'tag' }, 'read before citing')),

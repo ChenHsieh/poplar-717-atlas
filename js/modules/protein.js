@@ -116,6 +116,130 @@ function bar(frac, color) {
     el('div', { class: 'barfill', style: `width:${Math.max(frac * 100, 0)}%;background:${color}` }));
 }
 
+// ---- per-residue property curves (TODO 37) ---------------------------------------------
+// The card used to show three numbers (mean disorder, three SS fractions, mean pLDDT) and a
+// reader could not tell whether a low-confidence stretch and a hydrophobic stretch were the
+// SAME stretch. These are drawn on one shared residue axis so overlap is visible.
+//
+// No new data: the structure bucket already carries per-residue pLDDT, per-residue DSSP and
+// the amino-acid SEQUENCE, so hydropathy is computed here rather than stored.
+//
+// DELIBERATELY ABSENT: a disorder curve. Predicted disorder exists only as a per-gene mean
+// on disk, so drawing it per residue would invent data. The card says so rather than leaving
+// a reader to assume the tracks are exhaustive.
+const KD = { I: 4.5, V: 4.2, L: 3.8, F: 2.8, C: 2.5, M: 1.9, A: 1.8, G: -0.4, T: -0.7,
+             S: -0.8, W: -0.9, Y: -1.3, P: -1.6, H: -3.2, E: -3.5, Q: -3.5, D: -3.5,
+             N: -3.5, K: -3.9, R: -4.5, X: 0 };
+const SS_COLOR = { H: 'var(--c-core)', E: 'var(--c-nonsyn)', '-': 'var(--panel-2)' };
+
+function hydropathy(seq, win = 9) {
+  const h = new Float32Array(seq.length);
+  const half = (win - 1) >> 1;
+  for (let i = 0; i < seq.length; i++) {
+    let sum = 0, n = 0;
+    for (let j = Math.max(0, i - half); j <= Math.min(seq.length - 1, i + half); j++) {
+      sum += KD[seq[j]] ?? 0; n++;
+    }
+    h[i] = sum / n;
+  }
+  return h;
+}
+
+function drawCurves(canvas, m, hyd) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const cssW = canvas.clientWidth || 600;
+  const H1 = 66, H2 = 66, HSS = 14, GAP = 8, PADL = 34, PADR = 6;
+  const cssH = H1 + GAP + H2 + GAP + HSS + 14;
+  canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+  canvas.style.height = cssH + 'px';
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, cssW, cssH);
+  const plotW = cssW - PADL - PADR;
+  const X = (i) => PADL + (m.n <= 1 ? 0 : (i / (m.n - 1)) * plotW);
+  const axis = getComputedStyle(document.body).getPropertyValue('--line-2') || '#ccc';
+  const ink3 = getComputedStyle(document.body).getPropertyValue('--ink-3') || '#888';
+  c.font = '9.5px ui-monospace, monospace'; c.textAlign = 'right'; c.textBaseline = 'middle';
+
+  // --- pLDDT, 0..100, with the 70 and 50 band edges marked --------------------------------
+  const yP = (v) => GAP + H1 - (v / 100) * H1 + 0.5;
+  c.strokeStyle = axis; c.lineWidth = 1;
+  for (const t of [0, 50, 70, 100]) {
+    c.beginPath(); c.setLineDash(t === 0 || t === 100 ? [] : [2, 3]);
+    c.moveTo(PADL, yP(t)); c.lineTo(PADL + plotW, yP(t)); c.stroke();
+    c.setLineDash([]); c.fillStyle = ink3; c.fillText(String(t), PADL - 4, yP(t));
+  }
+  for (let i = 0; i < m.n; i++) {
+    c.fillStyle = PLDDT_BANDS[plddtBand(m.pl[i])].color;
+    c.fillRect(X(i), yP(m.pl[i]), Math.max(plotW / m.n, 1), yP(0) - yP(m.pl[i]));
+  }
+
+  // --- hydropathy, symmetric about 0 ------------------------------------------------------
+  const top2 = GAP + H1 + GAP;
+  const hMax = 4.5;
+  const yH = (v) => top2 + H2 / 2 - (v / hMax) * (H2 / 2) + 0.5;
+  c.strokeStyle = axis;
+  for (const t of [-4, 0, 4]) {
+    c.beginPath(); c.setLineDash(t === 0 ? [] : [2, 3]);
+    c.moveTo(PADL, yH(t)); c.lineTo(PADL + plotW, yH(t)); c.stroke();
+    c.setLineDash([]); c.fillStyle = ink3; c.fillText(t > 0 ? '+4' : String(t), PADL - 4, yH(t));
+  }
+  c.strokeStyle = getComputedStyle(document.body).getPropertyValue('--accent') || '#2a78d6';
+  c.lineWidth = 1.2; c.beginPath();
+  for (let i = 0; i < m.n; i++) (i ? c.lineTo(X(i), yH(hyd[i])) : c.moveTo(X(i), yH(hyd[i])));
+  c.stroke();
+
+  // --- DSSP track -------------------------------------------------------------------------
+  const ySS = top2 + H2 + GAP;
+  const cs = getComputedStyle(document.body);
+  const ssFill = {};
+  for (const [st, v] of Object.entries(SS_COLOR)) {
+    ssFill[st] = cs.getPropertyValue(v.replace('var(', '').replace(')', '')).trim() || '#ccc';
+  }
+  for (let i = 0; i < m.n; i++) {
+    c.fillStyle = ssFill[m.ss[i]] || ssFill['-'];
+    c.fillRect(X(i), ySS, Math.max(plotW / m.n, 1), HSS);
+  }
+  c.fillStyle = ink3; c.textAlign = 'right';
+  c.fillText('DSSP', PADL - 4, ySS + HSS / 2);
+  c.textAlign = 'left';
+  c.fillText('1', PADL, cssH - 5);
+  c.textAlign = 'right';
+  c.fillText(String(m.n), PADL + plotW, cssH - 5);
+  return { X, PADL, plotW };
+}
+
+async function openCurves(geneId, holder) {
+  const m = await loadStructure(geneId);
+  if (!m) {
+    holder.append(el('p', { class: 'muted' }, 'No per-residue data for this gene.'));
+    return;
+  }
+  const hyd = hydropathy(m.seq);
+  const canvas = el('canvas', { style: 'width:100%;display:block' });
+  const readout = el('div', { class: 'mono struct-readout' },
+    'Hover a residue to read all three tracks at that position.');
+  holder.append(canvas, readout);
+  let geom = drawCurves(canvas, m, hyd);
+  const onMove = (ev) => {
+    const r = canvas.getBoundingClientRect();
+    const i = Math.round(((ev.clientX - r.left - geom.PADL) / geom.plotW) * (m.n - 1));
+    if (i < 0 || i >= m.n) { readout.textContent = ' '; return; }
+    readout.textContent = `${m.seq[i]}${i + 1} · pLDDT ${m.pl[i].toFixed(1)}`
+      + ` · hydropathy ${hyd[i].toFixed(2)} · ${SS_NAME[m.ss[i]] || 'coil'}`;
+  };
+  canvas.addEventListener('pointermove', onMove);
+  new ResizeObserver(() => { geom = drawCurves(canvas, m, hyd); }).observe(canvas);
+  holder.append(el('p', { class: 'muted', style: 'margin:7px 0 0;font-size:12px' },
+    'Top: the model\u2019s own per-residue confidence, in AlphaFold\u2019s colours. Middle: '
+    + 'Kyte\u2013Doolittle hydropathy over a 9-residue window, positive being hydrophobic. '
+    + 'Bottom: the DSSP state. They share one residue axis, so a hydrophobic core that is also '
+    + 'low-confidence, or a helix that is only predicted where the model is guessing, is '
+    + 'visible rather than inferred. There is no disorder track: predicted disorder exists '
+    + 'only as a whole-protein average in this dataset, so drawing it per residue would be '
+    + 'inventing data.'));
+}
+
 function geneCard(g) {
   const p = g.prot;
   if (!p) return null;
@@ -188,8 +312,81 @@ function geneCard(g) {
           : null));
   }
 
+  // ---- HOW the peptide assignment was made (TODO 37a) ----------------------------------
+  // "detected in N of 5 datasets" hid the difference between a peptide unique to this gene
+  // and absent from every other species, and a peptide shared with P. trichocarpa and with
+  // dozens of other 717 genes. Measured over the deepest dataset: 94.2% of peptides mapping
+  // to a 717 gene are also in the trichocarpa proteome, and only 11.9% map to one gene. So
+  // for most genes the honest reading is "a peptide consistent with this gene", not "this
+  // gene's product was observed", and the card has to let a reader tell which they have.
+  if (ms && ms.det) {
+    const accs = Object.keys(ms.det).sort();
+    const specific = (d) => d.u > 0 && d.o > 0;
+    const anySpecific = accs.some((a) => specific(ms.det[a]));
+    add('How that was assigned',
+      el('div', {},
+        el('div', { style: 'margin-bottom:6px' },
+          anySpecific
+            ? el('span', { class: 'badge' },
+                el('i', { class: 'dot', style: 'background:var(--c-nonsyn)' }),
+                'at least one peptide is specific to this gene')
+            : el('span', {}, el('span', { class: 'badge' }, 'shared evidence only'),
+                el('span', { class: 'muted' },
+                  ' every peptide below also matches another gene, another species, or both'))),
+        el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
+          el('thead', {}, el('tr', {},
+            el('th', {}, 'Dataset'), el('th', { class: 'num' }, 'Peptides'),
+            el('th', { class: 'num' }, 'Spectra'), el('th', { class: 'num' }, 'Best score'),
+            el('th', { class: 'num', title: 'peptides matching no other 717 gene' }, 'Gene-unique'),
+            el('th', { class: 'num', title: 'peptides absent from the P. trichocarpa proteome' }, '717-only'))),
+          el('tbody', {}, ...accs.map((a) => {
+            const d = ms.det[a];
+            return el('tr', {},
+              el('td', { class: 'mono', style: 'font-size:11.5px' }, a),
+              el('td', { class: 'num' }, fmt(d.p)),
+              el('td', { class: 'num' }, fmt(d.s)),
+              el('td', { class: 'num mono' }, d.h.toFixed(1)),
+              el('td', { class: 'num' }, d.u ? fmt(d.u)
+                : el('span', { class: 'muted' }, '0')),
+              el('td', { class: 'num' }, d.o ? fmt(d.o)
+                : el('span', { class: 'muted' }, '0')));
+          })))),
+        el('div', { style: 'margin-top:8px' },
+          ...accs.flatMap((a) => (ms.det[a].t || []).slice(0, 3).map((t) => {
+            const [seq, psm, hs, ngenes, only] = t;
+            return el('div', { style: 'font-size:12px;margin-top:3px' },
+              el('span', { class: 'mono' }, seq),
+              el('span', { class: 'muted' },
+                `  ${a} · ${psm} spectr${psm === 1 ? 'um' : 'a'} · score ${hs.toFixed(1)} · `),
+              ngenes === 1
+                ? el('span', {}, 'maps to this gene only')
+                : el('span', { class: 'muted' }, `also maps to ${ngenes - 1} other 717 gene`
+                    + `${ngenes === 2 ? '' : 's'}`),
+              el('span', { class: 'muted' }, only ? ' · not in P. trichocarpa'
+                : ' · also in P. trichocarpa'));
+          }))),
+        el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' },
+          'A shared peptide is not a failed measurement — it is real evidence that the protein '
+          + 'family is translated. It just cannot single out this gene as the source. Across the '
+          + 'whole atlas that is the common case: 94% of peptides matching a 717 gene are also '
+          + 'in the P. trichocarpa proteome, and only 12% match exactly one 717 gene.')));
+  }
+
   const card = el('div', { class: 'card' },
     el('h2', {}, 'Protein', el('span', { class: 'tag' }, 'predicted')), kv);
+
+  if (p.ss) {
+    const holder = el('div', { style: 'margin-top:10px' });
+    const btn = el('button', { class: 'locus-btn', type: 'button', style: 'padding:0 12px' },
+      'Show per-residue properties');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; btn.textContent = 'Loading…';
+      try { await openCurves(g.id, holder); btn.remove(); }
+      catch (e) { btn.disabled = false; btn.textContent = 'Show per-residue properties';
+        holder.append(el('p', { class: 'muted' }, `Could not load: ${e.message}`)); }
+    });
+    card.append(btn, holder);
+  }
 
   if (ss) {
     const holder = el('div', { class: 'struct-holder' });

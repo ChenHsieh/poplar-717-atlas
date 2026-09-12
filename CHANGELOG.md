@@ -9,6 +9,135 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.6.0 — 2026-09-12 — Every page earns its place
+
+Chen's review of the live site: several module pages were dead ends showing bars and stats with
+no second layer, while Browse — "the key thing of this site" — was the page that deserved the
+attention. The decision was **not** to delete those pages but to give them the missing second
+layer: **every overview chart is now a launcher into Browse with its filter already applied.**
+
+### Browse is deep-linkable, and says how indirect its columns are
+
+`router.js` gained `query()` and `setQuery()`; Browse seeds its filters from the URL and writes
+them back, so a filtered view is shareable and a chart can link straight into one. `setQuery`
+uses `replaceState` on purpose: setting `location.hash` would re-enter the router and rebuild
+the view, discarding the state being recorded.
+
+Active filters now appear as **removable chips** with a "Clear all", and a URL-seeded filter
+fills its own widget — previously the count could read 902 of 63,960 with nothing on screen
+explaining why. An exact-stratum filter was added because a ladder bar means one stratum, not
+"≥ that stratum".
+
+The MS and ω columns are the two easiest to over-read here, so their caveats moved next to the
+numbers instead of living only in a provenance sidecar.
+
+### Protein earns its page
+
+The 3D viewer merged from `chen-structure-viewer`, and its buckets already carried per-residue
+pLDDT, DSSP state and the amino-acid sequence — so **per-residue curves needed no new data**.
+pLDDT, Kyte–Doolittle hydropathy and the DSSP track now share one residue axis, which is what
+makes "are the contradictory properties in the same place" answerable by looking.
+
+There is deliberately **no disorder curve**: predicted disorder exists only as a per-gene mean
+in this dataset, so drawing it per residue would be inventing data. The card says that rather
+than letting the tracks look exhaustive.
+
+### Peptide evidence now says how it was assigned
+
+"Detected in N of 5 datasets" hid the difference between a peptide unique to this gene and
+absent from every other species, and a peptide shared with *P. trichocarpa* and with dozens of
+other 717 genes. Measured: **94.2% of peptides matching a 717 gene are also in the
+P. trichocarpa proteome, and only 11.9% match exactly one 717 gene** (median 2, max 142).
+Genome-wide, **54,264 of 59,698 (gene, dataset) pairs have no 717-specific peptide at all** and
+51,585 have none unique to the gene.
+
+So each gene now shows, per dataset, how many peptides are gene-unique and how many are
+717-only, with up to three example peptides and what each one also matches. A shared peptide is
+not a failed measurement — it is real evidence that the family is translated — it simply cannot
+single out this gene, and the card now lets a reader tell which they have.
+
+### The map gained three overlays, and the gate found a stale one
+
+Mean ω, peptide-detected fraction, and ortholog open chromatin, each with its own denominator
+stated on the page because a colour ramp hides that. `patch_map_overlays.py` recomputes the
+100 kb bins from the gene shards — possible because `build_locus.py` needs the OneDrive tree
+only for coordinates and exon structure, not for the bins.
+
+**The gate caught that the map was colouring the withdrawn LSG pool.** 104 bins carried a stale
+`lsg` count, because `build_locus.py` is an OneDrive-only stage and has not run since the
+2026-09-10 pool correction. Two further per-bin differences were diagnosed rather than waved
+through: `tau` differs by 0.001 in two bins (summation order), and `n` differs in two bins
+because `PtXaAlbH.11G039800` starts at 7,699,999 in the shards and 7,700,000 in the GFF3 —
+shards carry BED 0-based starts, the GFF3 is 1-based, so it falls either side of a bin edge.
+The gate is now the per-chromosome gene total, which is the invariant that would actually catch
+a reconstruction error.
+
+### Wording and naming, where the old words misled
+
+- **"Scrubber"** was video-editing jargon. The card is "Expression across the neighbourhood",
+  the tab "Expression along the locus", and it finally has a **legend** stating the real scale
+  and range of whatever was just painted — it had none at all.
+- **"Mirror"** described the drawing, not the content. It is now "This locus on HAP2 too",
+  which is what the review was asking whether the atlas could show; it already could.
+- **"Nearest TE 0 bp"** read as missing data. It means a repeat annotation overlaps the gene,
+  and now says so.
+- **Contrast labels.** The review asked why so many contrasts say "not recommended" and whether
+  to remove them. Measured first: **do not.** The flag is exactly "kind is treatment or
+  genotype" (117) versus growth/other condition (74), and **zero** of the 74 duplicate a
+  recommended contrast — they are secondary design factors, not junk. The real defect was
+  different: **57 label collisions** where two genuinely different contrasts rendered as the
+  same string, differing only by a nested factor the label dropped. Each colliding label now
+  carries the factor that separates it, in brackets.
+
+### Removed, because it should not have shipped
+
+**"Synonymous divergence by phylostratum"** is gone. It binned a stratum-selected paralog
+subset's dS by the gene's phylostratum — the exact misreading the same page warns about two
+cards below — and its own caption conceded it was "a sanity check on the pairing, not a dating
+result". A sanity check belongs in a run log. Its now-dead chart function went with it.
+
+The **Presence / PAV** card moved from Duplication to sit beside the allele card: a gene present
+on one haplotype and absent from the other is an allele fact, not a duplication mode.
+
+### Promoter motifs now have positions, and 44 genes deliberately do not
+
+The review asked for "sticks on the promoter region, who is closer who is farer". The shipped
+CRE layer carries family counts and no positions, so this needed a rescan — and everything
+required was already on the cluster: the JASPAR file, the same 1 kb promoter FASTAs the
+published counts were scanned from, and the upstream scan's exact algorithm, which already
+computed bp from the TSS to each motif's 5' edge internally.
+
+**1,933,839 positions over 63,907 genes**, nine named TF families, drawn with the transcription
+start at the right and upstream running left. `other` is excluded: it is 457 unrelated matrices
+and not a meaningful thing to draw a per-motif tick for.
+
+A pilot on 600 genes decided the scope before the full run: the family-size gate passed exactly,
+589 of 600 genes reproduced the published counts, and every disagreement was confined to
+`other`. At full scale **45 cells across 44 genes disagree on a named family, and 45 of 45 are
+this scan finding MORE matches, never fewer** — the direction predicted in advance, because
+upstream scanned a 3 kb window whose greedy non-overlapping pass is global over 3 kb, and only
+the 1 kb FASTA exists here, so a motif near the boundary has no upstream competitor to suppress
+it. **Those 44 genes ship no positions and say so on the card.** Drawing ticks that aggregate to
+a different number than the bars immediately above them would put two contradictory statements
+on one card.
+
+The gate is re-asserted at ingest, not just upstream: every shipped gene's positions must sum
+per family to the `cre.fam` count the atlas already serves, or nothing is written. It fired on
+the first attempt and caught a real defect — `build_cre.py` deliberately renames three families
+when it ingests counts (`ABRE_bZIP`→`bZIP`, `DREB_ERF`→`AP2_ERF`, `MADS_box`→`MADS`, so that
+ABRE and DRE/CRT are not presented as identified cis-elements), and the scan emits the upstream
+names, so three of nine lanes silently had no counterpart. Lane labels now come from the
+manifest's own `family_labels` rather than from reformatting a key.
+
+### About, and the checks
+
+About gained the one thing no module page showed: a per-layer **coverage table** with what an
+absent value means in each layer. Nothing was folded away, because the pages earned their place.
+
+`check.mjs` gained eight cases and one fix that matters more than any of them: **a crash
+mid-suite used to exit 0**, leaving 32 checks unrun while the output looked green. That is how a
+rename passed while breaking them. An abort is now loud and non-zero.
+
 ## 0.5.0 — 2026-09-10 — A 3D model on every modelled gene page
 
 Every gene with an ESMFold model (40,685 of 63,960, the same set the secondary-structure bars

@@ -289,3 +289,130 @@ decides and PR #19 is reviewed. Ingest the usual way: `sources/` + provenance si
       and the power curve, or it reads as evidence against LSG gene models.
 - Not worth shipping: read-pair spanning and gap occupancy (weak, not elevated against the
   matched control); per-base coverage (6.6 GB of BAM slices, wrong for a static site).
+
+## v0.6 — make every page earn its place (Chen's review, 2026-09-11)
+
+The review's organising complaint: several module pages are dead ends that show bars and stats
+with no second layer, and Browse — "the key thing of this site" — is the page that deserves the
+attention instead. So the umbrella decision for 1.1-1.6 is **not** "delete the pages": it is that
+**every overview chart becomes a launcher into Browse with its filter already applied**. A
+stratum bar, a synteny class, a duplication code, a map bin: click it and you are in Browse
+looking at those genes. That turns five dead ends into entry points to the thing that works, and
+only what still has no second layer after that gets folded into About.
+
+- [x] **35 — DONE.** `router.js` gained `query()`/`setQuery()` (replaceState, so recording filters does not re-enter the router and rebuild the view), Browse seeds from the URL, writes back, and exports `browseHref()`. An exact-stratum filter was added because a ladder bar means ONE stratum, not `>=`.
+      `js/core/router.js` has no query support today (`location.hash` only) and `browse.js`
+      never reads URL state, so a chart has nothing to link to. Add `#/browse?ps_min=18&cls=...`,
+      parsed into the existing `state.values`, and have Browse write its filters back to the URL
+      so a filtered view is shareable and bookmarkable. Then every overview chart gets
+      click-through. This is the load-bearing item; 39, 40 and part of 36 depend on it.
+
+- [x] **36 — DONE.** Rows lead with the paper's title and first author, the whole row is clickable, BioProject and DOI are separate links, and the serial number is gone from the first column.  Old text: The studies table's first
+      column is the study *number* as a small `mono` link — the only way in. Lead with what a
+      study IS (tissues, design, n, citation), make the whole row a link, and let a tissue or a
+      panel type launch Browse. Keep the page: it has a real second layer already (28 study
+      pages), it was just hidden behind a number.
+
+- [x] **37 — DONE.** Per-residue pLDDT, Kyte-Doolittle hydropathy and the DSSP track on one shared residue axis, loaded on demand, so a low-confidence stretch and a hydrophobic stretch can be seen to be the same stretch or not. No disorder track: disorder exists only as a per-gene mean on disk, and the card says so rather than implying the tracks are exhaustive.  Old text: Now unblocked: the 3D viewer merged
+      at 0.5.0, and its buckets already carry per-residue pLDDT, DSSP state and the amino-acid
+      SEQUENCE. So per-residue curves need no new data — pLDDT, hydrophobicity (Kyte-Doolittle
+      from `seq`) and the DSSP track can be drawn on one shared residue axis, which is exactly
+      the "do the contradictory properties overlap" question. Note honestly that predicted
+      disorder is only a per-gene mean (`dis`, `disf`); there is no per-residue disorder on disk
+      (checked: `predicted_disorder_genomewide.tsv` is gene-level), so the curve panel must not
+      imply one.
+  - [x] **37a — DONE.** Shipped, with the number that matters on the card: 54,264 of 59,698 (gene, dataset) pairs have NO 717-specific peptide and 51,585 have no peptide unique to the gene. A gene now says whether its evidence is gene-specific, species-specific, both or neither.  Old text: `sources/peptide_detail.tsv.gz` is BUILT and gated
+        (59,698 rows, 1.97 MB, per-dataset detected-gene counts reproduce the owning analysis's
+        `aspen_dataset_meta.json` for all five datasets). It answers the review's question --
+        "how one 717 gene was assigned peptide evidence in another genome, and how reliable" --
+        and the answer is uncomfortable enough to be worth showing: on the deepest dataset,
+        **94.2% of peptides that map to a 717 gene are also present in the P. trichocarpa
+        proteome**, and **only 11.9% map to a single 717 gene** (median 2, max 142). So for most
+        genes "detected" rests on a peptide that is neither species-specific nor gene-specific.
+        Ship per gene per dataset: n peptides, n PSMs, best hyperscore, how many peptides are
+        unique to this gene, how many are absent from trichocarpa, and up to three example
+        peptides with those flags each.
+
+- [x] **38 — DONE.** dS-by-phylostratum panel deleted (and its now-dead `ksChart` with it), 'Nearest TE 0 bp' now says 'overlaps this gene', and the Presence/PAV card moved to sit beside the allele card in Annotation.  Old text:
+      Remove "Synonymous divergence by phylostratum" — Chen is right to distrust it. It bins a
+      stratum-selected paralog subset's dS by the gene's phylostratum, which is the exact
+      misreading the same page warns about two cards below, and its own caption already concedes
+      it is "a sanity check on the pairing, not a dating result". A sanity check belongs in a
+      run log, not on a public page. Also: "Nearest TE 0 bp" reads as missing data when it means
+      a TE overlaps the gene — say that. And move the **Presence** (PAV) card out of Duplication;
+      presence/absence between haplotypes belongs beside the allele card, not under duplication.
+
+- [x] **39 — DONE.** Every stratum bar and every synteny class links into Browse pre-filtered.  Old text:
+      Both are one stat row plus one bar chart. With 35 in place the bars become the second layer.
+      On Chen's doubt about the synteny panel links being "context and panel dependent and I am
+      not sure how valuable this would be in the long term to maintain": the atlas already says
+      so in About ("Private calls are panel-dependent"), so the honest move is to keep the links
+      but stop presenting the 12-genome presence strip as if the panel were a fixed fact.
+
+- [x] **40 — DONE, and it found a stale layer.** Three overlays added (mean omega, peptide-detected fraction, ortholog open chromatin), each with its own denominator stated on the page because a colour ramp hides that. `scripts/patch_map_overlays.py` recomputes the 100 kb bins from the shards and gates the four existing metrics against the shipped file first.
+      **The gate caught that the map was colouring the WITHDRAWN LSG pool**: 104 bins had a
+      stale `lsg` count, because `build_locus.py` is an OneDrive-only stage and has not run
+      since the 2026-09-10 pool correction. Corrected here. Two further per-bin differences
+      were diagnosed rather than waved through: `tau` differs by 0.001 in two bins (summation
+      order), and `n` differs in two bins because `PtXaAlbH.11G039800` starts at 7,699,999 in
+      the shards and 7,700,000 in the GFF3 -- shards carry BED 0-based starts, the GFF3 is
+      1-based, so it falls either side of a bin edge. The gate is now the per-chromosome gene
+      total, which is the invariant that would actually catch a reconstruction error.  Old text: The map already has a metric `<select>` and
+      click-to-drill, so it is not inert — but four density metrics is thin at genome zoom.
+      `data/locus/overview.json` is 100 kb bins of `[n, tandem, lsg, tau]` computed from the
+      SHARDS (`build_locus.py` reads the OneDrive GFF only for coordinates and exon structure),
+      so the bins can be recomputed on Sapelo2 without that tree. Add omega, peptide-detection
+      rate and ortholog-chromatin fraction as overlays.
+
+- [x] **41 — DONE.** Card is now 'Expression across the neighbourhood' and the tab 'Expression along the locus'; a legend states the real scale and range of whatever was just painted; colliding contrast labels carry the differing factor in brackets; and the page explains that the flag means primary-versus-secondary design factor, not quality.  Old text:
+      Three separate fixes.
+      (i) "Scrubber" is jargon borrowed from video editing — rename the module and its tab.
+      (ii) Chen asks why so many contrasts say "not recommended" and whether to just remove them.
+      **Measured before deciding: do not remove them.** `recommended` is not a quality score, it
+      is exactly "kind is treatment or genotype" (62 + 55 = 117) versus
+      `additional_condition`/`growth_condition` (48 + 26 = 74), and **zero** of the 74 duplicate a
+      recommended contrast. They are secondary design factors (CO2 level, recovered vs not), not
+      junk. The real defect is different and worse: **57 label collisions** where two genuinely
+      different contrasts render as the same string, differing only by a nested factor that the
+      label drops — every one of the 57 is fully disambiguated by the suffix after `_vs_` in its
+      id, which the UI throws away. So: fix the labels, group by kind, default to the primary
+      contrasts with a toggle for the rest, and say what the flag means instead of the bare
+      phrase "not recommended".
+      (iii) Add the legend and scale bar the card currently lacks entirely.
+
+- [x] **42 — DONE.** The card is now headed 'This locus on HAP2 too' rather than 'Mirror', and its tab reads 'Both haplotypes'.  Old text: Chen asks whether
+      the locus card can show the HAP2 syntenic region. It already does, as a separate card called
+      **"Mirror"** — which is the problem. Rename it to say what it is (the HAP1<->HAP2 syntenic
+      neighbourhood) and point to it from the Locus card, rather than building a second one.
+
+- [x] **43 — DONE.** Removable filter chips plus 'Clear all', widgets now reflect a URL-seeded filter, and the MS and omega caveats sit directly under the table where the numbers are read.  Old text: Browse is the page the
+      review calls the key thing, and the peptide column arrived there with no statement of how
+      indirect it is. Add active-filter chips, a visible result count against the total, and put
+      the proxy statement where the number is read — the Browse column header and the protein
+      card — not only in a provenance sidecar.
+
+- [x] **44 — DONE.** 1,933,839 positions over 63,907 genes; 44 withheld and labelled as such. The ingest gate caught a family-renaming mismatch (`build_cre.py` renames three families on purpose) before anything shipped.  Detail: Pilot on 600 genes: family-size gate
+      PASS, and 589/600 reproduced the shipped counts with every disagreement confined to the
+      `other` bucket. At full scale 45 of 63,960 genes disagree on a NAMED family, and all 45
+      are in the same direction -- this scan finds MORE hits, never fewer -- which is the
+      predicted 1 kb-versus-3 kb boundary effect: with no upstream window there is no earlier
+      candidate to suppress an overlapping hit in the global greedy pass. **Decision: ship
+      positions for the 63,915 genes that reproduce exactly and exclude the 45**, so positions
+      can never contradict counts already published. Exclusions recorded in
+      `excluded_genes.tsv`.  Old text: Chen asks for
+      "sticks on the promoter region, who is closer who is farther". The shipped source carries
+      family COUNTS only, so this needs a rescan — and everything needed is on the cluster: the
+      JASPAR file, the 1 kb promoter FASTAs (ids are bare gene ids, 32,137 + 31,823, matching the
+      atlas gene set exactly), and the upstream scan's exact algorithm, which already computes
+      `dist = L - i`, bp from the TSS to each motif's 5' edge. That IS the position.
+      **One real risk, to be measured and not assumed:** upstream scans the **3 kb** FASTA with a
+      *global* greedy non-overlapping pass, and only the 1 kb FASTA is on the cluster, so a motif
+      straddling the 1 kb boundary could be resolved differently. The pilot re-derives per-gene
+      family counts from the 1 kb file and compares them to the shipped contract file. Ship only
+      what the comparison justifies; if the disagreement is real, either regenerate the 3 kb
+      windows or restrict to genes that reproduce exactly. Do not ship positions that cannot be
+      reconciled with the counts already published.
+
+- [x] **45 — DONE, differently than planned.** The module pages earned their place by becoming Browse launchers, so nothing needed folding away. About instead gained the one thing no module page showed: a per-layer COVERAGE table with what an absent value means in each layer.  Old text:
+      Receives the residual stats from 38/39 as a "genome-wide summary" section, so numbers worth
+      keeping are kept in one place instead of padding five pages.

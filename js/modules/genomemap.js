@@ -20,11 +20,33 @@ const ROW_GAP = 4;
 const LABEL_W = 46;
 const PICK_TOL = 6; // CSS px, chromosome-tier gene hit tolerance
 
+// Positional: bins are [n, tandem, lsg, tau, omega, ms_frac, acr_frac] -- see
+// scripts/patch_map_overlays.py, which recomputes them from the gene shards and gates the
+// first four against the previously shipped file before adding the last three.
 const METRICS = {
   genes: { label: 'Gene density', get: (b) => b[0] },
   tandem: { label: 'Tandem fraction', get: (b) => (b[0] ? b[1] / b[0] : null) },
   lsg: { label: 'LSG-pool fraction', get: (b) => (b[0] ? b[2] / b[0] : null) },
   tau: { label: 'Mean τ', get: (b) => b[3] },
+  omega: { label: 'Mean ω vs P. trichocarpa', get: (b) => b[4] },
+  ms: { label: 'Peptide-detected fraction', get: (b) => b[5] },
+  acr: { label: 'Ortholog open chromatin', get: (b) => b[6] },
+};
+
+// Each overlay's denominator differs, and a colour ramp hides that, so the map says it.
+const METRIC_NOTE = {
+  genes: 'Genes per 100 kb bin.',
+  tandem: 'Share of genes in the bin that belong to a tandem array.',
+  lsg: 'Share in the lineage-specific pool (PS \u2265 18), on the Idesia-corrected panel.',
+  tau: 'Mean tissue-specificity of genes in the bin that have a baseline at all.',
+  omega: 'Mean Ka/Ks over the genes in the bin that HAVE a reciprocal-best P. trichocarpa '
+    + 'ortholog \u2014 81.7% of genes, and the ones without are the youngest, so a bin\u2019s '
+    + 'value describes its pairable genes.',
+  ms: 'Share of genes with a peptide in any of five public Populus mass-spec datasets. '
+    + 'Indirect: most such peptides are shared with P. trichocarpa and with other 717 genes.',
+  acr: 'Share of leaf-expressed P. trichocarpa ORTHOLOGS with accessible chromatin. This is '
+    + 'the ortholog\u2019s chromatin, not this genome\u2019s, and its denominator is only the '
+    + 'genes with a 1:1 ortholog expressed in leaf \u2014 smaller than the bin.',
 };
 
 function metricRange(overview, hap, metricKey) {
@@ -158,7 +180,13 @@ async function renderOverview(hap, onPickChr) {
   const metricSel = el('select', { class: 'locus-btn', style: 'min-width:0;padding:0 10px' },
     ...Object.entries(METRICS).map(([k, v]) => el('option', { value: k }, v.label)));
   metricSel.value = state.metric;
-  metricSel.addEventListener('change', () => { state.metric = metricSel.value; s.redraw(); });
+  const metricNote = el('p', { class: 'muted', style: 'font-size:11.5px;margin:6px 0 0' },
+    METRIC_NOTE[state.metric] || '');
+  metricSel.addEventListener('change', () => {
+    state.metric = metricSel.value;
+    metricNote.textContent = METRIC_NOTE[state.metric] || '';
+    s.redraw();
+  });
 
   s.canvas.addEventListener('pointermove', (ev) => {
     if (ev.pointerType !== 'mouse') return;
@@ -175,8 +203,9 @@ async function renderOverview(hap, onPickChr) {
   });
 
   return el('div', {},
-    el('div', { style: 'display:flex;gap:10px;align-items:center;margin-bottom:8px' },
+    el('div', { style: 'display:flex;gap:10px;align-items:center;margin-bottom:4px' },
       el('label', { class: 'muted', style: 'font-size:12px' }, 'Colour by:'), metricSel),
+    el('div', { style: 'margin-bottom:8px' }, metricNote),
     s.stage,
     el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' },
       'Each row is one chromosome, drawn to its own length. Click a chromosome to zoom in.'));

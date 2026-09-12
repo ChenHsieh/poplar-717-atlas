@@ -1,6 +1,7 @@
 // Module: phylostratigraphy (genEra). The gene's evolutionary age, its gene family's origin,
 // and the caveats the method itself reports.
 import { el, fmt, pct } from '../core/dom.js';
+import { browseHref } from '../core/browse.js';
 
 const LSG_MIN = 18;
 
@@ -137,7 +138,9 @@ function ladderChart(rows, total) {
     el('div', { class: 'barchart' }, ...rows.slice().reverse().map((r) => {
       const lsg = r.rank >= LSG_MIN;
       return el('div', { class: 'barrow', style: 'grid-template-columns:150px 1fr 70px' },
-        el('span', { class: 'lbl' },
+        // the bar was a dead end; it is now the way into Browse for that stratum
+        el('a', { class: 'lbl', href: browseHref({ ps: r.rank }),
+                  title: `Browse the ${fmt(r.n)} genes in PS${r.rank}` },
           lsg ? el('b', {}, r.name) : r.name,
           el('span', { class: 'muted' }, ` PS${r.rank}`)),
         el('div', { class: 'bartrack' },
@@ -150,7 +153,7 @@ function ladderChart(rows, total) {
     el('p', { class: 'muted', style: 'font-size:11.5px;margin:9px 0 0' },
       'Bar length is log-scaled — counts run from 22,769 to 33, and a linear axis would hide '
       + 'most strata. The number beside each bar is the true count. '
-      + 'Amber marks the LSG pool (PS ≥ 18).'));
+      + 'Amber marks the LSG pool (PS ≥ 18). Click a stratum to browse its genes.'));
 }
 
 async function overview(man) {

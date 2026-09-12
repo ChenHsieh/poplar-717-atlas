@@ -15,7 +15,7 @@
 // to the already-shipped, tested Locus canvas than repainting it in place, and it lets a
 // reader compare the duplication-class view against the expression view side by side
 // rather than losing one to see the other.
-import { el } from '../core/dom.js';
+import { el, clear } from '../core/dom.js';
 import { getGene, loadLocusTile, loadExprBucket, loadContrasts } from '../core/data.js';
 import { palette } from '../core/palette.js';
 
@@ -122,7 +122,8 @@ function geneCard(g) {
   if (!g.x) return null;
 
   const card = el('div', { class: 'card' },
-    el('h2', {}, 'Expression scrubber', el('span', { class: 'tag' }, 'paint the locus')));
+    el('h2', {}, 'Expression across the neighbourhood',
+      el('span', { class: 'tag' }, 'neighbours painted by expression')));
   const modeRow = el('div', { style: 'display:flex;gap:6px;margin-bottom:8px' });
   const tissueRow = el('div', { style: 'display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px' });
   const contrastRow = el('div', { style: 'display:none;margin-bottom:8px' });
@@ -130,9 +131,43 @@ function geneCard(g) {
   const canvas = el('canvas', { class: 'locus-canvas' });
   stage.append(canvas);
   const readout = el('div', { class: 'locus-readout muted' }, ' ');
+  const legend = el('div', { style: 'margin-top:6px;font-size:11.5px' });
   const caption = el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' },
     'Loading the neighbourhood…');
-  card.append(modeRow, tissueRow, contrastRow, stage, readout, caption);
+  card.append(modeRow, tissueRow, contrastRow, stage, readout, legend, caption);
+
+  /** The card had no legend at all: a reader saw shaded boxes with no idea what shade meant
+   *  or what the ends of the scale were. The range is per window, so it has to be drawn from
+   *  the values actually painted, not from a fixed scale. Same transform as draw(). */
+  function drawLegend() {
+    clear(legend);
+    const vals = (state.values || []).filter((v) => v != null);
+    if (!vals.length) return;
+    const diverging = state.mode === 'contrast';
+    const t = diverging ? vals : vals.map((v) => Math.log2(v + 1));
+    const lo = Math.min(...t), hi = Math.max(...t);
+    const swatch = (bg) => el('i', { style: `display:inline-block;width:17px;height:10px;`
+      + `background:${bg};border:1px solid var(--line);vertical-align:-1px` });
+    if (diverging) {
+      const m = Math.max(Math.abs(lo), Math.abs(hi)) || 1;
+      legend.append(
+        el('span', { class: 'muted' }, 'log2 fold change  '),
+        swatch('var(--accent)'), el('span', { class: 'muted' }, ` down to −${m.toFixed(1)}  `),
+        swatch('var(--panel-2)'), el('span', { class: 'muted' }, ' no change  '),
+        swatch('var(--c-priv)'), el('span', { class: 'muted' }, ` up to +${m.toFixed(1)}`),
+        el('div', { class: 'muted', style: 'margin-top:3px' },
+          'A dashed line means the gene has no expression vector, which is not the same as '
+          + 'no change.'));
+    } else {
+      legend.append(
+        el('span', { class: 'muted' }, 'median TPM  '),
+        swatch('var(--panel-2)'),
+        el('span', { class: 'muted' }, ` ${(2 ** lo - 1).toFixed(1)}  `),
+        swatch('var(--accent)'),
+        el('span', { class: 'muted' }, ` ${(2 ** hi - 1).toFixed(1)}  (shaded on a log scale, `
+          + 'rescaled to this window)'));
+    }
+  }
 
   const ctx = canvas.getContext('2d', { alpha: false });
   let view = { w: 0, h: 0, dpr: 0 };
@@ -155,7 +190,7 @@ function geneCard(g) {
     if (!state.genes || !state.values) return;
     boxes = draw(ctx, view, state.genes, state.values, state.mode, g.id);
   }
-  function refresh() { fit(); redraw(); }
+  function refresh() { fit(); redraw(); drawLegend(); }
   const ro = new ResizeObserver(() => { fit(); redraw(); });
   try { ro.observe(stage, { box: 'device-pixel-content-box' }); }
   catch { ro.observe(stage, { box: 'content-box' }); }
@@ -278,12 +313,42 @@ function geneCard(g) {
     sel = el('select', { style: 'width:100%;min-height:40px;padding:0 8px;font-size:13px;border:1px solid var(--line-2);border-radius:8px;background:var(--panel-2);color:var(--ink)' });
     byKind = new Map();
     contrasts.forEach((c) => { if (!byKind.has(c.kind)) byKind.set(c.kind, []); byKind.get(c.kind).push(c); });
+
+    // 57 of the 191 contrasts collided: two genuinely different comparisons rendered as the
+    // same string because the label drops the nested factor that separates them (a CO2 level,
+    // a recovery timepoint). The id keeps it, after `_vs_`. So for each colliding group, show
+    // exactly the tokens that DIFFER between its members -- which is guaranteed to
+    // disambiguate, without guessing which factor matters.
+    const factors = (c) => (c.id.split('_vs_')[1] || '').split(',')
+      .map((t) => t.replace(/^_+/, '').trim()).filter(Boolean);
+    const groups = new Map();
+    contrasts.forEach((c) => {
+      const k = `${c.tissue}|${c.control_label}|${c.pert_label}`;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(c);
+    });
+    const extra = new Map();
+    for (const list of groups.values()) {
+      if (list.length < 2) continue;
+      const counts = new Map();
+      list.forEach((c) => new Set(factors(c)).forEach((t) => counts.set(t, (counts.get(t) || 0) + 1)));
+      list.forEach((c) => extra.set(c.id,
+        factors(c).filter((t) => counts.get(t) < list.length).join(', ')));
+    }
+    const optLabel = (c) => {
+      const e = extra.get(c.id);
+      return `${c.tissue} · ${c.pert_label} vs ${c.control_label}${e ? `  [${e}]` : ''}`;
+    };
     for (const [kind, list] of byKind) {
       const grp = el('optgroup', { label: KIND_LABEL[kind] || kind });
-      list.forEach((c, ci) => grp.append(el('option', { value: `${kind}|${ci}` },
-        `${c.tissue} · ${c.pert_label} vs ${c.control_label}${c.recommended ? '' : ' (not recommended)'}`)));
+      list.forEach((c, ci) => grp.append(el('option', { value: `${kind}|${ci}` }, optLabel(c))));
       sel.append(grp);
     }
+    contrastRow.append(el('p', { class: 'muted', style: 'margin:0 0 6px;font-size:11.5px' },
+      'Treatment and genotype contrasts are the primary comparisons (117). Growth condition '
+      + 'and other condition are secondary design factors (74) — nested inside a study rather '
+      + 'than its main question, not lower quality. Where two contrasts share a label, the '
+      + 'factor that separates them is shown in brackets.'));
     sel.addEventListener('change', () => {
       const [kind, ci] = sel.value.split('|');
       const c = byKind.get(kind)[+ci];
@@ -303,4 +368,4 @@ function geneCard(g) {
   return card;
 }
 
-export default { id: 'scrubber', label: 'Scrub', geneCard };
+export default { id: 'scrubber', label: 'Expression along the locus', geneCard };

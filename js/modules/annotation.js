@@ -226,6 +226,53 @@ function selectionCard(g) {
       + 'stratum\u2019s figure is measured on its more conserved members.'));
 }
 
+// Presence / absence between the haplotypes (moved out of Duplication, 2026-09-11). It sat
+// under "Duplication" because it arrived with that source, but a gene present on one
+// haplotype and absent from the other is an ALLELE fact, not a duplication mode -- it
+// belongs beside the allele card a reader has just looked at. Scope is unchanged: the
+// candidate set is ~6,000 genes from an asymmetric orthogroup, not genome-wide, so a gene
+// outside it simply has no `pav` key and gets no card.
+function presenceVariationCard(g) {
+  if (!g.pav) return null;
+  const kv = el('dl', { class: 'kv' });
+
+    const otherHap = g.hap === 'hap1' ? 'HAP2' : 'HAP1';
+    const side = g.pav.rel.endsWith('HAP1') ? 'HAP1' : 'HAP2';
+
+    let verdict;
+    if (g.pav.confirmed) {
+      verdict = el('div', { style: 'margin-top:4px' },
+        el('span', { class: 'badge' }, 'confirmed'),
+        el('span', { class: 'muted', style: 'font-size:12px' }, `  no same-genome hit found in ${otherHap}`));
+    } else {
+      const pctText = g.pav.pident != null ? ` (${g.pav.pident}% identity` : '';
+      const evText = g.pav.evalue ? `, E=${g.pav.evalue})` : (g.pav.pident != null ? ')' : '');
+      const targetLink = g.pav.target
+        ? el('a', { href: `#/gene/${g.pav.target}`, class: 'mono' }, g.pav.target)
+        : '—';
+      verdict = el('div', { style: 'margin-top:4px' },
+        el('span', { class: 'muted' }, 'not confirmed'),
+        el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+          `A hit exists in ${otherHap}: `, targetLink, pctText, evText,
+          el('div', { style: 'margin-top:2px' },
+            'This reads as a detection gap in the original orthogroup call, not a confirmed absence.')));
+    }
+
+    kv.append(
+      el('dt', {}, 'Presence'),
+      el('dd', {},
+        el('strong', {}, `${side}-only, candidate`),
+        el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+          `Flagged by orthogroup structure as present only in ${side}. `
+          + 'DIAMOND PAV check, tier1_floor:'),
+        verdict));
+    
+  
+  return el('div', { class: 'card' },
+    el('h2', {}, 'Present on one haplotype only',
+      el('span', { class: 'tag' }, 'candidate, DIAMOND-checked')), kv);
+}
+
 function presenceCard(g) {
   if (!g.pres || !g.pres.length) return null;
   const have = new Set(g.pres);
@@ -250,8 +297,8 @@ function presenceCard(g) {
 function geneCard(g) {
   // Returns a fragment holding several cards; app.js appends whatever geneCard gives it.
   const frag = document.createDocumentFragment();
-  [annotationCard(g), alleleCard(g), selectionCard(g), presenceCard(g)]
-    .forEach((c) => c && frag.append(c));
+  [annotationCard(g), alleleCard(g), presenceVariationCard(g), selectionCard(g),
+   presenceCard(g)].forEach((c) => c && frag.append(c));
   return frag.childNodes.length ? frag : null;
 }
 

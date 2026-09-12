@@ -1,6 +1,7 @@
 // Module: synteny / syntelog.
 // Reference implementation of the module contract -- copy this shape for new modules.
 import { el, pct, fmt } from '../core/dom.js';
+import { browseHref } from '../core/browse.js';
 
 export const CLASSES = {
   core_syntenic:         { label: 'Core syntenic',    dot: 'core',        blurb: 'Syntenic placement, orthogroup spans ≥9 of 12 genomes.' },
@@ -64,8 +65,13 @@ function overview(man) {
   const order = Object.keys(CLASSES).filter((k) => counts[k]);
   const max = Math.max(...order.map((k) => counts[k]));
 
+  // Each class row is now the way into Browse for that class. Browse's own filter id for
+  // this is `cls` (this module's `syn_class` filter is the gene-page one), so the link uses
+  // the id Browse actually reads.
   const rows = order.map((k) => el('tr', {},
-    el('td', {}, classBadge(k)),
+    el('td', {}, el('a', { href: browseHref({ cls: k }),
+                           title: `Browse the ${fmt(counts[k])} ${CLASSES[k].label} genes`,
+                           style: 'text-decoration:none' }, classBadge(k))),
     el('td', { class: 'num' }, fmt(counts[k])),
     el('td', { class: 'num' }, pct(counts[k], total)),
     el('td', { style: 'width:44%' },
@@ -85,7 +91,8 @@ function overview(man) {
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(man.summary.unstable)), el('div', { class: 'l' }, 'DIAMOND-sensitivity unstable')),
     ),
     el('div', { class: 'card' },
-      el('h2', {}, 'Class distribution'),
+      el('h2', {}, 'Class distribution',
+        el('span', { class: 'tag' }, 'click a class to browse it')),
       el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
         el('thead', {}, el('tr', {}, el('th', {}, 'Class'), el('th', { class: 'num' }, 'Genes'),
           el('th', { class: 'num' }, 'Share'), el('th', {}, ''))),

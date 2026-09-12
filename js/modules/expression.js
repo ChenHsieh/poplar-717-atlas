@@ -211,14 +211,34 @@ function fullProfile(vec, samples, studies) {
 }
 
 /* ---------- module overview: study catalogue ---------- */
+/** A study's identity is its design and its paper, not its serial number. The number was
+ *  the only clickable thing here, and at 11 px it was also the smallest. */
 function studyRow(s) {
-  return el('tr', {},
-    el('td', {}, el('a', { href: `#/study/${s.id}`, class: 'mono' }, s.id)),
-    el('td', { class: 'num' }, s.n),
+  const first = s.citation ? s.citation.split('(')[0].trim().replace(/,$/, '') : null;
+  const year = s.citation && s.citation.match(/\((\d{4})\)/);
+  const title = (() => {
+    if (!s.citation) return null;
+    const parts = s.citation.split(').');
+    return parts.length > 1 ? parts[1].split('.')[0].trim() : null;
+  })();
+  const href = `#/study/${s.id}`;
+  return el('tr', { style: 'cursor:pointer', onclick: () => { location.hash = href; } },
+    el('td', {},
+      el('a', { href }, title || `Study ${s.id}`),
+      el('div', { class: 'muted', style: 'font-size:11.5px;margin-top:2px' },
+        first ? `${first}${year ? ' ' + year[1] : ''}` : `study ${s.id}`)),
+    el('td', { class: 'num' }, fmt(s.n)),
     el('td', {}, s.tissues.join(', ')),
     el('td', {}, s.panel_type.join(', ') || el('span', { class: 'muted' }, '—')),
-    el('td', { class: 'mono' }, s.bioprojects[0] + (s.bioprojects.length > 1 ? ` +${s.bioprojects.length - 1}` : '')),
-    el('td', { class: 'muted', style: 'font-size:12px' }, s.citation ? s.citation.split('.')[0] + '.' : '—'),
+    el('td', {}, ...s.bioprojects.map((b, i) => el('span', {},
+      i ? ', ' : '',
+      el('a', { href: `https://www.ebi.ac.uk/ena/browser/view/${b}`, target: '_blank',
+                rel: 'noopener', class: 'mono', style: 'font-size:11.5px',
+                onclick: (e) => e.stopPropagation() }, b)))),
+    el('td', {}, s.doi && s.doi.length
+      ? el('a', { href: s.doi[0], target: '_blank', rel: 'noopener',
+                  onclick: (e) => e.stopPropagation() }, 'paper')
+      : el('span', { class: 'muted' }, '—')),
   );
 }
 
@@ -255,10 +275,11 @@ async function overview(man) {
         + `stem, bud, catkin and callus are thin (≤5) — read differences with that in mind.`),
       tissuePanelMatrix(man)),
     el('div', { class: 'card' },
-      el('h2', {}, 'Studies'),
+      el('h2', {}, 'Studies', el('span', { class: 'tag' }, 'click a row to open it')),
       el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
-        el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', { class: 'num' }, 'n'), el('th', {}, 'Tissue'),
-          el('th', {}, 'Panel'), el('th', {}, 'BioProject'), el('th', {}, 'Source'))),
+        el('thead', {}, el('tr', {}, el('th', {}, 'Study'), el('th', { class: 'num' }, 'Samples'),
+          el('th', {}, 'Tissue'), el('th', {}, 'Panel'), el('th', {}, 'BioProject'),
+          el('th', {}, 'Paper'))),
         el('tbody', {}, ...list.map(studyRow))))),
     el('p', { class: 'muted', style: 'font-size:11.5px' },
       'Full matrix CSVs (TPM/FPKM/counts, all 652 samples × 63,960 genes) are not bundled in ',

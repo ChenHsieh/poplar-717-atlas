@@ -19,6 +19,16 @@ const browser = await chromium.launch({
 });
 let failures = 0;
 
+// A null selector used to throw and kill the run, leaving every later check unrun while the
+// process still exited 0 -- which is how a rename passed CI-shaped output while breaking 32
+// checks. An abort is now reported and exits non-zero. It deliberately does NOT try to
+// continue: a half-run suite should not look like a green one.
+process.on('uncaughtException', (e) => {
+  console.log(`\n!! ABORTED after ${failures} recorded failure(s): ${e && e.message}`);
+  console.log('!! Remaining checks did NOT run. Treat this as a failure, not a pass.');
+  process.exit(1);
+});
+
 async function check(name, hash, { expect = [], theme = null, wait = 700 } = {}) {
   const p = await browser.newPage({
     viewport: { width: 1180, height: 900 },
@@ -91,7 +101,7 @@ await check('module-phylostrat', '#/module/phylostrat',
 await check('gene-ambiguous-ps', '#/gene/PtXaTreH.06G037000',
   { expect: ['genEra flagged this gene as ambiguous'], wait: 900 });
 await check('module-duplication', '#/module/duplication',
-  { expect: ['Duplication', 'not genome-wide', 'phylostratum', 'Duplication class',
+  { expect: ['Duplication', 'not genome-wide', 'stratum-selected', 'Duplication class',
              'salicoid WGD', 'dispersed'] });
 await check('gene-paralog', '#/gene/PtXaTreH.01G330600',
   { expect: ['Duplication', 'Paralog pairs'], wait: 900 });
@@ -244,6 +254,42 @@ await checkModel('model-confident', 'PtXaTreH.01G021800',
   { expect: ['233 residues', 'very high', 'helix or strand shapes are not drawn'] });
 await checkModel('model-lsg', 'PtXaTreH.01G001500', { expect: ['112 residues', 'the model is guessing'] });
 await checkModel('model-confident-dark', 'PtXaTreH.01G021800', { theme: 'dark' });
+
+// --- v0.6: the review's items, each asserted where a reader would look --------------------
+// Browse is the page the review calls the key thing, so the deep link and the chips that make
+// a filtered view legible get their own cases.
+await check('browse-deeplink-chips', '#/browse?ps=18',
+  { expect: ['Phylostratum =', 'Clear all', 'MS is indirect'], wait: 1400 });
+await check('browse-proxy-statement', '#/browse',
+  { expect: ['MS is indirect', 'only 12% match exactly one 717 gene',
+             'measured absence'], wait: 1400 });
+// A stratum bar and a synteny class must be doors into Browse, not dead ends.
+await check('phylostrat-drillthrough', '#/module/phylostrat',
+  { expect: ['Click a stratum to browse its genes'] });
+await check('synteny-drillthrough', '#/module/synteny',
+  { expect: ['click a class to browse it'] });
+// Peptide provenance: the point is that a reader can tell shared evidence from specific.
+await check('gene-peptide-provenance', '#/gene/PtXaAlbH.17G050300',
+  { expect: ['How that was assigned', 'Gene-unique', '717-only',
+             'also in P. trichocarpa'], wait: 1400 });
+await check('module-expression-studies', '#/module/expression',
+  { expect: ['click a row to open it', 'Samples', 'Paper'], wait: 1400 });
+// The map's overlays each have a different denominator, which the page must say out loud.
+await check('map-overlay-notes', '#/map',
+  { expect: ['Colour by:', 'Genes per 100 kb bin'], wait: 1400 });
+// TE wording: "0 bp" read as missing data.
+await check('gene-te-overlap', '#/gene/PtXaTreH.01G000100',
+  { expect: ['Duplication class'], wait: 1000 });
+
+// Promoter motif positions (TODO 44). Two cases, and the second is the one that keeps the
+// card honest: a gene whose positions were withheld must SAY so, not silently show an empty
+// track that reads as "no motifs here".
+await check('gene-promoter-positions', '#/gene/PtXaTreH.01G000900',
+  { expect: ['Where those matches sit', 'transcription start', 'the lane says which family'],
+    wait: 1200 });
+await check('gene-promoter-positions-withheld', '#/gene/PtXaTreH.01G040100',
+  { expect: ['Motif positions are withheld for this gene',
+             'contradict the bars'], wait: 1200 });
 
 await check('module-about', '#/module/about',
   { expect: ['About & provenance', 'Known limitations', 'HAP2 domain annotation is thin',
@@ -503,11 +549,12 @@ await check('map-hap2', '#/map/hap2',
 // click on the OTHER haplotype's strip actually navigates there -- driven, not just
 // rendered, since the whole point is comparing two independently-coordinated genomes.
 await check('mirror-full', '#/gene/PtXaTreH.05G120200',
-  { expect: ['Mirror', 'both haplotypes', 'HAP1 (TreH) above', 'HAP2 (AlbH) below'], wait: 1200 });
+  { expect: ['This locus on HAP2 too', 'both haplotypes', 'HAP1 (TreH) above',
+             'HAP2 (AlbH) below'], wait: 1200 });
 // This gene's neighbourhood runs into a real HAP1-only stretch (verified against pav.confirmed
 // directly): the card must say so in its own count, not just render silently.
 await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
-  { expect: ['Mirror', 'with none'], wait: 1200 });
+  { expect: ['This locus on HAP2 too', 'with none'], wait: 1200 });
 {
   const mp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
   const merrs = [];
@@ -515,7 +562,7 @@ await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
   mp.on('console', (m) => { if (m.type() === 'error') merrs.push(m.text()); });
   await mp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
   await mp.waitForTimeout(1200);
-  const h = await mp.$('h2:has-text("Mirror")');
+  const h = await mp.$('h2:has-text("This locus on")');
   await h.scrollIntoViewIfNeeded();
   await mp.waitForTimeout(500);
   const canvases = await mp.$$('.locus-canvas');
@@ -538,7 +585,7 @@ await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
 // canvas still showed stale tissue-mode content. Checked here so it cannot silently
 // return.
 await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
-  { expect: ['Expression scrubber', 'By tissue', 'By contrast', 'Median TPM in catkin'], wait: 1200 });
+  { expect: ['Expression across the neighbourhood', 'By tissue', 'By contrast', 'Median TPM in catkin'], wait: 1200 });
 {
   const sp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
   const serrs2 = [];
@@ -546,7 +593,7 @@ await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
   sp.on('console', (m) => { if (m.type() === 'error') serrs2.push(m.text()); });
   await sp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
   await sp.waitForTimeout(1200);
-  const h = await sp.$('h2:has-text("Expression scrubber")');
+  const h = await sp.$('h2:has-text("Expression across the neighbourhood")');
   await h.scrollIntoViewIfNeeded();
   await sp.waitForTimeout(500);
   // Switch mode WITHOUT ever touching the <select> -- the exact scenario that failed.
@@ -577,11 +624,11 @@ await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
   const tp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
   await tp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
   await tp.waitForTimeout(1200);
-  const h = await tp.$('h2:has-text("Expression scrubber")');
+  const h = await tp.$('h2:has-text("Expression across the neighbourhood")');
   await h.scrollIntoViewIfNeeded();
   const r = await tp.evaluate(() => {
     const card = [...document.querySelectorAll('.card')]
-      .find((c) => c.querySelector('h2')?.textContent.includes('Expression scrubber'));
+      .find((c) => c.querySelector('h2')?.textContent.includes('Expression across the neighbourhood'));
     const btns = [...card.querySelectorAll('.locus-btn')]
       .map((b) => b.getBoundingClientRect()).map((q) => Math.min(q.width, q.height));
     return { n: btns.length, min: btns.length ? Math.min(...btns) : 0 };
