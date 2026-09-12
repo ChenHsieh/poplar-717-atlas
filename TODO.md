@@ -26,7 +26,7 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
         BioProject → ENA/SRA links, citation/DOI, design factors, sample table with notes.
   - [x] **7c — gene card: baseline tissue bars + tau** (single hue, n per bar, table view).
   - [x] **7d — full 652-sample profile** grouped study → condition, hover tooltip.
-  - [ ] **7e — browse filters** (tau, top tissue, expressed-in) — lands with step 5.
+  - [~] **7e — two of three shipped; the third was never built.** Browse carries `tau_min` (τ ≥) and `top` (peak tissue), both live and now reachable by deep link. **`expressed-in` does not exist** — there is no filter for "expressed above X TPM in tissue Y", and the facet index carries no per-tissue value to build one from (it stores τ and the single peak tissue only). So this needs a facet column, not a UI change, and it is not closed. Checked against `js/core/browse.js`'s FILTERS rather than assumed.
 - [x] **8 — publish.** DECIDED 2026-09-01: private repo, **public site**. Pages live from
       `main` root (verified 2026-09-04: chenhsieh.github.io/poplar-717-atlas/ returns 200,
       GitHub API reports `status: built`); `noindex` present in index.html. The `lsg`
@@ -120,7 +120,7 @@ this file is the task list for the current release (v0.2 — "gene page becomes 
       now enforces this, so it fails loudly instead of shipping a Browse view that disagrees
       with the gene pages it links to.
 
-- [ ] **25 — the checks cannot see a value that is stable and wrong.** Both defects above
+- [ ] **25 — THIRD OCCURRENCE, 2026-09-12: the helper is now warranted by this item's own rule.** The genome map had been colouring the WITHDRAWN LSG pool for two days — 104 stale bins in `data/locus/overview.json`, because `build_locus.py` is an OneDrive-only stage that could not run after the 2026-09-10 pool correction. It rendered fine, validated fine, and was internally consistent; no check compared it against the shards it summarises. What caught it was writing a recompute-and-diff gate, which is exactly the helper this item anticipated. The generalisable rule: **any aggregate that a Sapelo2-unreachable stage owns is stale by default after any patcher touches its inputs**, and the only defence is recomputing it from the shards and diffing. Original note: **the checks cannot see a value that is stable and wrong.** Both defects above
       rendered fine, validated fine, and were internally consistent. What caught them was
       rebuilding twice and diffing. Worth doing after any change to a build script, and
       worth a `scripts/` helper if it happens a third time.
