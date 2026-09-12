@@ -266,6 +266,21 @@ export function facetRow(facets, i) {
   };
 }
 
+/* ---------- chromatin profiles (lazy, sharded by P. trichocarpa chromosome) ---------- */
+const _chromShards = new Map();
+/** 40 bins x 4 marks around a locus's TSS, or null. Values are HUNDREDTHS of a log ratio,
+ *  strand-oriented so bin 0 is always upstream. Sharded because 23,465 loci x 160 numbers has
+ *  no business in a gene shard -- same reasoning as the 3D structure buckets. */
+export function loadChromatinProfile(potriId) {
+  // Mirrors patch_chromatin_profiles.py's shard_key() exactly: a P. trichocarpa scaffold ID
+  // (no 3-digit chromosome before the "G", e.g. Potri.T170700) falls back to "other", it is
+  // not unprofiled. 29 genes live only under that fallback.
+  const m = /^Potri\.(\w{3})G/.exec(potriId || '');
+  const k = m ? m[1] : 'other';
+  if (!_chromShards.has(k)) _chromShards.set(k, fetchJSON(`data/chromatin/${k}.json`));
+  return _chromShards.get(k).then((d) => d[potriId] || null).catch(() => null);
+}
+
 /** Members of a tandem array, from the curated union set. */
 export const loadArrays = () => fetchJSON('data/index/arrays.json');
 

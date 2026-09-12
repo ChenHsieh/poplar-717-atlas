@@ -21,7 +21,8 @@
 //      (tata.core), versus the position of the nearest TATA-like hexamer anywhere in the
 //      promoter (tata.pos), which can be far upstream and is not a core-promoter TATA box
 //      just because the same 6-letter pattern matched there.
-import { el } from '../core/dom.js';
+import { el, clear } from '../core/dom.js';
+import { loadChromatinProfile } from '../core/data.js';
 
 function tataLine(t) {
   // tata_pos is ALREADY "bp upstream of the TSS" (verified against the source data: rows
@@ -69,6 +70,71 @@ function familyStrip(cre, cm) {
 // ONLY: a gene silent in leaf correctly carries no promoter mark there, so showing "no ATAC
 // peak" for a silent gene would read as an absence of regulation when it is an absence of
 // relevant data. The source analysis's first run failed its own gate for exactly this reason.
+// ---- the chromatin SIGNAL, not a yes/no --------------------------------------------------
+// Four marks, 40 bins of 100 bp, 2 kb either side of the transcription start.
+//
+// THREE THINGS THIS DRAWING MUST GET RIGHT, all forced by the data:
+//   * the values are a LOG RATIO, not coverage. They go negative as often as positive, so the
+//     baseline is zero in the middle of the track, not the bottom. Calling it "reads" would be
+//     wrong.
+//   * each mark has its own range (ATAC -2..4, H3K4me3 -3..2, H3K27me3 -1..2), so each track is
+//     scaled to its own data. Sharing one scale would flatten three of them.
+//   * bin 0 is upstream for EVERY gene, plus or minus strand, because the profiles were
+//     strand-oriented at extraction.
+const MARK_LABEL = [
+  ['Accessible chromatin', 'ATAC-seq'],
+  ['H3K4me3', 'active promoter'],
+  ['H3K36me3', 'transcribed body'],
+  ['H3K27me3', 'repressed'],
+];
+const NB = 40, FLANK = 2000;
+
+function sparkline(vals, colour) {
+  const W = 240, H = 34, mid = H / 2;
+  const peak = Math.max(0.2, ...vals.map((v) => Math.abs(v / 100)));
+  const x = (i) => (i / (NB - 1)) * W;
+  const y = (v) => mid - (v / 100 / peak) * (mid - 2);
+  const ns = 'http://www.w3.org/2000/svg';
+  const mk = (n, a) => { const e = document.createElementNS(ns, n);
+    for (const [k, v] of Object.entries(a)) e.setAttribute(k, v); return e; };
+  const svg = mk('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', height: H,
+    preserveAspectRatio: 'none', role: 'img',
+    'aria-label': `signal profile, peak ${peak.toFixed(2)}` });
+  svg.append(mk('line', { x1: 0, y1: mid, x2: W, y2: mid,
+    stroke: 'var(--line)', 'stroke-width': 0.6 }));                       // zero
+  svg.append(mk('line', { x1: x(NB / 2), y1: 0, x2: x(NB / 2), y2: H,
+    stroke: 'var(--line-2)', 'stroke-width': 0.6, 'stroke-dasharray': '2 2' }));  // TSS
+  svg.append(mk('polyline', { fill: 'none', stroke: colour, 'stroke-width': 1.4,
+    points: vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ') }));
+  return { svg, peak };
+}
+
+function profilePanel(prof) {
+  const wrap = el('div', { style: 'margin-top:10px' });
+  MARK_LABEL.forEach(([name, note], k) => {
+    const { svg, peak } = sparkline(prof[k],
+      k === 3 ? 'var(--c-priv)' : 'var(--accent)');
+    wrap.append(el('div', { style: 'display:grid;grid-template-columns:150px 1fr 62px;'
+      + 'align-items:center;gap:9px;margin-bottom:3px' },
+      el('div', { style: 'font-size:11.5px' }, name,
+        el('div', { class: 'muted', style: 'font-size:10.5px' }, note)),
+      svg,
+      el('div', { class: 'muted mono', style: 'font-size:10.5px;text-align:right' },
+        `±${peak.toFixed(2)}`)));
+  });
+  wrap.append(el('div', { class: 'muted', style: 'display:flex;justify-content:space-between;'
+    + 'font-size:10.5px;margin-top:2px' },
+    el('span', {}, `\u2212${FLANK / 1000} kb`), el('span', {}, 'TSS'),
+    el('span', {}, `+${FLANK / 1000} kb`)));
+  wrap.append(el('p', { class: 'muted', style: 'font-size:11px;margin:7px 0 0' },
+    'Each track is a log ratio, so the line sits on a zero baseline and dips below it as well '
+    + 'as rising above. Every mark is scaled to its own peak (shown at the right), because '
+    + 'their ranges differ several-fold and one shared scale would flatten most of them. '
+    + 'Upstream is on the left for every gene: the profiles were oriented by strand when they '
+    + 'were extracted, so a minus-strand gene is not mirrored.'));
+  return wrap;
+}
+
 function chromatinCard(g) {
   const a = g.atac;
   const p = g.ptri;
@@ -107,6 +173,20 @@ function chromatinCard(g) {
               el('i', { class: 'dot', style: 'background:var(--c-nonsyn)' }), 'present')
           : el('span', { class: 'muted' }, 'absent')),
         el('td', { class: 'muted', style: 'font-size:11.5px' }, note))))),
+    (() => {
+      if (!a.pf || !p.id) return null;
+      const holder = el('div', {});
+      const btn = el('button', { class: 'locus-btn', type: 'button',
+        style: 'padding:0 12px;margin-top:8px' }, 'Show the signal profile');
+      btn.addEventListener('click', async () => {
+        btn.disabled = true; btn.textContent = 'Loading…';
+        const prof = await loadChromatinProfile(p.id);
+        if (!prof) { clear(holder).append(el('p', { class: 'muted' },
+          'No stored profile for this locus.')); btn.remove(); return; }
+        holder.append(profilePanel(prof)); btn.remove();
+      });
+      return el('div', {}, btn, holder);
+    })(),
     el('p', { class: 'muted', style: 'font-size:11px;margin:8px 0 0' },
       'From GSE128434, a 13-species comparative chromatin atlas (Lu, Marand, Schmitz and '
       + 'colleagues, 2019), reprocessed here. Three limits, all of which matter for reading a '

@@ -20,6 +20,27 @@
   "leaf_expressed": 42012,
   "n_genes": 45869,
   "n_loci": 23466,
+  "profiles": {
+   "bin_bp": 100,
+   "bins": 40,
+   "flank_bp": 2000,
+   "genes": 45867,
+   "loci": 23465,
+   "marks": [
+    "atac",
+    "k4",
+    "k36",
+    "k27"
+   ],
+   "orientation": "strand-oriented at extraction -- bin 0 is the upstream end for every gene, plus or minus strand.",
+   "sanity": {
+    "h3k4me3_2kb_upstream": -0.12,
+    "h3k4me3_at_tss": 0.35,
+    "note": "an active-promoter peak in the right place, which is the evidence that extraction and strand orientation are correct"
+   },
+   "units": "log ratio, stored as hundredths (value x 100). NOT coverage and NOT read counts: values are negative as often as positive and each mark has its own range, so it is drawn diverging about zero and scaled per mark.",
+   "whose_chromatin": "the P. trichocarpa ORTHOLOG's, not this gene's. Nothing was measured on 717 or either parent."
+  },
   "scope": "A property OF THE P. TRICHOCARPA ORTHOLOG, not of the 717 gene. No chromatin data exists for 717 or for either parent species. Attached only where the ortholog call is reciprocal 1:1.",
   "silent_in_leaf": 3857,
   "source": "GEO GSE128434 (Lu, Marand, Schmitz et al., Nature Plants 2019), P. trichocarpa leaf: ATAC-seq, H3K4me3, H3K36me3, and matched RNA-seq",
@@ -124,7 +145,20 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.7.0",
+ "data_version": "0.8.0",
+ "duplicate_coexpr": {
+  "basis": "Pearson r on log2(ComBat-corrected TPM + 1) over 652 samples -- the same matrix the neighbour co-expression (nb) uses, because a 652-sample correlation spans 28 studies and is therefore a cross-study comparison.",
+  "coverage": "A pair needs BOTH partners in the ComBat matrix (59,599 of 63,960 genes), so 7,707 of 32,333 duplicate pairs have no value. Absence means 'not comparable', not 'uncorrelated'.",
+  "distribution": {
+   "median": 0.31,
+   "p10": -0.101,
+   "p90": 0.803
+  },
+  "max_members_listed": 24,
+  "not_a_divergence_measure": "A descriptive correlation only. No model, no threshold, and no claim about duplicate fate. Nothing upstream computes duplicate-pair expression divergence.",
+  "pairs_with_a_correlation": 24626,
+  "per_member_ks_deliberately_absent": "td.ks is the ARRAY MEDIAN, not a pair value, so it is never rendered beside an individual member."
+ },
  "duplication": {
   "ks_by_rank": {
    "12": {

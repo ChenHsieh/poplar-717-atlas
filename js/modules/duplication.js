@@ -64,6 +64,33 @@ function geneCard(g) {
         el('span', { class: 'muted' }, `  ${td.n} member${td.n === 1 ? '' : 's'}`),
         td.age ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
           `age bin ${td.age}${td.ks != null ? ` · array median Ks ${td.ks}` : ''}`) : null));
+    // The card named the array and counted it, so a reader could see "7 members" and never
+    // learn which seven. No per-member dS is shown: td.ks is the ARRAY MEDIAN, and printing it
+    // next to an individual member would read as that pair's divergence.
+    if (td.mem && td.mem.length) {
+      const rows = td.mem.map(([id, r]) => el('tr', {},
+        el('td', {}, el('a', { href: `#/gene/${id}`, class: 'mono' }, id)),
+        el('td', { class: 'num' }, r == null
+          ? el('span', { class: 'muted', title: 'not comparable on the batch-corrected matrix' }, 'n/c')
+          : el('span', { class: 'mono' }, r.toFixed(2)))));
+      kv.append(el('dt', {}, 'Other members'),
+        el('dd', {},
+          el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
+            el('thead', {}, el('tr', {}, el('th', {}, 'Gene'),
+              el('th', { class: 'num', title: 'Pearson r on batch-corrected log2 expression, '
+                + '652 samples' }, 'Expr r'))),
+            el('tbody', {}, ...rows))),
+          td.more
+            ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:4px' },
+                `and ${td.more} more, not listed.`)
+            : null,
+          el('div', { class: 'muted', style: 'font-size:11.5px;margin-top:5px' },
+            'Expression r is a plain Pearson correlation across the 652 samples, on the '
+            + 'batch-corrected matrix — the same basis as the neighbour co-expression on the '
+            + 'expression card, because a 652-sample correlation spans 28 studies. It is a '
+            + 'descriptive number, not a divergence model, and "n/c" means the pair cannot be '
+            + 'compared on that matrix rather than that the two are uncorrelated.')));
+    }
     if (td.pseudo || td.removed || td.note) {
       kv.append(el('dt', {}, 'Curation'),
         el('dd', {},
@@ -103,13 +130,21 @@ function geneCard(g) {
         : p.ks == null ? '—' : p.ks.toFixed(4)),
       el('td', { class: 'num' }, p.ka == null ? '—' : p.ka.toFixed(4)),
       el('td', { class: 'num' }, p.w == null ? el('span', { class: 'muted' }, '—') : p.w.toFixed(3)),
+      // absence is "not comparable on the batch-corrected matrix", NOT "uncorrelated"
+      el('td', { class: 'num' }, p.r == null
+        ? el('span', { class: 'muted', title: 'one partner is outside the batch-corrected '
+            + 'matrix, so the pair is not comparable — this is not a correlation of zero' }, 'n/c')
+        : el('span', { class: 'mono' }, p.r.toFixed(2))),
       el('td', { class: 'muted', style: 'font-size:11.5px' },
         p.src + (p.sat ? ' · saturated' : ''))));
     card.append(
       el('h3', { style: 'font-size:13px;margin:14px 0 6px' }, `Paralog pairs (${para.length})`),
       el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
         el('thead', {}, el('tr', {}, el('th', {}, 'Paralog'), el('th', { class: 'num' }, 'dS'),
-          el('th', { class: 'num' }, 'dN'), el('th', { class: 'num' }, 'ω'), el('th', {}, 'Source'))),
+          el('th', { class: 'num' }, 'dN'), el('th', { class: 'num' }, 'ω'),
+          el('th', { class: 'num', title: 'Pearson r on batch-corrected log2 expression, '
+            + '652 samples' }, 'Expr r'),
+          el('th', {}, 'Source'))),
         el('tbody', {}, ...rows))));
     if (para.some((p) => p.ks0)) {
       card.append(el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' },

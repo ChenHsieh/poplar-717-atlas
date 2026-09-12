@@ -29,6 +29,62 @@ behaviour.
 
 Site only -- `data/` is untouched and the data version stays 0.7.0.
 
+## 0.8.0 — 2026-09-12 — Who shares the duplication, and what the chromatin actually looks like
+
+Two requests about cards that were already there but understated what the atlas actually knows:
+the duplication card counted partners without naming them, and the chromatin card reported four
+booleans where the source data is a continuous signal.
+
+### Duplicate partners now carry an expression correlation, and the array's other members are named
+
+The paralog table gains an `Expr r` column: Pearson r on ComBat-corrected log2(TPM+1) across all
+652 samples, the same basis the expression card already uses for neighbour co-expression. The
+tandem-array block gains an "Other members" table for the same reason — a card that says "7
+members" and never says which seven was withholding exactly the information a reader would open
+the card to find.
+
+**54.0% of paralog pairs and 76.9% of array-member pairs get a correlation** (1,454 of 2,692;
+46,179 of 60,036); the rest sit outside the 59,599-gene ComBat-eligible set — a HAP2 annotation
+gap, mostly, not a biological absence. Those cells render as `n/c`, not as a correlation of zero,
+and the card says so: a partner outside the batch-corrected matrix is not comparable, which is a
+different claim than uncorrelated. 327 genes' arrays are truncated at 24 listed members with a
+"not listed" note rather than silently dropped.
+
+**Deliberately not shown: a per-member Ks.** `td.ks` is the array's *median* Ks, present on
+12,082 of 13,663 tandem-array genes; printing it next to one member would read as that pair's own
+divergence, which it is not. Ks stays at the array level; the new correlation is the only
+per-member number added.
+
+### Chromatin gets a signal profile, not just a boolean
+
+Four marks (ATAC-seq, H3K4me3, H3K36me3, H3K27me3), 40 bins of 100 bp, 2 kb either side of the
+transcription start, reprocessed from GSE128434 and strand-oriented so bin 0 is upstream for
+every gene regardless of strand. **23,465 loci, reaching 45,867 atlas genes through the existing
+P. trichocarpa-ortholog boolean layer.** A "Show the signal profile" button appears wherever that
+layer already showed a checkmark and draws all four tracks on demand, sharded by chromosome
+(20 files, 13.1 MB) so the base gene shards do not carry 160 numbers per locus each.
+
+The values are a log ratio, not coverage — they go negative as often as positive — so each track
+is drawn diverging about a zero baseline, and each mark is scaled to its own peak rather than one
+shared axis, because the four ranges differ several-fold. A representative promoter, `Potri.
+017G065900`, shows H3K4me3 running flat and negative for 2 kb upstream then peaking to +1.67
+immediately downstream of the transcription start — the expected shape for an active promoter,
+per gene rather than only in aggregate.
+
+**One defect found by the validator before this shipped.** Both the new validator gate and the
+client's own loader keyed a gene's chromosome shard by matching `Potri.(\d{3})G` — but the
+patcher that built these shards already knew that scaffold-anchored orthologs like
+`Potri.T170700` don't match that pattern and correctly filed them under an `other.json` shard.
+The gate and the loader did not know that: 29 genes were flagged with a profile they could not
+actually fetch. Both now match the patcher's own `shard_key()` exactly. All 29 affected genes
+happen to have `ex=0` (their ortholog is not expressed in the source leaf libraries), so the
+card's own "nothing shown for a silent gene" rule already keeps the button from appearing for any
+of them today — but the data contract is fixed regardless of whether today's data reaches it.
+
+`data/` is now 692.5 MB of real file content (measured by summed file size, not `du`, which
+inflates badly on this filesystem) — 69.2% of the GitHub Pages 1 GB cap, chromatin profiles
+adding 13.1 MB of that.
+
 ## 0.7.0 — 2026-09-12 — What the RNA-seq says about the gene models themselves
 
 Two layers from 94 public RNA-seq libraries, both flags and neither a filter. They answer a

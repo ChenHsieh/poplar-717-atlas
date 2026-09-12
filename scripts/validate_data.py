@@ -249,6 +249,64 @@ def main():
           f"{len(lad_bad)} strata disagree (hap, rank, manifest, shards): {lad_bad[:4]}"
           if lad_bad else f"{sum(len(v) for v in ladder.values())} strata")
 
+    # ---- duplicate-partner co-expression, and chromatin profiles ---------------------------
+    # r is a correlation: outside [-1,1] means the maths is wrong, not the data.
+    r_bad = []
+    for gid, (_h, _p, rec) in genes.items():
+        for q in (rec.get("para") or []):
+            if q.get("r") is not None and not (-1.0001 <= q["r"] <= 1.0001):
+                r_bad.append((gid, q["id"], q["r"]))
+        for m in ((rec.get("td") or {}).get("mem") or []):
+            if len(m) > 1 and m[1] is not None and not (-1.0001 <= m[1] <= 1.0001):
+                r_bad.append((gid, m[0], m[1]))
+    check("every duplicate-partner correlation lies inside [-1, 1]", not r_bad,
+          f"{len(r_bad)} outside, e.g. {r_bad[:3]}" if r_bad else "")
+
+    # a named partner must be a real gene, or the card links into nothing
+    mem_bad = [(gid, m[0]) for gid, (_h, _p, rec) in genes.items()
+               for m in ((rec.get("td") or {}).get("mem") or []) if m[0] not in genes]
+    check("every named tandem-array member is a real gene", not mem_bad,
+          f"{len(mem_bad)} dangling, e.g. {mem_bad[:3]}" if mem_bad else "")
+
+    # a gene must never list itself as its own duplicate partner
+    self_mem = [gid for gid, (_h, _p, rec) in genes.items()
+                if any(m[0] == gid for m in ((rec.get("td") or {}).get("mem") or []))]
+    check("no gene lists itself as its own array partner", not self_mem,
+          f"{len(self_mem)} genes, e.g. {self_mem[:3]}" if self_mem else "")
+
+    # atac.pf promises a fetchable profile; a broken promise is a dead button
+    prof_shards = {}
+    pf_bad, pf_n = [], 0
+    for gid, (_h, _p, rec) in genes.items():
+        a = rec.get("atac") or {}
+        if not a.get("pf"):
+            continue
+        pf_n += 1
+        pid = (rec.get("ptri") or {}).get("id") or ""
+        # Mirrors both patch_chromatin_profiles.py's shard_key() and the client loader: a
+        # scaffold-anchored P. trichocarpa ID (no 3-digit chromosome before the "G") falls
+        # back to the "other" shard rather than being unprofiled.
+        m = re.match(r"Potri\.(\w{3})G", pid)
+        k = m.group(1) if m else "other"
+        if k not in prof_shards:
+            fp = f"{DATA}/chromatin/{k}.json"
+            prof_shards[k] = json.load(open(fp)) if os.path.exists(fp) else {}
+        if pid not in prof_shards[k]:
+            pf_bad.append((gid, pid))
+    check("every gene flagged with a chromatin profile can actually fetch one", not pf_bad,
+          f"{len(pf_bad)} broken, e.g. {pf_bad[:3]}" if pf_bad else f"{pf_n} genes")
+
+    # every profile is 4 marks x 40 bins, or the sparkline maths is wrong
+    shape_bad = [k for k, d in prof_shards.items()
+                 for v in list(d.values())[:200]
+                 if len(v) != 4 or any(len(x) != 40 for x in v)]
+    check("every chromatin profile is 4 marks x 40 bins", not shape_bad,
+          f"bad shards: {sorted(set(shape_bad))[:3]}" if shape_bad else "")
+
+    want_prof = ((man.get("chromatin") or {}).get("profiles") or {}).get("genes")
+    check("manifest chromatin.profiles.genes matches the flagged genes", want_prof == pf_n,
+          f"manifest {want_prof} vs {pf_n}")
+
     # ---- RNA-seq gene-model evidence -------------------------------------------------------
     # The intron count comes from a spliced-read pipeline; gs.in comes from the v5.1 GFF3
     # longest isoform. They are independent derivations of the same quantity and agree on all

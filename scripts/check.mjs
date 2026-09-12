@@ -728,6 +728,36 @@ await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
   await tp.close();
 }
 
+// Duplicate-partner co-expression (this session): the paralog table's Expr r column and the
+// tandem array's Other-members table. This gene has both a comparable pair (r=0.2854, -> 0.29)
+// and a saturated pair with no r at all -- the two must render as distinct states, not as a
+// correlation of 0 vs 0.29.
+await check('gene-duplicate-coexpr', '#/gene/PtXaTreH.01G330600',
+  { expect: ['Expr r', '0.29', 'n/c', 'Other members', 'not a divergence model'], wait: 1000 });
+
+// The chromatin card's "Show the signal profile" button must actually fetch and draw the
+// four-mark panel, not just sit there -- chipRow and metricNote were both built and wired but
+// never mounted earlier in this project, so only a real click-through catches a dead button.
+{
+  const cp = await browser.newPage({ viewport: { width: 1180, height: 1200 } });
+  const cerrs = [];
+  cp.on('pageerror', (e) => cerrs.push(e.message));
+  cp.on('console', (m) => { if (m.type() === 'error') cerrs.push('console: ' + m.text()); });
+  await cp.goto(base + '/#/gene/PtXaTreH.01G000700', { waitUntil: 'networkidle' });
+  await cp.waitForTimeout(1000);
+  await cp.click('button:has-text("Show the signal profile")');
+  await cp.waitForTimeout(900);
+  const text = (await cp.evaluate(() => document.getElementById('view').innerText)).toLowerCase();
+  const gone = (await cp.$('button:has-text("Show the signal profile")')) === null;
+  const ok = !cerrs.length && gone
+    && text.includes('active promoter')
+    && text.includes('oriented by strand when they were extracted');
+  if (!ok) failures++;
+  console.log(`\n### gene-chromatin-profile-click  ${ok ? 'OK' : 'FAIL'}  button-replaced=${gone}`);
+  cerrs.forEach((e) => console.log('   !! ' + e));
+  await cp.close();
+}
+
 await browser.close();
 console.log(`\n${failures ? `${failures} CHECK(S) FAILED` : 'ALL CHECKS PASSED'}`);
 process.exit(failures ? 1 : 0);
