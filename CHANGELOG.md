@@ -9,6 +9,29 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.9.0 — 2026-09-16 — Which whole-genome duplication, and with whom
+
+The duplication card said "salicoid WGD" or "ancient WGD" and stopped there. It now names both
+events -- the **salicoid WGD** (Populus and Salix, about 60 million years ago) and **gamma** (the
+core-eudicot triplication, about 120 million years ago; previously labelled "ancient WGD") --
+states whether the gene is a retained duplicate from each, and lists **every** anchor partner
+with its dS, synonymous sites, chromosome pair, collinear block and expression correlation.
+
+- Source: ms1-dup `wgd_anchor_pairs_v8_reordered_20260902.csv`, copied to
+  `sources/wgd_pairs.tsv.gz` by `scripts/make_wgd_pairs_source.py`, written onto shards as `wgd`
+  by `scripts/patch_wgd_pairs.py`. 23,154 pairs, 32,170 genes. Inclusive: no dS window, no site
+  filter, no partner cap -- the gate asserts every source pair survives.
+- The event call is the curated gene-level letter (S/A), unchanged. The pair label is a later
+  artifact of the same pipeline and disagrees with it on about 70 genes; the page shows both and
+  says so instead of overriding either.
+- Browse gains a **WGD event** filter (salicoid / gamma / both / either / neither) and two export
+  columns. Counts match ms1-dup v9: 29,101 salicoid genes, 10,130 gamma, 7,061 both.
+- The duplication overview gets a WGD events card that launches into Browse.
+- Removed the synteny "reclassified vs old panel" row, stat and filter. The facet column that
+  carried it is replaced by `wgd`; the shard field `syn.changed` is left in place, unused.
+- The paralog table's source "founder" now reads "same gene family" (the upstream code meant a
+  family whose oldest member arises at that stratum).
+
 ## The 3D viewer's open button was too small to tap
 
 Rendered the model at a phone viewport for the first time -- after it had already gone public --

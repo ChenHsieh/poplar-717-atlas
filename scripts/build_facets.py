@@ -15,7 +15,7 @@ PATCHER ORDER: runs LAST -- it reads fields written by all three earlier builds.
 import json, os, sys
 from collections import Counter
 
-ATLAS = "/scratch/ch29576/poplar-717-atlas"
+ATLAS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # TODO 7e: "expressed in tissue Y" needs a per-tissue value, and the index carried only tau
 # and the single peak tissue. Ten booleans per gene is one 10-bit integer, 0.26 MB raw over
@@ -61,6 +61,7 @@ def main():
         flags = syn.get("flags") or {}
         ks = r.get("ks") or {}
         ms = (r.get("prot") or {}).get("ms") or {}
+        dup = r.get("dup") or {}
         rows.append([
             0 if hap == "hap1" else 1,
             idx(chrs, r.get("chr")),
@@ -71,7 +72,9 @@ def main():
             idx(tops, x.get("top")),
             1 if r.get("allele") else 0,
             1 if ann.get("at") else 0,
-            1 if syn.get("changed") else 0,
+            # WGD events from the curated gene-level letters, non-exclusive: bit 0 salicoid,
+            # bit 1 gamma. A gene can carry both (and tandem/dispersed besides).
+            (1 if dup.get("s") else 0) | (2 if dup.get("a") else 0),
             1 if flags.get("ar") else 0,
             # 0 is a REAL value here (OrthoFinder assigned no orthogroup), not missing data.
             # `or -1` collapsed it to null and the browse table showed those genes as "—".
@@ -91,7 +94,7 @@ def main():
         ])
 
     out = {
-        "cols": ["hap", "chr", "cls", "ps", "tau", "top", "allele", "at", "changed",
+        "cols": ["hap", "chr", "cls", "ps", "tau", "top", "allele", "at", "wgd",
                  "tandem", "npres", "amb", "xin", "w", "ms"],
         "vocab": {"chr": chrs, "cls": clss, "top": tops, "xin": XIN_TISSUES},
         "rows": rows,

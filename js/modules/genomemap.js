@@ -290,7 +290,7 @@ async function renderChromosome(hap, chr, onBack) {
       el('strong', {}, `${chr} · ${hap === 'hap1' ? 'HAP1 (TreH)' : 'HAP2 (AlbH)'}`)),
     s.stage, readout,
     el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' },
-      'Each tick is one gene, coloured by duplication class (tandem, ancient WGD, salicoid '
+      'Each tick is one gene, coloured by duplication class (tandem, gamma WGD, salicoid '
       + 'WGD, dispersed, singleton). Click a gene to open its page. WGD-block and '
       + 'syntenic-run overlays are not built at this zoom yet -- see the locus card on the '
       + 'gene page for those relationships today.'));

@@ -41,8 +41,12 @@ const FILTERS = [
     test: (r, v) => (r.at ? 'yes' : 'no') === v },
   { id: 'tandem', label: 'In tandem array', kind: 'select', options: ['yes', 'no'],
     test: (r, v) => (r.tandem ? 'yes' : 'no') === v },
-  { id: 'changed', label: 'Reclassified vs old panel', kind: 'select', options: ['yes', 'no'],
-    test: (r, v) => (r.changed ? 'yes' : 'no') === v },
+  // Events are not exclusive: a gene retained from both the gamma triplication and the salicoid
+  // WGD matches either choice. The call is the curated gene-level letter, not the pair table.
+  { id: 'wgd', label: 'WGD event', kind: 'select',
+    options: ['salicoid', 'gamma', 'both', 'either', 'neither'],
+    test: (r, v) => ({ salicoid: (r.wgd & 1) > 0, gamma: (r.wgd & 2) > 0, both: r.wgd === 3,
+                       either: r.wgd > 0, neither: r.wgd === 0 })[v] },
   // w is stored as an integer per-mille. -1 means no reciprocal-best P. trichocarpa ortholog
   // and -2 means a pair exists but omega could not be estimated; both are real states, so a
   // threshold filter must exclude them rather than treat them as 0.
@@ -130,13 +134,14 @@ function download(name, text) {
 function exportTSV() {
   const head = ['gene_id', 'haplotype', 'chr', 'synteny_class', 'phylostratum', 'tau',
                 'peak_tissue', 'genomes_in_orthogroup', 'has_allele', 'in_tandem_array',
-                'omega_vs_ptrichocarpa', 'ms_datasets_detected_of_5'];
+                'salicoid_wgd', 'gamma_wgd', 'omega_vs_ptrichocarpa', 'ms_datasets_detected_of_5'];
   const lines = [head.join('\t')];
   for (const i of state.matches) {
     const r = state.rows[i];
     lines.push([state.ids[i], r.hap, r.chr ?? '', r.cls ?? '', r.ps ?? '',
       r.tau == null ? '' : r.tau.toFixed(3), r.top ?? '', r.npres ?? '',
       r.allele ? 'yes' : 'no', r.tandem ? 'yes' : 'no',
+      r.wgd & 1 ? 'yes' : 'no', r.wgd & 2 ? 'yes' : 'no',
       // an empty cell would read as "not measured"; these are measured absences
       r.w >= 0 ? (r.w / 1000).toFixed(4) : (r.w === -1 ? 'no_ortholog' : 'not_estimable'),
       r.ms >= 0 ? r.ms : ''].join('\t'));

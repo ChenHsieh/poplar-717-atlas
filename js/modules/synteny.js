@@ -34,14 +34,6 @@ function geneCard(g) {
     .filter(([, v]) => v).map(([k]) => k);
   add('Placement flags', on.length ? on.join(' · ') : el('span', { class: 'muted' }, 'none'));
 
-  if (s.cls_old) {
-    const changed = s.cls_old !== s.cls;
-    add('Previous panel', classBadge(s.cls_old),
-        el('span', { class: 'muted' }, ` · ${s.n_old ?? '—'} of 11 genomes`));
-    add('Reclassified?', changed
-      ? el('strong', {}, 'yes — changed on the completed panel')
-      : el('span', { class: 'muted' }, 'no change'));
-  }
   if (s.stable === false) {
     kv.append(el('dt', {}, 'Stability'),
       el('dd', {}, el('span', { class: 'badge' }, '⚠ sensitivity-unstable'),
@@ -87,7 +79,6 @@ function overview(man) {
       'orthogroup-only outgroups). Classes follow the original five-way vocabulary.'),
     el('div', { class: 'stat-row' },
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(total)), el('div', { class: 'l' }, 'genes classified')),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(man.summary.changed)), el('div', { class: 'l' }, 'reclassified vs old panel')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(man.summary.unstable)), el('div', { class: 'l' }, 'DIAMOND-sensitivity unstable')),
     ),
     el('div', { class: 'card' },
@@ -111,7 +102,5 @@ export default {
   filters: [
     { id: 'syn_class', label: 'Synteny class', options: Object.keys(CLASSES),
       test: (g, v) => g.syn && g.syn.cls === v },
-    { id: 'syn_changed', label: 'Reclassified vs old panel', options: ['yes', 'no'],
-      test: (g, v) => g.syn && (g.syn.changed ? 'yes' : 'no') === v },
   ],
 };

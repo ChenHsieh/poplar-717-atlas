@@ -5,10 +5,21 @@
 // duplication catalog. Tandem-array membership, by contrast, is genome-wide.
 import { el, fmt } from '../core/dom.js';
 import { loadArrays } from '../core/data.js';
+import { browseHref } from '../core/browse.js';
+
+// Paralog-pair provenance, as a reader would say it. The upstream code for the first source is
+// "founder" (the gene family's oldest member arises at that stratum); the word explained nothing.
+const PAIR_SRC = { founder: 'same gene family', synteny: 'syntenic paralog' };
+
+// The two whole-genome events every Populus gene can carry, oldest last. Codes match g.dup.
+const WGD_EVENT = {
+  S: { name: 'Salicoid WGD', when: 'whole-genome duplication shared by Populus and Salix, about 60 million years ago; median anchor dS in this genome 0.27' },
+  A: { name: 'Gamma', when: 'whole-genome triplication shared by all core eudicots, about 120 million years ago; median anchor dS in this genome 1.90' },
+};
 
 const STRATUM = { 12: 'Pentapetalae', 16: 'Salicaceae', 17: 'Saliceae', 18: 'Populus', 19: 'hybrid' };
 
-const DUP_CODE = { S: 'salicoid WGD', A: 'ancient WGD', T: 'tandem', D: 'dispersed' };
+const DUP_CODE = { S: 'salicoid WGD', A: 'gamma WGD', T: 'tandem', D: 'dispersed' };
 
 function dupTypeLabel(d) {
   if (!d) return null;
@@ -21,10 +32,70 @@ function dupTypeLabel(d) {
   return parts.join(' + ') || d.t;
 }
 
+function wgdSection(g) {
+  const d = g.dup || {};
+  const pairs = g.wgd || [];
+  const wrap = el('div', { style: 'margin-top:12px' },
+    el('h3', { style: 'font-size:13px;margin:0 0 6px' }, 'Whole-genome duplication'));
+  const kv = el('dl', { class: 'kv' });
+  for (const code of ['S', 'A']) {
+    const ev = WGD_EVENT[code];
+    const called = code === 'S' ? !!d.s : !!d.a;
+    const mine = pairs.filter((p) => p.e === code);
+    kv.append(el('dt', {}, ev.name),
+      el('dd', {},
+        called ? el('strong', {}, 'retained duplicate') : el('span', { class: 'muted' }, 'not called'),
+        mine.length ? el('span', { class: 'muted' }, ` · ${mine.length} anchor partner${mine.length === 1 ? '' : 's'}`) : null,
+        el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' }, ev.when)));
+  }
+  wrap.append(kv);
+
+  if (pairs.length) {
+    const rows = pairs.map((p) => el('tr', {},
+      el('td', {}, el('a', { href: `#/gene/${p.id}`, class: 'mono' }, p.id)),
+      el('td', {}, WGD_EVENT[p.e].name),
+      el('td', { class: 'num' }, p.ks == null ? '—' : p.ks.toFixed(3)),
+      el('td', { class: 'num' }, p.ss == null ? '—' : p.ss.toFixed(1)),
+      el('td', { class: 'mono' }, p.cp),
+      el('td', { class: 'num mono' }, p.m),
+      el('td', { class: 'num' }, p.r == null
+        ? el('span', { class: 'muted', title: 'not comparable on the batch-corrected matrix' }, 'n/c')
+        : el('span', { class: 'mono' }, p.r.toFixed(2))),
+      el('td', { class: 'muted', style: 'font-size:11.5px' }, p.c ? 'dS conflict resolved' : '')));
+    wrap.append(el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
+      el('thead', {}, el('tr', {}, el('th', {}, 'Partner'), el('th', {}, 'Event'),
+        el('th', { class: 'num', title: 'synonymous divergence of the anchor pair' }, 'dS'),
+        el('th', { class: 'num', title: 'synonymous sites in the alignment; below 25 the dS is unreliable' }, 'Syn. sites'),
+        el('th', {}, 'Chromosomes'),
+        el('th', { class: 'num', title: 'collinear block (i-ADHoRe multiplicon) the anchor sits in' }, 'Block'),
+        el('th', { class: 'num', title: 'Pearson r on batch-corrected log2 expression, 652 samples' }, 'Expr r'),
+        el('th', {}, ''))),
+      el('tbody', {}, ...rows))));
+    wrap.append(el('p', { class: 'muted', style: 'font-size:11.5px;margin:6px 0 0' },
+      'Every anchor pair from the MS1 WGD analysis is listed, unfiltered. Gamma was a '
+      + 'triplication, so a gene can have two gamma partners; later salicoid duplication of '
+      + 'both copies gives more. Expression r uses the same basis as the other duplicate tables; '
+      + '"n/c" means not comparable, not uncorrelated.'));
+  }
+  // The gene-level call and the pair table come from two steps of the same curated pipeline and
+  // disagree on about 70 genes. Show both rather than overwrite either.
+  const mismatch = ['S', 'A'].filter((c) =>
+    (c === 'S' ? !!d.s : !!d.a) !== pairs.some((p) => p.e === c));
+  if (g.dup && mismatch.length) {
+    wrap.append(el('div', { class: 'warn' },
+      el('strong', {}, 'The call and the anchor table differ for this gene. '),
+      `For ${mismatch.map((c) => WGD_EVENT[c].name).join(' and ')}, the curated gene-level `
+      + 'call and the anchor-pair label disagree. The call comes first in the pipeline and '
+      + 'includes a dS conflict resolution applied per gene; the anchor label is kept as it '
+      + 'was published. Neither is overridden here.'));
+  }
+  return wrap;
+}
+
 function geneCard(g) {
   const para = g.para;
   const inArray = !!((g.syn || {}).flags || {}).ar;
-  if (!para && !inArray && !g.dup && !g.te) return null;
+  if (!para && !inArray && !g.dup && !g.te && !g.wgd) return null;
 
   const card = el('div', { class: 'card' },
     el('h2', {}, 'Duplication', el('span', { class: 'tag' }, 'MS1 duplication set')));
@@ -55,6 +126,8 @@ function geneCard(g) {
     }
     card.append(kv);
   }
+
+  if (g.dup || g.wgd) card.append(wgdSection(g));
 
   const td = g.td;
   if (td) {
@@ -136,7 +209,7 @@ function geneCard(g) {
             + 'matrix, so the pair is not comparable — this is not a correlation of zero' }, 'n/c')
         : el('span', { class: 'mono' }, p.r.toFixed(2))),
       el('td', { class: 'muted', style: 'font-size:11.5px' },
-        p.src + (p.sat ? ' · saturated' : ''))));
+        (PAIR_SRC[p.src] || p.src) + (p.sat ? ' · saturated' : ''))));
     card.append(
       el('h3', { style: 'font-size:13px;margin:14px 0 6px' }, `Paralog pairs (${para.length})`),
       el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
@@ -183,6 +256,32 @@ function dupClassChart(man) {
       el('span', { class: 'val' }, fmt(n)))));
 }
 
+function wgdOverview(man) {
+  // Counts come from the same curated class distribution as the chart above, split by event.
+  // A gene with both letters counts under both, and again under "both".
+  const dist = (man.layers && man.layers.dup_class_dist) || {};
+  let s = 0, a = 0, both = 0;
+  for (const [code, n] of Object.entries(dist)) {
+    if (code.includes('S')) s += n;
+    if (code.includes('A')) a += n;
+    if (code.includes('S') && code.includes('A')) both += n;
+  }
+  const link = (v, n, label) => el('a', { href: browseHref({ wgd: v }), class: 'stat',
+    style: 'text-decoration:none;color:inherit', title: `Browse these ${fmt(n)} genes` },
+    el('div', { class: 'n' }, fmt(n)), el('div', { class: 'l' }, label));
+  return el('div', { class: 'card' },
+    el('h2', {}, 'Whole-genome duplication events', el('span', { class: 'tag' }, 'click to browse')),
+    el('div', { class: 'stat-row' },
+      link('salicoid', s, 'salicoid WGD genes'),
+      link('gamma', a, 'gamma WGD genes'),
+      link('both', both, 'retained from both')),
+    el('dl', { class: 'kv' },
+      ...['S', 'A'].flatMap((c) => [el('dt', {}, WGD_EVENT[c].name), el('dd', {}, WGD_EVENT[c].when)])),
+    el('p', { class: 'muted', style: 'font-size:12.5px;margin:8px 0 0' },
+      'Events are not exclusive. Each gene page lists every WGD anchor partner with its dS, '
+      + 'block and expression correlation.'));
+}
+
 async function overview(man) {
   const d = man.duplication;
   if (!d) return el('div', { class: 'empty' }, 'Duplication data not built.');
@@ -203,13 +302,14 @@ async function overview(man) {
       el('h2', {}, 'Duplication class', el('span', { class: 'tag' }, 'genome-wide')),
       el('p', { class: 'muted', style: 'font-size:12.5px;margin:0 0 12px' },
         'From the MS1 duplication analysis, for all 63,960 genes. Codes concatenate: '
-        + 'S salicoid WGD, A ancient WGD, T tandem, D dispersed, C none detected.'),
+        + 'S salicoid WGD, A gamma WGD, T tandem, D dispersed, C none detected.'),
       dupClassChart(man)),
+    wgdOverview(man),
     el('div', { class: 'card' },
       el('h2', {}, 'What is not here'),
       el('ul', { style: 'margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2);line-height:1.6' },
         el('li', {}, el('strong', {}, 'The dS panel and the duplication class are different things. '),
-          'The class (salicoid / ancient WGD / tandem / dispersed) is genome-wide, from the MS1 '
+          'The class (salicoid WGD / gamma WGD / tandem / dispersed) is genome-wide, from the MS1 '
           + 'duplication analysis. The dS pairs below are the chapter\'s stratum-selected subset. '
           + 'Do not read a dS distribution from the latter as a property of the former.'),
         el('li', {}, el('strong', {}, 'No genome-wide dS landscape. '),
@@ -229,6 +329,8 @@ export default {
   geneCard,
   overview,
   filters: [
+    { id: 'wgd_event', label: 'WGD event', options: ['salicoid', 'gamma'],
+      test: (g, v) => !!(g.dup && (v === 'salicoid' ? g.dup.s : g.dup.a)) },
     { id: 'has_paralog', label: 'Has a scored paralog', options: ['yes', 'no'],
       test: (g, v) => (g.para && g.para.length ? 'yes' : 'no') === v },
   ],

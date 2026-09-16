@@ -493,7 +493,7 @@ def main():
                 vi("top", x.get("top")),
                 1 if r.get("allele") else 0,
                 1 if ann.get("at") else 0,
-                1 if syn.get("changed") else 0,
+                (1 if (r.get("dup") or {}).get("s") else 0) | (2 if (r.get("dup") or {}).get("a") else 0),
                 1 if flags.get("ar") else 0,
                 len(r.get("pres") or []),
                 1 if ps.get("amb") else 0,
