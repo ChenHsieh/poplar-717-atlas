@@ -62,6 +62,7 @@ def main():
         ks = r.get("ks") or {}
         ms = (r.get("prot") or {}).get("ms") or {}
         dup = r.get("dup") or {}
+        kar = r.get("aek") or {}
         rows.append([
             0 if hap == "hap1" else 1,
             idx(chrs, r.get("chr")),
@@ -91,11 +92,15 @@ def main():
              (int(round(ks["w"] * 1000)) if ks.get("w") is not None else -2)),
             # datasets (of 5) in which a peptide from this gene was identified at 1% FDR
             (ms.get("n") if ms.get("n") is not None else -1),
+            # ancestral karyotype (route C, exploratory) as one integer: chromosome*100 +
+            # gamma copy*10 + salicoid copy, a 0 digit where no copy was assigned, -1 = not placed.
+            # Copy numbers are ranks WITHIN one ancestral chromosome, so they are never split out.
+            (kar["c"] * 100 + kar.get("g", 0) * 10 + kar.get("s", 0) if kar.get("c") else -1),
         ])
 
     out = {
         "cols": ["hap", "chr", "cls", "ps", "tau", "top", "allele", "at", "wgd",
-                 "tandem", "npres", "amb", "xin", "w", "ms"],
+                 "tandem", "npres", "amb", "xin", "w", "ms", "aek"],
         "vocab": {"chr": chrs, "cls": clss, "top": tops, "xin": XIN_TISSUES},
         "rows": rows,
     }
@@ -110,6 +115,8 @@ def main():
           f"peptide-detected: {sum(1 for r in rows if r[14] > 0)}")
     print(f"  expressed (>{XIN_MIN_TPM} TPM) in at least one tissue: "
           f"{sum(1 for r in rows if r[12])}   in none: {sum(1 for r in rows if not r[12])}")
+    print(f"  ancestral karyotype placed, HAP1: {sum(1 for r in rows if r[0] == 0 and r[15] >= 0)}   "
+          f"HAP2: {sum(1 for r in rows if r[0] == 1 and r[15] >= 0)}")
 
     man_path = f"{data}/meta/manifest.json"
     man = json.load(open(man_path))

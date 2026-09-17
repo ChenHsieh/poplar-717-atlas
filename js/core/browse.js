@@ -47,6 +47,18 @@ const FILTERS = [
     options: ['salicoid', 'gamma', 'both', 'either', 'neither'],
     test: (r, v) => ({ salicoid: (r.wgd & 1) > 0, gamma: (r.wgd & 2) > 0, both: r.wgd === 3,
                        either: r.wgd > 0, neither: r.wgd === 0 })[v] },
+  // Exploratory (route C). A gamma copy number is a rank WITHIN one ancestral chromosome, so the
+  // choice is a chromosome or one chromosome's copy; a bare "gamma copy 2" across all seven would
+  // pool unrelated copies. "not placed" includes the HAP1 unplaced-scaffold genes, never assessed.
+  { id: 'aek', label: 'Ancestral chromosome (exploratory)', kind: 'select',
+    options: [1, 2, 3, 4, 5, 6, 7].flatMap((c) => [`AEK${c}`,
+      ...[1, 2, 3].map((k) => `AEK${c}_gamma_copy_${k}`)]).concat('not_placed'),
+    test: (r, v) => {
+      if (v === 'not_placed') return r.aek < 0;
+      const m = /^AEK([1-7])(?:_gamma_copy_([1-3]))?$/.exec(v);
+      return !!m && r.aek >= 0 && Math.floor(r.aek / 100) === +m[1]
+        && (!m[2] || Math.floor(r.aek / 10) % 10 === +m[2]);
+    } },
   // w is stored as an integer per-mille. -1 means no reciprocal-best P. trichocarpa ortholog
   // and -2 means a pair exists but omega could not be estimated; both are real states, so a
   // threshold filter must exclude them rather than treat them as 0.
@@ -134,17 +146,22 @@ function download(name, text) {
 function exportTSV() {
   const head = ['gene_id', 'haplotype', 'chr', 'synteny_class', 'phylostratum', 'tau',
                 'peak_tissue', 'genomes_in_orthogroup', 'has_allele', 'in_tandem_array',
-                'salicoid_wgd', 'gamma_wgd', 'omega_vs_ptrichocarpa', 'ms_datasets_detected_of_5'];
+                'salicoid_wgd', 'gamma_wgd', 'omega_vs_ptrichocarpa', 'ms_datasets_detected_of_5',
+                'ancestral_chromosome_exploratory', 'gamma_copy', 'salicoid_copy'];
   const lines = [head.join('\t')];
   for (const i of state.matches) {
     const r = state.rows[i];
+    // named states rather than blanks: "not placed" and "no copy assigned" are results
+    const copy = (d) => (r.aek < 0 ? '' : (d || 'not_assigned'));
     lines.push([state.ids[i], r.hap, r.chr ?? '', r.cls ?? '', r.ps ?? '',
       r.tau == null ? '' : r.tau.toFixed(3), r.top ?? '', r.npres ?? '',
       r.allele ? 'yes' : 'no', r.tandem ? 'yes' : 'no',
       r.wgd & 1 ? 'yes' : 'no', r.wgd & 2 ? 'yes' : 'no',
       // an empty cell would read as "not measured"; these are measured absences
       r.w >= 0 ? (r.w / 1000).toFixed(4) : (r.w === -1 ? 'no_ortholog' : 'not_estimable'),
-      r.ms >= 0 ? r.ms : ''].join('\t'));
+      r.ms >= 0 ? r.ms : '',
+      r.aek >= 0 ? `AEK${Math.floor(r.aek / 100)}` : 'not_placed',
+      copy(Math.floor(r.aek / 10) % 10), copy(r.aek % 10)].join('\t'));
   }
   download(`717atlas_selection_${state.matches.length}genes.tsv`, lines.join('\n'));
 }

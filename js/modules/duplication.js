@@ -92,10 +92,92 @@ function wgdSection(g) {
   return wrap;
 }
 
+// Ancestral eudicot karyotype, route C. EXPLORATORY, and labelled so wherever it renders. Copy
+// numbers are Wang et al.'s completeness ranks within one ancestral chromosome, never subgenomes,
+// and an empty slot means no collinear anchor, never a proven loss.
+const AEK_DOI = '10.1186/s12915-022-01420-1';
+
+function slotTable(g, chrom, a) {
+  const hap = g.hap === 'hap1' ? 'HAP1' : 'HAP2';
+  const cell = (gc, sc) => {
+    const ids = (a.sl.find(([x, y]) => x === gc && y === sc) || [])[2] || [];
+    return el('td', {}, ids.length
+      ? ids.map((id, i) => el('div', { style: i ? 'margin-top:2px' : null }, id === g.id
+          ? el('strong', { class: 'mono' }, id)
+          : el('a', { href: `#/gene/${id}`, class: 'mono' }, id)))
+      : el('span', { class: 'muted' }, 'lost or not detected'));
+  };
+  return el('div', { style: 'margin-top:10px' },
+    el('p', { style: 'font-size:12.5px;margin:0 0 4px' }, 'This gene is a direct collinear anchor of ancestral gene ',
+      el('span', { class: 'mono' }, a.id), ` (AEK${chrom}). Its ${hap} descendants that are collinear anchors, by slot:`),
+    el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
+      el('thead', {}, el('tr', {}, el('th', {}, 'Gamma copy'),
+        el('th', {}, 'Salicoid copy 1'), el('th', {}, 'Salicoid copy 2'))),
+      el('tbody', {}, ...[1, 2, 3].map((gc) =>
+        el('tr', {}, el('td', { class: 'mono' }, String(gc)), cell(gc, 1), cell(gc, 2)))))));
+}
+
+function karyotypeSection(g) {
+  const k = g.aek;
+  const note = (t) => el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' }, t);
+  const wrap = el('div', { style: 'margin-top:14px' },
+    el('h3', { style: 'font-size:13px;margin:0 0 6px;display:flex;align-items:center;gap:8px' },
+      'Ancestral karyotype', el('span', { class: 'badge', style: 'font-size:11px;padding:0 6px' }, 'exploratory')));
+  const kv = el('dl', { class: 'kv' });
+  if (!k) {
+    // No record: a chromosome gene was assessed and not placed; a scaffold gene was never assessed.
+    const onChromosome = /^Chr\d+$/.test(g.chr || '');
+    kv.append(el('dt', {}, 'Ancestral chromosome'), el('dd', {},
+      onChromosome ? 'not placed' : 'not assessed',
+      note(onChromosome
+        ? 'No collinear block links this gene to the ancestral karyotype or to P. trichocarpa.'
+        : 'The placement covers genes on the 19 chromosomes; this gene is on an unplaced scaffold.')));
+  } else {
+    kv.append(el('dt', {}, 'Ancestral chromosome'), el('dd', {}, el('strong', {}, `AEK${k.c}`),
+      note(k.b ? 'Inside an AEK collinear block.'
+        : 'Inherited from the nearest collinear anchors shared with P. trichocarpa; the gene is '
+          + 'not inside an AEK block itself.')));
+    if (k.g) {
+      kv.append(
+        el('dt', {}, 'Gamma copy'), el('dd', {}, el('strong', {}, String(k.g)),
+          el('span', { class: 'muted' }, ` of AEK${k.c}`)),
+        el('dt', {}, 'Salicoid copy'), el('dd', {}, el('strong', {}, String(k.s)),
+          el('span', { class: 'muted' }, ` within gamma copy ${k.g}`)),
+        el('dt', {}, 'Label support'), el('dd', {}, `${Math.round(k.sp * 100)}%`,
+          el('span', { class: 'muted' }, ' of the 10 nearest collinear anchors shared with P. trichocarpa '
+            + 'agree on this label')));
+    } else {
+      kv.append(el('dt', {}, 'Gamma and salicoid copy'), el('dd', {}, 'not assigned', note(k.x
+        ? 'The AEK block and the P. trichocarpa naming point to different ancestral chromosomes.'
+        : 'No collinear block shared with P. trichocarpa names a copy here.')));
+    }
+  }
+  wrap.append(kv);
+  const anchors = (k && k.an) || [];
+  for (const a of anchors) wrap.append(slotTable(g, k.c, a));
+  if (anchors.length) {
+    wrap.append(el('p', { class: 'muted', style: 'font-size:11.5px;margin:6px 0 0' },
+      '"Lost or not detected" means no collinear anchor in this haplotype carries that slot. '
+      + 'It is not evidence that the gene was lost.'));
+  }
+  wrap.append(el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' },
+    'Exploratory. AEK1 to AEK7 are the seven chromosomes of the ancestral eudicot karyotype of '
+    + 'Wang et al. 2022, BMC Biology 20:216, ',
+    el('a', { href: `https://doi.org/${AEK_DOI}`, target: '_blank', rel: 'noopener' }, `doi:${AEK_DOI}`),
+    '. The ancestral chromosome comes from collinearity between the 717 genome and the ancestral '
+    + 'karyotype genes (for a gene outside those blocks, from its nearest anchors shared with '
+    + 'P. trichocarpa). Gamma and salicoid copy names come from collinear blocks shared with '
+    + 'P. trichocarpa v3.1, using Wang et al.\'s published P. trichocarpa painting. Gamma copy (1 to 3) '
+    + 'and salicoid copy (1 to 2) numbers are completeness ranks from Wang et al.\'s karyotype '
+    + 'projection, not subgenomes. A copy says which ancestral copy the gene descends from, not '
+    + 'whether its duplicate survived; that is the WGD call above.'));
+  return wrap;
+}
+
 function geneCard(g) {
   const para = g.para;
   const inArray = !!((g.syn || {}).flags || {}).ar;
-  if (!para && !inArray && !g.dup && !g.te && !g.wgd) return null;
+  if (!para && !inArray && !g.dup && !g.te && !g.wgd && !g.aek) return null;
 
   const card = el('div', { class: 'card' },
     el('h2', {}, 'Duplication', el('span', { class: 'tag' }, 'MS1 duplication set')));
@@ -128,6 +210,7 @@ function geneCard(g) {
   }
 
   if (g.dup || g.wgd) card.append(wgdSection(g));
+  card.append(karyotypeSection(g));
 
   const td = g.td;
   if (td) {
@@ -331,6 +414,9 @@ export default {
   filters: [
     { id: 'wgd_event', label: 'WGD event', options: ['salicoid', 'gamma'],
       test: (g, v) => !!(g.dup && (v === 'salicoid' ? g.dup.s : g.dup.a)) },
+    { id: 'aek_chromosome', label: 'Ancestral chromosome (exploratory)',
+      options: ['AEK1', 'AEK2', 'AEK3', 'AEK4', 'AEK5', 'AEK6', 'AEK7'],
+      test: (g, v) => !!(g.aek && `AEK${g.aek.c}` === v) },
     { id: 'has_paralog', label: 'Has a scored paralog', options: ['yes', 'no'],
       test: (g, v) => (g.para && g.para.length ? 'yes' : 'no') === v },
   ],

@@ -9,6 +9,38 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.10.0 — 2026-09-16 — Where each gene sits in the ancestral eudicot karyotype
+
+The duplication card could say a gene is a retained gamma or salicoid duplicate, but not which
+ancestral chromosome it descends from or which copy of either event it is. It now does, in a block
+marked **exploratory**: the ancestral chromosome (AEK1 to AEK7, the ancestral eudicot karyotype of
+Wang et al. 2022, BMC Biology 20:216), the gamma copy (1 to 3), the salicoid copy (1 to 2), the share
+of the 10 nearest collinear anchors that agree on that label, and whether the gene lies inside an
+AEK collinear block or inherits its chromosome from neighbouring anchors. On a gene that is a direct
+collinear anchor of an ancestral gene, a slot table lists that ancestral gene's descendants in the
+same haplotype, 3 gamma copies by 2 salicoid copies.
+
+- Source: the MS1 gamma branch, painting v3 (route C). `scripts/make_karyotype_source.py` copies
+  it to `sources/karyotype_route_c.tsv.gz` and `sources/karyotype_route_c_anchors.tsv.gz` with a
+  provenance sidecar; `scripts/patch_karyotype.py` writes it onto shards as `aek` and is a
+  registered `build_all.sh` stage.
+- Gated before anything is written: route C re-derived from its own helper columns for every gene;
+  coverage equal to the owning analysis's route-agreement table; slot occupancy rebuilt from the
+  anchors equal to its published both-copies table, cell for cell (10,070 / 10,046 occupied
+  ancestral-gene gamma copies, 4,276 / 4,351 of them holding both salicoid copies).
+- Coverage, HAP1 / HAP2: a gamma and salicoid copy on 31,496 of 32,006 / 31,217 of 31,823 genes;
+  26,582 / 26,731 inside an AEK block; 5,330 / 4,965 chromosome labels inherited from neighbouring
+  anchors; 410 / 479 get no copy because the AEK block and the P. trichocarpa naming name different
+  ancestral chromosomes (and 6 HAP1 genes have no P. trichocarpa block to name one); 94 / 127 are
+  not placed. The 131 HAP1 unplaced-scaffold genes were not assessed, and their pages say so.
+  14,727 / 14,747 genes are direct anchors of 8,199 / 8,206 ancestral genes.
+- Copy numbers are Wang et al.'s completeness ranks within one ancestral chromosome, not subgenomes,
+  and the card says so. An empty slot reads "lost or not detected", with a note that it means no
+  collinear anchor, not a proven loss.
+- Browse gains an **Ancestral chromosome (exploratory)** filter, offering a chromosome or one
+  chromosome's gamma copy (never a copy number pooled across chromosomes), and three export columns.
+  The facet index grows by one column, 2.42 MB to 2.68 MB raw.
+
 ## 0.9.0 — 2026-09-16 — Which whole-genome duplication, and with whom
 
 The duplication card said "salicoid WGD" or "ancient WGD" and stopped there. It now names both

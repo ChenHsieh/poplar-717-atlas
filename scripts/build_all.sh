@@ -44,6 +44,7 @@ STAGES=(
   "repo|patch_kaks.py|Ka/Ks vs P. trichocarpa"
   "repo|build_cre.py|promoter/CRE layer"
   "repo|patch_chromatin.py|GSE128434 chromatin at the P. trichocarpa ortholog (after build_crossspecies)"
+  "repo|patch_karyotype.py|ancestral eudicot karyotype, route C, exploratory (before build_facets, which indexes it)"
   "onedrive|build_combat.py|ComBat-seq view (after build_expression)"
   "onedrive|build_contrasts.py|contrast index (after build_expression)"
   "onedrive|build_locus.py|locus tiles + genome map"
@@ -54,7 +55,8 @@ STAGES=(
 # building data/ -- the committed source file is the artifact, exactly as data/ is. Run them
 # by hand on Sapelo2 when the upstream analysis produces a new result, then run the matching
 # patch_*.py stage below. Both refuse to write unless they reproduce their owning analysis's
-# published summary table.
+# published summary table. make_karyotype_source.py is the same kind of script, except that it
+# reads the OneDrive tree, so it runs on the Mac; its patch stage, patch_karyotype.py, is above.
 #
 # DELIBERATELY NOT A STAGE: patch_leaf_tissue_analysis.py. It is a one-time correction to
 # already-shipped data; build_expression.py is fixed at source, so a real rebuild already

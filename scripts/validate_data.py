@@ -364,6 +364,58 @@ def main():
     check("no embargoed LSG candidate label reaches any shard", not label_bad,
           f"{len(label_bad)} records, e.g. {label_bad[:3]}" if label_bad else "")
 
+    # ---- ancestral eudicot karyotype, route C (exploratory) --------------------------------
+    # Counts are the owning analysis's published coverage, per haplotype and never summed, which
+    # make_karyotype_source.py already gates on. Checked again here because the shards are what
+    # ships: a patcher run against a changed source, or a stale manifest block, would otherwise
+    # pass silently.
+    KAR_WANT = {"hap1": {"placed": 31912, "copy_assigned": 31496, "inside_aek_block": 26582, "conflict_no_copy": 410},
+                "hap2": {"placed": 31696, "copy_assigned": 31217, "inside_aek_block": 26731, "conflict_no_copy": 479}}
+    kar = {h: Counter() for h in KAR_WANT}
+    kar_bad, kar_tables, kar_slot_bad = [], {}, []
+    for gid, (hap, _, rec) in genes.items():
+        k = rec.get("aek")
+        if k is None:
+            continue
+        kc = kar[hap]
+        kc["placed"] += 1
+        kc["copy_assigned"] += "g" in k
+        kc["inside_aek_block"] += k.get("b") == 1
+        kc["conflict_no_copy"] += k.get("x") == 1
+        kc["direct_anchors"] += "an" in k
+        copy = "g" in k
+        if (not rec.get("chr", "").startswith("Chr") or k.get("c") not in range(1, 8)
+                or k.get("b") not in (0, 1) or not (copy == ("s" in k) == ("sp" in k))
+                or (copy and (k["g"] not in (1, 2, 3) or k["s"] not in (1, 2) or not 0 < k["sp"] <= 1 or "x" in k))):
+            kar_bad.append(gid)
+        for a in k.get("an", []):
+            # every anchor of one ancestral gene must carry the same table, and sit in its own slot
+            if kar_tables.setdefault((hap, a["id"]), a["sl"]) != a["sl"]:
+                kar_slot_bad.append((gid, a["id"], "tables differ"))
+            if not any(gid in ids and (sg, ss) == (k.get("g"), k.get("s")) for sg, ss, ids in a["sl"]):
+                kar_slot_bad.append((gid, a["id"], "not in its own slot"))
+    # and every gene a table names must be a real gene of the same haplotype that names it back
+    for (hap, aid), sl in kar_tables.items():
+        for sg, ss, ids in sl:
+            for x in ids:
+                xk = (genes[x][2].get("aek") or {}) if x in genes else {}
+                if (x not in genes or genes[x][0] != hap or (xk.get("g"), xk.get("s")) != (sg, ss)
+                        or aid not in [a["id"] for a in xk.get("an", [])]):
+                    kar_slot_bad.append((x, aid, "listed but not reciprocal"))
+    check("ancestral karyotype counts match the route C coverage, per haplotype",
+          all(all(kar[h][f] == n for f, n in KAR_WANT[h].items()) for h in KAR_WANT),
+          "; ".join(f"{h}: {dict(kar[h])}" for h in KAR_WANT))
+    man_kar = man.get("karyotype") or {}
+    check("manifest karyotype block matches the shards",
+          all(man_kar.get(h, {}).get(f) == kar[h][f]
+              for h in KAR_WANT for f in ("placed", "copy_assigned", "inside_aek_block", "conflict_no_copy", "direct_anchors")),
+          f"manifest {[{f: man_kar.get(h, {}).get(f) for f in KAR_WANT[h]} for h in KAR_WANT]}")
+    check("karyotype values in range, no copy on a conflict gene, none on an unplaced scaffold", not kar_bad,
+          f"{len(kar_bad)} records, e.g. {kar_bad[:3]}" if kar_bad else "")
+    check("every ancestral-gene slot table is shared and reciprocal, one haplotype at a time", not kar_slot_bad,
+          f"{len(kar_slot_bad)} problems, e.g. {kar_slot_bad[:3]}" if kar_slot_bad
+          else f"{len(kar_tables)} ancestral-gene tables")
+
     # ps.frz is the withdrawn call, and exists only where the two panels disagree.
     frz = [gid for gid, (_, _, rec) in genes.items() if (rec.get("ps") or {}).get("frz")]
     frz_same = [gid for gid in frz
@@ -504,6 +556,8 @@ def main():
                 (-1 if ks.get("no") else
                  (int(round(ks["w"] * 1000)) if ks.get("w") is not None else -2)),
                 (ms.get("n") if ms.get("n") is not None else -1),
+                (lambda k: k["c"] * 100 + k.get("g", 0) * 10 + k.get("s", 0) if k.get("c") else -1)(
+                    r.get("aek") or {}),
             ]
 
         # zip() truncates to the shorter list, so a column added to build_facets.py without

@@ -145,7 +145,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.9.0",
+ "data_version": "0.10.0",
  "duplicate_coexpr": {
   "basis": "Pearson r on log2(ComBat-corrected TPM + 1) over 652 samples -- the same matrix the neighbour co-expression (nb) uses, because a 652-sample correlation spans 28 studies and is therefore a cross-study comparison.",
   "coverage": "A pair needs BOTH partners in the ComBat matrix (59,599 of 63,960 genes), so 7,707 of 32,333 duplicate pairs have no value. Absence means 'not comparable', not 'uncorrelated'.",
@@ -231,7 +231,7 @@
   }
  },
  "facets": {
-  "bytes": 2421049,
+  "bytes": 2676543,
   "cols": [
    "hap",
    "chr",
@@ -247,7 +247,8 @@
    "amb",
    "xin",
    "w",
-   "ms"
+   "ms",
+   "aek"
   ],
   "n_rows": 63960
  },
@@ -433,6 +434,34 @@
   "selection_bias": "Pairing rate falls with youth (87.6% ancient, 39.1% PS18, ~0% PS19), so the young-gene omega is measured on the conserved end of its stratum and if anything understates the relaxation.",
   "target": "Populus trichocarpa, reciprocal-best-hit ortholog",
   "why_not_yn00": "NG86 and YN00 omega correlate at r = 0.07 to 0.36 PER GENE on these alignments while their class medians agree to within 0.06 -- median dS is about 0.04, too close for YN00 to be stable gene by gene. NG86 is the one with external support: r = 0.937 against the atlas's independently derived allele omega, against YN00's 0.083. yn00_omega ships only to show the spread, never as a per-gene answer."
+ },
+ "karyotype": {
+  "copy_numbers": "gamma copy 1-3 and salicoid copy 1-2 are completeness ranks within one ancestral chromosome from Wang et al.'s karyotype projection, not subgenomes",
+  "hap1": {
+   "ancestral_genes_with_an_anchor": 8199,
+   "assessed": 32006,
+   "conflict_no_copy": 410,
+   "copy_assigned": 31496,
+   "direct_anchors": 14727,
+   "inherited_from_neighbouring_anchors": 5330,
+   "inside_aek_block": 26582,
+   "not_placed": 94,
+   "placed": 31912
+  },
+  "hap2": {
+   "ancestral_genes_with_an_anchor": 8206,
+   "assessed": 31823,
+   "conflict_no_copy": 479,
+   "copy_assigned": 31217,
+   "direct_anchors": 14747,
+   "inherited_from_neighbouring_anchors": 4965,
+   "inside_aek_block": 26731,
+   "not_placed": 127,
+   "placed": 31696
+  },
+  "reference": "Wang et al. 2022, BMC Biology 20:216, doi:10.1186/s12915-022-01420-1",
+  "source": "sources/karyotype_route_c.tsv.gz and sources/karyotype_route_c_anchors.tsv.gz (route C)",
+  "status": "exploratory; the gene-level WGD events remain the duplication call"
  },
  "layers": {
   "applied": {

@@ -735,6 +735,50 @@ await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
 await check('gene-duplicate-coexpr', '#/gene/PtXaTreH.01G330600',
   { expect: ['Expr r', '0.29', 'n/c', 'Other members', 'not a divergence model'], wait: 1000 });
 
+// Ancestral karyotype (route C, exploratory). One case per branch, because a wrong-branch bug
+// hides behind whichever branch renders: a direct anchor with its slot table, the same ancestral
+// gene seen from HAP2, a conflict gene that must NOT show a copy, an unplaced chromosome gene, and
+// an unplaced-scaffold gene that was never assessed. The slot wording is asserted in full, since
+// "lost or not detected" must never read as a proven loss.
+await check('gene-karyotype-anchor', '#/gene/PtXaTreH.01G144500',
+  { expect: ['Ancestral karyotype', 'exploratory', 'AEK1', 'Gamma copy', 'Salicoid copy',
+             'Label support', '100%', 'eud1g01445', 'Its HAP1 descendants', 'PtXaTreH.03G046700',
+             'lost or not detected', 'not evidence that the gene was lost', 'not subgenomes',
+             'doi:10.1186/s12915-022-01420-1'], wait: 1000 });
+await check('gene-karyotype-hap2', '#/gene/PtXaAlbH.01G147000',
+  { expect: ['Ancestral karyotype', 'AEK1', 'eud1g01445', 'Its HAP2 descendants',
+             'PtXaAlbH.03G042800'], wait: 1000 });
+await check('gene-karyotype-conflict', '#/gene/PtXaTreH.01G040500',
+  { expect: ['Ancestral karyotype', 'AEK5', 'not assigned', 'different ancestral chromosomes'], wait: 1000 });
+await check('gene-karyotype-unplaced', '#/gene/PtXaTreH.02G000100',
+  { expect: ['Ancestral karyotype', 'not placed', 'No collinear block links this gene'], wait: 1000 });
+await check('gene-karyotype-scaffold', '#/gene/PtXaTreH.T006000',
+  { expect: ['Ancestral karyotype', 'not assessed', 'unplaced scaffold'], wait: 1000 });
+// HAP1 and HAP2 are never pooled: the HAP2 page's slot table must name no HAP1 gene, even though
+// the same ancestral gene has HAP1 descendants and the page links the HAP1 allele elsewhere.
+{
+  const kp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const kerrs = [];
+  kp.on('pageerror', (e) => kerrs.push(e.message));
+  kp.on('console', (m) => { if (m.type() === 'error') kerrs.push('console: ' + m.text()); });
+  await kp.goto(base + '/#/gene/PtXaAlbH.01G147000', { waitUntil: 'networkidle' });
+  await kp.waitForTimeout(1000);
+  const sec = await kp.evaluate(() => {
+    const h = [...document.querySelectorAll('h3')].find((n) => n.textContent.startsWith('Ancestral karyotype'));
+    return h ? h.parentElement.innerText : '';
+  });
+  const ok = !kerrs.length && sec.includes('PtXaAlbH.03G042800') && !/PtXaTreH\./.test(sec);
+  if (!ok) failures++;
+  console.log(`\n### karyotype:haplotypes-not-pooled  ${ok ? 'OK' : 'FAIL'}`);
+  kerrs.forEach((e) => console.log('   !! ' + e));
+  await kp.close();
+}
+// The Browse filter, deep-linked, both haplotypes and then one: 2,167 = 1,097 HAP1 + 1,070 HAP2.
+await check('browse-karyotype', '#/browse?aek=AEK1_gamma_copy_1',
+  { expect: ['Ancestral chromosome (exploratory)', 'AEK1 gamma copy 1', '2,167', 'Clear all'], wait: 1400 });
+await check('browse-karyotype-hap2', '#/browse?aek=AEK1_gamma_copy_1&hap=hap2',
+  { expect: ['AEK1 gamma copy 1', '1,070', 'Clear all 2'], wait: 1400 });
+
 // The chromatin card's "Show the signal profile" button must actually fetch and draw the
 // four-mark panel, not just sit there -- chipRow and metricNote were both built and wired but
 // never mounted earlier in this project, so only a real click-through catches a dead button.
