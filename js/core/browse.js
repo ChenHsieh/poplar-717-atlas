@@ -45,11 +45,21 @@ const FILTERS = [
   { id: 'tandem', label: 'In curated tandem array', kind: 'select', options: ['yes', 'no'],
     test: (r, v) => (r.tandem ? 'yes' : 'no') === v },
   // Events are not exclusive: a gene retained from both the gamma triplication and the salicoid
-  // WGD matches either choice. The call is the curated gene-level letter, not the pair table.
-  { id: 'wgd', label: 'WGD event', kind: 'select',
+  // WGD matches either choice.
+  //
+  // TWO calls, and the default is the one the current class figures are drawn from. Browsing
+  // on v9 while holding a route C Venn gave 191 for "HAP1 + tandem + both" against the
+  // figure's 229, which reads as a broken filter rather than as two different calls. The
+  // canonical v9 call stays selectable directly below, so the published numbers remain
+  // reproducible here. Neither is a correction of the other in this UI -- see the gene page.
+  { id: 'wgd', label: 'WGD event (route C call)', kind: 'select',
     options: ['salicoid', 'gamma', 'both', 'either', 'neither'],
     test: (r, v) => ({ salicoid: (r.wgd & 1) > 0, gamma: (r.wgd & 2) > 0, both: r.wgd === 3,
                        either: r.wgd > 0, neither: r.wgd === 0 })[v] },
+  { id: 'wgd9', label: 'WGD event (canonical v9)', kind: 'select',
+    options: ['salicoid', 'gamma', 'both', 'either', 'neither'],
+    test: (r, v) => ({ salicoid: (r.wgd9 & 1) > 0, gamma: (r.wgd9 & 2) > 0, both: r.wgd9 === 3,
+                       either: r.wgd9 > 0, neither: r.wgd9 === 0 })[v] },
   // Exploratory (route C). A gamma copy number is a rank WITHIN one ancestral chromosome, so the
   // choice is a chromosome or one chromosome's copy; a bare "gamma copy 2" across all seven would
   // pool unrelated copies. "not placed" includes the HAP1 unplaced-scaffold genes, never assessed.
@@ -355,10 +365,19 @@ export async function browseView() {
   // Seed from the URL so an overview chart can link straight to a filtered view, and so a
   // filtered view can be bookmarked or pasted to someone else. Unknown keys are ignored
   // rather than erroring: a stale link should degrade to a wider result, never to a crash.
+  //
+  // REPLACE the filter set, never merge into it. `state` is a module-level singleton that
+  // survives navigation, and this loop used to only ever ADD keys -- so going from
+  // ?hap=hap1&tandem=yes to ?tandem=yes silently kept hap1 and returned half the genes, and
+  // every filter a reader had ever followed accumulated for the rest of the session. It looks
+  // exactly like a miscounting filter, which is how it was first reported. The URL is the
+  // whole truth about what is filtered; anything not in it is not active.
   {
     const q = query();
     const known = new Set(FILTERS.map((f) => f.id));
-    for (const [k, v] of Object.entries(q)) if (known.has(k)) state.values[k] = v;
+    state.values = Object.fromEntries(
+      Object.entries(q).filter(([k]) => known.has(k)));
+    state.page = 0;
   }
   state.ids = ids;
   applyFilters();

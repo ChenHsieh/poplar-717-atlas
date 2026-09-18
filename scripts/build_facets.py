@@ -73,8 +73,19 @@ def main():
             idx(tops, x.get("top")),
             1 if r.get("allele") else 0,
             1 if ann.get("at") else 0,
-            # WGD events from the curated gene-level letters, non-exclusive: bit 0 salicoid,
-            # bit 1 gamma. A gene can carry both (and tandem/dispersed besides).
+            # WGD events, non-exclusive: bit 0 salicoid, bit 1 gamma. A gene can carry both
+            # (and tandem/dispersed besides). TWO columns, because two calls exist and a
+            # reader comparing Browse against a figure needs to know which one they are on:
+            #   wgd  = the route C combined Ks + topology call -- what the CURRENT class
+            #          figures are drawn from, so Browse matches the Venn a reader is holding.
+            #   wgd9 = the canonical master v9 letters, kept selectable so the published
+            #          v8/v9 numbers stay reproducible here.
+            # Route C covers exactly the 32,170 genes that carry a v9 call and adds none, so
+            # nothing is lost by leading with it except the 142 genes it deliberately sets
+            # aside on split-evidence pairs.
+            ((1 if (dup.get("cc") or {}).get("s") else 0)
+             | (2 if (dup.get("cc") or {}).get("a") else 0)) if dup.get("cc")
+            else ((1 if dup.get("s") else 0) | (2 if dup.get("a") else 0)),
             (1 if dup.get("s") else 0) | (2 if dup.get("a") else 0),
             # THE CURATED UNION TANDEM SET (dup.td), not syn.flags.ar. `ar` is GENESPACE's
             # tandem PLACEMENT and covers 6,804 genes against the canonical 13,048: 6,865
@@ -106,7 +117,7 @@ def main():
         ])
 
     out = {
-        "cols": ["hap", "chr", "cls", "ps", "tau", "top", "allele", "at", "wgd",
+        "cols": ["hap", "chr", "cls", "ps", "tau", "top", "allele", "at", "wgd", "wgd9",
                  "tandem", "npres", "amb", "xin", "w", "ms", "aek"],
         "vocab": {"chr": chrs, "cls": clss, "top": tops, "xin": XIN_TISSUES},
         "rows": rows,
@@ -117,13 +128,22 @@ def main():
     size = os.path.getsize(p)
     print(f"facets: {len(rows)} rows x {len(out['cols'])} cols -> {size/1e6:.2f} MB raw")
     print(f"  chr vocab {len(chrs)}  class vocab {len(clss)}  tissue vocab {len(tops)}")
-    print(f"  with tau: {sum(1 for r in rows if r[4] >= 0)}   in LSG pool: {sum(1 for r in rows if r[3] >= 18)}")
-    print(f"  with omega: {sum(1 for r in rows if r[13] >= 0)}   "
-          f"peptide-detected: {sum(1 for r in rows if r[14] > 0)}")
+    # Index by NAME, not position. These were hard-coded offsets, and inserting one column
+    # (wgd9) silently shifted every later one: the log claimed 44 genes expressed in at least
+    # one tissue instead of 53,704, and a karyotype coverage that counted omega. Nothing was
+    # persisted -- the manifest stores only n_rows/cols/bytes -- but a build log that reports
+    # confidently wrong numbers is exactly how a real defect gets waved through.
+    C = {name: i for i, name in enumerate(out["cols"])}
+    n = lambda name, pred: sum(1 for r in rows if pred(r[C[name]]))
+    print(f"  with tau: {n('tau', lambda v: v >= 0)}   in LSG pool: {n('ps', lambda v: v >= 18)}")
+    print(f"  with omega: {n('w', lambda v: v >= 0)}   "
+          f"peptide-detected: {n('ms', lambda v: v > 0)}")
     print(f"  expressed (>{XIN_MIN_TPM} TPM) in at least one tissue: "
-          f"{sum(1 for r in rows if r[12])}   in none: {sum(1 for r in rows if not r[12])}")
-    print(f"  ancestral karyotype placed, HAP1: {sum(1 for r in rows if r[0] == 0 and r[15] >= 0)}   "
-          f"HAP2: {sum(1 for r in rows if r[0] == 1 and r[15] >= 0)}")
+          f"{n('xin', bool)}   in none: {n('xin', lambda v: not v)}")
+    print(f"  WGD called, route C: {n('wgd', lambda v: v > 0)}   canonical v9: {n('wgd9', lambda v: v > 0)}")
+    print(f"  ancestral karyotype placed, HAP1: "
+          f"{sum(1 for r in rows if r[C['hap']] == 0 and r[C['aek']] >= 0)}   "
+          f"HAP2: {sum(1 for r in rows if r[C['hap']] == 1 and r[C['aek']] >= 0)}")
 
     man_path = f"{data}/meta/manifest.json"
     man = json.load(open(man_path))

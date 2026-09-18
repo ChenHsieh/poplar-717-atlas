@@ -630,6 +630,13 @@ def main():
                 vi("top", x.get("top")),
                 1 if r.get("allele") else 0,
                 1 if ann.get("at") else 0,
+                # must track build_facets.py: wgd = route C combined call (falling back to v9
+                # where route C never scored the gene), wgd9 = canonical v9.
+                (((1 if ((r.get("dup") or {}).get("cc") or {}).get("s") else 0)
+                  | (2 if ((r.get("dup") or {}).get("cc") or {}).get("a") else 0))
+                 if (r.get("dup") or {}).get("cc")
+                 else ((1 if (r.get("dup") or {}).get("s") else 0)
+                       | (2 if (r.get("dup") or {}).get("a") else 0))),
                 (1 if (r.get("dup") or {}).get("s") else 0) | (2 if (r.get("dup") or {}).get("a") else 0),
                 # must track build_facets.py: the CURATED union set, not GENESPACE's `ar`
                 1 if (r.get("dup") or {}).get("td") else 0,

@@ -530,10 +530,15 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   bp.on('console', (m) => { if (m.type() === 'error') berrs.push('console: ' + m.text()); });
   const want = [
     ['tandem=yes', 13048, 'curated union tandem set'],
-    ['tandem=yes&wgd=both', 385, 'tandem AND both WGDs (Venn S n A n T, both haplotypes)'],
-    ['tandem=yes&wgd=salicoid', 1647, 'tandem AND salicoid'],
-    ['tandem=yes&wgd=gamma', 955, 'tandem AND gamma'],
-    ['wgd=neither&tandem=no', 20959, 'neither WGD nor curated tandem'],
+    // route C is the default WGD call, so these must equal the CURRENT class figures
+    ['hap=hap1&tandem=yes&wgd=both', 229, 'HAP1 tandem + both WGDs = route C Venn S n A n T'],
+    ['tandem=yes&wgd=both', 462, 'tandem + both WGDs, both haplotypes (route C)'],
+    ['tandem=yes&wgd=salicoid', 1876, 'tandem AND salicoid (route C)'],
+    ['tandem=yes&wgd=gamma', 776, 'tandem AND gamma (route C)'],
+    ['wgd=neither&tandem=no', 21074, 'neither WGD nor curated tandem (route C)'],
+    // the canonical v9 call stays selectable and must still reproduce the v8/v9 numbers
+    ['hap=hap1&tandem=yes&wgd9=both', 191, 'HAP1 tandem + both WGDs, canonical v9'],
+    ['tandem=yes&wgd9=both', 385, 'tandem + both WGDs, both haplotypes, canonical v9'],
   ];
   const got = [];
   for (const [q, n] of want) {

@@ -250,7 +250,8 @@ export function facetRow(facets, i) {
     top: v.top[o.top] ?? null,
     allele: !!o.allele,
     at: !!o.at,
-    wgd: o.wgd | 0,
+    wgd: o.wgd | 0,       // route C combined call
+    wgd9: o.wgd9 | 0,     // canonical master v9
     tandem: !!o.tandem,
     npres: o.npres,   // 0 means OrthoFinder assigned no orthogroup at all
     amb: !!o.amb,

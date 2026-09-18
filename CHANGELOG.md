@@ -9,6 +9,44 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.11.3 — 2026-09-18 — Route C becomes the default WGD call, and Browse stops accumulating filters
+
+Reported by Chen: selecting all three duplication classes returned 229 in the figures but not
+in Browse. Three distinct defects sat behind that one question; only the first was fixed in
+0.11.2, which is why it still looked broken.
+
+**1. Route C is now the default WGD call in Browse** (`wgd`), because that is what the current
+class figures are drawn from — browsing on v9 while holding a route C Venn gave 191 for
+"HAP1 + tandem + both" against the figure's 229, which reads as a broken filter rather than as
+two different calls. The swap is clean: route C covers exactly the same 32,170 genes that carry
+a v9 call, adds none, and the only movement is the 142 genes it deliberately sets aside on
+split-evidence pairs. The canonical call stays selectable as **WGD event (canonical v9)**
+(`wgd9`, a new facet column), so the published v8/v9 numbers remain reproducible here.
+**The canonical TABLE is still v9** — the atlas now leads with route C while
+`master_duplication_table_v9` does not, and the gene page says so.
+
+**2. Browse accumulated filters across navigation.** `state` is a module-level singleton and the
+URL only ever ADDED to it, so going from `?hap=hap1&tandem=yes&wgd=both` to
+`?tandem=yes&wgd=both` kept `hap1` and returned 229 instead of 462 — and every filter a reader
+had followed stayed active for the rest of the session. It presents exactly as a miscounting
+filter. The URL is now the whole truth: the filter set is REPLACED on each navigation and the
+page resets.
+
+This one was briefly misdiagnosed. When a live spot-check returned a stale count it was written
+off as the test reusing one page across hash changes; the "fresh page per query" workaround then
+hid the bug from the very check written to catch it. The suite found it only once the Browse
+check ran several queries in one session — which is what a reader does.
+
+**3. A build-log defect introduced and caught in the same change.** Inserting the `wgd9` column
+shifted every hard-coded index in `build_facets.py`'s summary: it reported 44 genes expressed in
+at least one tissue instead of 53,704, and a karyotype coverage that was counting omega. Nothing
+wrong was persisted (the manifest stores only `n_rows`/`cols`/`bytes`), but a build log that
+reports confidently wrong numbers is how a real defect gets waved through. The summary now
+indexes by column name.
+
+`check.mjs` now pins eight Browse counts across both calls, run sequentially in one page so
+filter bleed cannot pass.
+
 ## 0.11.2 — 2026-09-18 — Browse was filtering on a different tandem set from everything else
 
 **Browse disagreed with the class figures, and the reason was a definition, not a count.** The
