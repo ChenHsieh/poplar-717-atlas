@@ -9,6 +9,47 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## The duplication history of the array, not just of the gene
+
+A tandem array can have gone through salicoid WGD or gamma while THIS copy retained no partner
+for it. Until now that was invisible from the gene's page: the gene-level class said "not
+called" and a reader had to open each array member in turn to discover the array's own history.
+3,480 genes reach an event class this way that their own record does not carry (1,956 salicoid,
+984 gamma, 540 both), across 2,103 multi-event arrays of the 4,371 in the union set.
+
+No new data. Every array member's `wgd` is already on its shard, and the members are already
+fetched to draw them, so this is a second read of bytes the page had in hand.
+
+- **Duplication layers** gains second-order links: thin, dotted, paler, and drawn **from the
+  array member they belong to**, never from the focal gene. Rows holding only such partners are
+  labelled "salicoid WGD **of an array member** · Chr11". The caption states the distinction in
+  a sentence: the event is a property of the locus, the class is a property of the gene.
+- **Duplication** gains a **This array's history** line naming, per event, whether this gene
+  retains a partner and which other members do, with the same caveat in words. The gene-level
+  S/A call is untouched and still reads "not called" where that is what the data says.
+- A WGD partner that is itself in a tandem array is flagged: the array appears to have been
+  duplicated wholesale and both copies then expanded. (MS1 calls these mirrored partners;
+  `data/26_array_multi_event/top_arrays_mirrored_partners.csv`.)
+- Multi-event array counts here are on the **adopted TD union set**, so they are not MS1's
+  802/122 figures, which were computed on the older TD call. Different set, not a correction.
+
+Links and dS labels can be **moved out of the way**: drag one, or focus it with Tab and use the
+arrow keys (Shift for bigger steps, Escape to put it back), with a **Reset the layout** button
+for the whole card. A dS label slides freely; a link only **bends** — both ends stay pinned to
+the genes they join. That restriction is the point: an arc that could be dragged off its
+endpoints would be a drawing that lies about which genes are duplicates, and it would still
+look right in a screenshot. The driven check asserts it directly — after a drag, exactly one
+curve has changed and every endpoint of every curve is where it was. The keyboard route is not
+decoration either: WCAG 2.2 SC 2.5.7 requires a non-dragging alternative for any dragging
+movement, and this one is convenience rather than essential.
+
+Two label defects fixed, both found by looking at a 390 px render rather than by a check: dS
+pills were landing on gene bars, row headings and each other, and gene ids in a dense array
+smeared into one another. Labels are now placed against real rectangular obstacles in a single
+pass; a dS with nowhere to sit is printed in its row heading rather than dropped, a gene id
+with nowhere to sit is omitted and **counted out loud in the caption**, and the row's span
+figure yields if the heading grows into it.
+
 ## 0.11.0 — 2026-09-18 — Every duplicate of a gene, drawn and measured
 
 Three cards on the gene page could each say *that* a gene has duplicates. None of them showed the

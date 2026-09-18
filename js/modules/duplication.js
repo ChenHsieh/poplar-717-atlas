@@ -85,6 +85,56 @@ function fillPartners(entries) {
   }));
 }
 
+// The array's whole duplication history, as text. Same fact the Duplication layers card
+// draws, in the one place a reader looks for "what happened to this gene" in words.
+//
+// The distinction it exists to make: a tandem array can have gone through salicoid WGD or
+// gamma while THIS copy retained no partner for it. The gene's class letters describe the
+// gene; this line describes the locus. Stating them as the same thing would be wrong in both
+// directions, so the line always names whose property it is.
+function arrayHistoryLine(g, memberIds) {
+  const holder = el('dd', {}, el('span', { class: 'muted' }, 'checking the other members…'));
+  const ownEvents = new Set((g.wgd || []).map((p) => (p.e === 'A' ? 'A' : 'S')));
+  (async () => {
+    const recs = await Promise.all(memberIds.map((id) => getGene(id).catch(() => null)));
+    const via = { S: [], A: [] };
+    let unresolved = 0;
+    recs.forEach((r, i) => {
+      if (!r) { unresolved += 1; return; }
+      for (const q of (r.wgd || [])) via[q.e === 'A' ? 'A' : 'S'].push(memberIds[i]);
+    });
+    const evName = { S: 'salicoid WGD', A: 'gamma' };
+    const present = ['S', 'A'].filter((e) => ownEvents.has(e) || via[e].length);
+    if (!present.length) {
+      holder.replaceChildren(el('span', { class: 'muted' },
+        'No member of this array retains a whole-genome duplication partner. That is not '
+        + 'evidence the array predates those events — only that no anchor pair was called here.'));
+      return;
+    }
+    const parts = present.map((e) => {
+      const mine = ownEvents.has(e);
+      const others = [...new Set(via[e])];
+      return el('div', { style: 'margin-top:3px' },
+        el('strong', {}, evName[e]), ' — ',
+        mine ? 'this gene retains a partner' : el('span', {}, 'this gene retains ',
+          el('strong', {}, 'no'), ' partner'),
+        others.length
+          ? el('span', { class: 'muted' }, `; ${others.length} other array member`
+              + `${others.length === 1 ? '' : 's'} do${others.length === 1 ? 'es' : ''}: `,
+              ...others.flatMap((id, i) => [i ? ', ' : '',
+                el('a', { href: `#/gene/${id}`, class: 'mono' }, id)]))
+          : el('span', { class: 'muted' }, '; no other member does'));
+    });
+    holder.replaceChildren(...parts,
+      el('div', { class: 'muted', style: 'font-size:11.5px;margin-top:5px' },
+        'An event listed here is a property of the LOCUS. The duplication class above is a '
+        + 'property of this gene, and the two can differ: the array can have gone through a '
+        + 'whole-genome duplication while this particular copy retained no partner for it.'
+        + (unresolved ? ` ${unresolved} member could not be read.` : '')));
+  })();
+  return holder;
+}
+
 function wgdSection(g) {
   const d = g.dup || {};
   const pairs = g.wgd || [];
@@ -312,6 +362,8 @@ function geneCard(g) {
       });
       fillPartners(deferred);
       const scored = td.pks_n ? td.pks_n[0] : Object.keys(pks).length;
+      kv.append(el('dt', {}, 'This array\u2019s history'),
+        arrayHistoryLine(g, td.mem.map((m) => m[0])));
       kv.append(el('dt', {}, 'Other members'),
         el('dd', {},
           el('div', { class: 'scroll-x' }, el('table', { class: 'data' },

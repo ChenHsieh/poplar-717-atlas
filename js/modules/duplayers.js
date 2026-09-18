@@ -34,6 +34,7 @@ const PAD_X = 14;
 const PAD_TOP = 8;
 const GENE_H = 15;
 const MAX_TD = 12;         // arrays reach 56 members; beyond a dozen the view stops being one
+const MAX_SECOND = 8;      // second-order (array-member) WGD partners drawn
 // Every track is padded by this much on each side. Without it a row holding ONE gene spans
 // only that gene's 3 kb, which becomes the shared scale, and every gene on the card is then
 // drawn the full width of the card -- a picture in which a 2 kb gene and a 90 kb array look
@@ -63,12 +64,14 @@ const svgEl = (name, attrs = {}, ...kids) => {
   return n;
 };
 
-/** Resolve a partner id to the little it needs to be drawn. One shard fetch each, cached. */
+/** Resolve a partner id to the little it needs to be drawn. One shard fetch each, cached.
+ *  `wgd` comes back too: an array member's OWN anchor partners are what make the
+ *  second-order (whole-array) history reachable, and they cost no extra request. */
 async function place(id) {
   const g = await getGene(id);
   if (!g) return null;
   return { id, hap: g.hap, chr: g.chr, start: g.start, end: g.end, strand: g.strand,
-           td: g.td || null };
+           td: g.td || null, wgd: g.wgd || [] };
 }
 
 /** Rows to draw: one per (layer, haplotype, chromosome) group, chronological.
@@ -103,6 +106,56 @@ async function buildRows(g) {
   const unresolved = placed.filter((p) => !p).length;
   if (unresolved) notes.push(`${unresolved} partner${unresolved === 1 ? '' : 's'} could not be resolved`);
 
+  // ---- second order: the WGD history of the ARRAY, not of this gene ---------------------
+  //
+  // An array member can be a retained salicoid or gamma duplicate where THIS gene is not.
+  // That is a real part of the locus's history and it was invisible: a reader had to open
+  // each member's page in turn to find it. 3,480 genes reach an event class this way that
+  // their own record does not carry.
+  //
+  // THE OVER-READ THIS MUST NOT CAUSE. A member's salicoid partner is NOT this gene's
+  // salicoid partner, and the card must never let the two be confused. So these links
+  // originate at the MEMBER, are drawn thinner and paler, and the caption names the event as
+  // the ARRAY's rather than the gene's. The gene-level S/A call above is untouched.
+  const byId = new Map(placed.filter(Boolean).map((p) => [p.id, p]));
+  const ownEvents = new Set((g.wgd || []).map((p) => p.e === 'A' ? 'A' : 'S'));
+  const second = [];
+  for (const m of tdShown) {
+    const mr = byId.get(m);
+    if (!mr) continue;
+    for (const q of mr.wgd) {
+      const layer = q.e === 'A' ? 'A' : 'S';
+      if (want.has(q.id) || q.id === g.id) continue;   // already drawn as a first-order anchor
+      second.push({ via: m, id: q.id, layer, ks: q.ks, novel: !ownEvents.has(layer) });
+    }
+  }
+  // Prefer the links that tell the reader something new: an event class this gene has no
+  // partner for at all. Without this an 8-slot cap could fill with duplicates of a story the
+  // first-order arcs already told.
+  second.sort((a, b) => (b.novel - a.novel));
+  const secondShown = second.slice(0, MAX_SECOND);
+  if (second.length > secondShown.length) {
+    notes.push(`${second.length - secondShown.length} further array-member WGD partner${
+      second.length - secondShown.length === 1 ? '' : 's'} not drawn`);
+  }
+  const secondPlaced = await Promise.all(secondShown.map((x) => place(x.id)));
+  const secondBy = new Map();
+  secondShown.forEach((x, i) => {
+    const pl = secondPlaced[i];
+    if (!pl) return;
+    pl.layer = x.layer;
+    pl.second = true;
+    pl.via = x.via;
+    pl.ds = x.ks;
+    // A WGD partner that is ITSELF in a tandem array is the "mirrored array" case -- the
+    // whole array duplicated at the WGD and both copies expanded. Worth naming; it is free,
+    // since place() already read the partner's own td.
+    pl.mirrored = !!(pl.td && (pl.td.mem || []).length);
+    secondBy.set(pl.id, pl);
+  });
+  const arrayEvents = new Set(secondShown.map((x) => x.layer));
+  const novelEvents = [...arrayEvents].filter((e) => !ownEvents.has(e));
+
   // The focal gene is a tandem member only when it actually has array members. Colouring it
   // tandem-pink on a gene with no array would assert a duplication the data does not call.
   const focal = { id: g.id, hap: g.hap, chr: g.chr, start: g.start, end: g.end,
@@ -124,6 +177,7 @@ async function buildRows(g) {
     p.ds = dsOf.get(p.id);
     push(layer, p);
   }
+  for (const p of secondBy.values()) push(p.layer, p);
 
   const order = ['F', 'T', 'H', 'S', 'A'];
   const rows = [...groups.values()].sort((a, b) => {
@@ -164,7 +218,8 @@ async function buildRows(g) {
     r.self = r.genes.some((x) => x.focal);
   }
   return { rows, notes, tdScored: tdShown.filter((m) => pks[m] != null).length,
-           tdShown: tdShown.length, memTotal: mem.length };
+           tdShown: tdShown.length, memTotal: mem.length,
+           second: [...secondBy.values()], novelEvents, ownEvents: [...ownEvents] };
 }
 
 function rowLabel(r, g) {
@@ -173,7 +228,50 @@ function rowLabel(r, g) {
   const n = r.genes.filter((x) => x.layer !== 'X' && !x.focal).length;
   if (r.self) return `${r.chr} · this gene${n ? ` + ${n} array member${n > 1 ? 's' : ''}` : ''}`;
   const hapTag = r.hap !== g.hap ? ` · ${r.hap === 'hap1' ? 'HAP1' : 'HAP2'}` : '';
-  return `${LAYER[r.layer].label} · ${r.chr}${hapTag}`;
+  // A row holding ONLY second-order partners is the array's history, not the gene's, and its
+  // label has to say so -- "salicoid WGD · Chr11" on a gene with no salicoid partner would
+  // be read as this gene having one.
+  const anchors = r.genes.filter((x) => x.layer !== 'X');
+  const allSecond = anchors.length > 0 && anchors.every((x) => x.second);
+  const via = allSecond ? ' of an array member' : '';
+  return `${LAYER[r.layer].label}${via} · ${r.chr}${hapTag}`;
+}
+
+/** An arc's geometry as a pure function of its two endpoints and a user-supplied `bow`.
+ *  `bow` is the only thing dragging changes: the endpoints stay pinned to their genes, so a
+ *  reader can route a link around whatever it is covering without the drawing ever claiming
+ *  a link between two different genes. Returns the path plus where its dS label wants to sit.
+ */
+function arcPath(from, to, bow) {
+  const dy = to.y - from.y;
+  if (dy === 0) {
+    // Same track -- a tandem partner a few kb away. A vertical bezier would collapse to a
+    // zero-length path, so these bow ABOVE the track instead, height scaled to the horizontal
+    // distance so neighbouring links do not sit on top of each other.
+    const span = Math.abs(to.x - from.x);
+    const h = Math.max(6, Math.min(24, 8 + span * 0.18) + bow);
+    const top = from.y - GENE_H / 2 - 2 - h;
+    return {
+      d: `M ${from.x} ${from.y - GENE_H / 2 - 2} C ${from.x} ${top}, ${to.x} ${top}, `
+         + `${to.x} ${to.y - GENE_H / 2 - 2}`,
+      mx: (from.x + to.x) / 2,
+      my: from.y - GENE_H / 2 - 2 - h * 0.75,
+    };
+  }
+  const sgn = Math.sign(dy);
+  const lift = Math.min(46, Math.abs(dy) * 0.45 + 12);
+  // A dragged bow pushes the two control points sideways, which bends the curve out of the
+  // straight line between the genes -- the direction a reader actually wants when a link is
+  // covering something.
+  const cx1 = from.x + bow;
+  const cx2 = to.x + bow;
+  return {
+    d: `M ${from.x} ${from.y + sgn * (GENE_H / 2 + 2)} `
+       + `C ${cx1} ${from.y + sgn * lift}, ${cx2} ${to.y - sgn * lift}, `
+       + `${to.x} ${to.y - sgn * (GENE_H / 2 + 2)}`,
+    mx: (from.x + to.x) / 2 + bow * 0.75,
+    my: (from.y + to.y) / 2,
+  };
 }
 
 function drawDiagram(g, built, width) {
@@ -201,19 +299,35 @@ function drawDiagram(g, built, width) {
   const yOf = (i) => PAD_TOP + i * ROW_H + 48;
 
   const anchors = new Map();
+  const labelNodes = [];
+  const kbNodes = [];
+  const links = [];
+  const movables = [];
+  const pills = [];
   let suppressed = 0;
+  let dropped = 0;
+  // Three layers, and the order is load-bearing twice over. VISUALLY the arcs belong behind
+  // the genes. For POINTER PURPOSES the things you grab must be in front of everything, or
+  // the genes' own 24 px tap rectangles swallow the press and nothing drags -- which is
+  // exactly what happened the first time this was driven. So the arc strokes stay at the
+  // bottom and their invisible grab twins, plus the dS labels, go in a top layer.
   const arcs = svgEl('g');
   const marks = svgEl('g');
-  svg.append(arcs, marks);
+  const handles = svgEl('g');
+  svg.append(arcs, marks, handles);
 
   rows.forEach((r, i) => {
     const y = yOf(i);
     marks.append(svgEl('line', { x1: PAD_X, y1: y, x2: width - PAD_X, y2: y,
       stroke: P.line, 'stroke-width': 1 }));
-    marks.append(svgEl('text', { x: PAD_X, y: y - 40, fill: P.ink3,
-      'font-size': 11 }, rowLabel(r, g)));
-    marks.append(svgEl('text', { x: width - PAD_X, y: y - 40, fill: P.ink3,
-      'font-size': 11, 'text-anchor': 'end' }, kb(r.hi - r.lo)));
+    const labNode = svgEl('text', { x: PAD_X, y: y - 40, fill: P.ink3,
+      'font-size': 11 }, rowLabel(r, g));
+    labelNodes[i] = labNode;
+    marks.append(labNode);
+    const kbNode = svgEl('text', { x: width - PAD_X, y: y - 40, fill: P.ink3,
+      'font-size': 11, 'text-anchor': 'end' }, kb(r.hi - r.lo));
+    kbNodes[i] = kbNode;
+    marks.append(kbNode);
 
     // Which genes get a visible id. An 11-member array on a phone puts eleven 70 px labels
     // into 360 px and they render as one unreadable smear -- seen at 390 px wide, not
@@ -242,7 +356,8 @@ function drawDiagram(g, built, width) {
       const x0 = at(r, gene.start);
       const x1 = Math.max(at(r, gene.end), x0 + 4);
       const cx = (x0 + x1) / 2;
-      if (gene.layer !== 'X') anchors.set(gene.id, { x: cx, y, layer: gene.layer, ds: gene.ds });
+      if (gene.layer !== 'X') anchors.set(gene.id, { x: cx, y, layer: gene.layer, ds: gene.ds,
+        second: !!gene.second, via: gene.via });
       const a = svgEl('a', { href: `#/gene/${gene.id}`, 'aria-label': gene.id });
       // Tap target: SC 2.5.8 wants 24 px, and a 2 kb gene on a 300 kb scale is 3 px wide.
       // A transparent 24 px rectangle carries the pointer and the focus ring; the visible
@@ -265,49 +380,216 @@ function drawDiagram(g, built, width) {
     }
   });
 
-  // Arcs leave the focal gene and land on each partner. Drawn first (behind the genes) and
-  // in layer order so the oldest links do not sit on top of the youngest.
-  const from = anchors.get(g.id);
-  if (from) {
+  // Arcs. A FIRST-ORDER link leaves the focal gene; a SECOND-ORDER link leaves the array
+  // member it actually belongs to, because it is that member's WGD partner and not this
+  // gene's. Drawing it from the focal gene would be the one misreading this feature must not
+  // cause. Drawn first (behind the genes), in layer order.
+  if (anchors.get(g.id)) {
     for (const [id, a] of anchors) {
       if (id === g.id) continue;
+      const from = anchors.get(a.second ? a.via : g.id) || anchors.get(g.id);
       const dy = a.y - from.y;
-      let d, mx, my;
-      if (dy === 0) {
-        // Same track -- a tandem partner a few kb away. A vertical bezier would collapse to a
-        // zero-length path, so these bow ABOVE the track instead, height scaled to the
-        // horizontal distance so neighbouring links do not sit on top of each other.
-        const span = Math.abs(a.x - from.x);
-        const h = Math.min(24, 8 + span * 0.18);
-        const top = from.y - GENE_H / 2 - 2 - h;
-        d = `M ${from.x} ${from.y - GENE_H / 2 - 2} C ${from.x} ${top}, ${a.x} ${top}, `
-          + `${a.x} ${a.y - GENE_H / 2 - 2}`;
-        mx = (from.x + a.x) / 2;
-        my = from.y - GENE_H / 2 - 2 - h * 0.75;
-      } else {
-        const lift = Math.min(46, Math.abs(dy) * 0.45 + 12);
-        d = `M ${from.x} ${from.y + Math.sign(dy) * (GENE_H / 2 + 2)} `
-          + `C ${from.x} ${from.y + Math.sign(dy) * lift}, `
-          + `${a.x} ${a.y - Math.sign(dy) * lift}, ${a.x} ${a.y - Math.sign(dy) * (GENE_H / 2 + 2)}`;
-        mx = (from.x + a.x) / 2;
-        my = (from.y + a.y) / 2;
-      }
-      arcs.append(svgEl('path', {
+      const { d, mx, my } = arcPath(from, a, 0);
+      const spec = { from, to: a, sameRow: dy === 0, bow: 0, layer: a.layer, second: a.second };
+      const path = svgEl('path', {
         d, fill: 'none', stroke: COLOUR[a.layer] || P.ink3,
-        'stroke-width': 1.6, 'stroke-opacity': 0.85,
-        'stroke-dasharray': a.layer === 'H' ? '4 3' : null,
-      }));
+        // Second-order links are thinner and paler on purpose: same colour, because it is the
+        // same event, but visibly subordinate, because it is not this gene's partner.
+        'stroke-width': a.second ? 1.0 : 1.6,
+        'stroke-opacity': a.second ? 0.45 : 0.85,
+        'stroke-dasharray': a.layer === 'H' ? '4 3' : (a.second ? '2 2' : null),
+      });
+      spec.node = path;
+      // A wide transparent twin carries the pointer: a 1 px stroke is impossible to grab,
+      // and a 14 px invisible one is grabbable without changing what is drawn.
+      const grab = svgEl('path', { d, fill: 'none', stroke: 'transparent', 'stroke-width': 14,
+        style: 'cursor:ns-resize;touch-action:none' });
+      spec.grab = grab;
+      links.push(spec);
+      arcs.append(path);
+      handles.append(grab);
       if (a.ds != null) {
         const label = `dS ${a.ds < 0.1 ? a.ds.toFixed(3) : a.ds.toFixed(2)}`;
-        const w = label.length * 5.6 + 8;
-        arcs.append(svgEl('rect', { x: mx - w / 2, y: my - 8, width: w, height: 15, rx: 3,
-          fill: P.panel, stroke: COLOUR[a.layer] || P.ink3, 'stroke-opacity': 0.35 }));
-        arcs.append(svgEl('text', { x: mx, y: my + 3.5, 'text-anchor': 'middle',
-          'font-size': 10.5, fill: P.ink }, label));
+        pills.push({ mx, my, label, layer: a.layer, w: label.length * 5.6 + 8,
+                     row: rows.findIndex((_, ri) => yOf(ri) === a.y) });
       }
     }
   }
-  return { svg, suppressed };
+
+  // Pills are placed in ONE pass, after every arc is known, because two things can collide
+  // and neither is visible from inside the arc loop: a pill whose arc spans two rows lands on
+  // the row in between (on its gene bars and its label), and at narrow widths two arcs
+  // converge until their pills overlap each other. Both were seen on a 390 px render, not
+  // predicted. Each pill is pushed vertically to the nearest position clear of every track
+  // band and every pill already placed; if no such position exists within a few steps the
+  // pill is DROPPED rather than drawn on top of something -- the dS is still in the
+  // Duplication card's table, so nothing is lost but the annotation.
+  const BAND = GENE_H + 12;          // track line plus its gene bars and id label
+  // Obstacles are RECTANGLES, not y-bands. Testing y alone pushed every pill out of the track
+  // strip and straight onto the row label above it, because that label was invisible to the
+  // test -- and a row label only occupies the left end of its row, so a pill in the middle of
+  // the card never actually conflicts with it. Both row label and kb label get a real extent.
+  const TEXT_CH = 5.9;               // px per character at 11px in the UI face
+  const obstacles = [];
+  rows.forEach((r, ri) => {
+    const ry = yOf(ri);
+    obstacles.push({ x0: -Infinity, x1: Infinity, y0: ry - BAND, y1: ry + BAND });
+    const lab = rowLabel(r, g);
+    obstacles.push({ x0: PAD_X - 4, x1: PAD_X + lab.length * TEXT_CH + 4,
+                     y0: ry - 52, y1: ry - 34 });
+    const rlab = kb(r.hi - r.lo);
+    obstacles.push({ x0: width - PAD_X - rlab.length * TEXT_CH - 4, x1: width - PAD_X + 4,
+                     y0: ry - 52, y1: ry - 34 });
+  });
+  const placedPills = [];
+  const clash = (mx, my, w) =>
+    obstacles.some((o) => mx + w / 2 > o.x0 && mx - w / 2 < o.x1 && my + 8 > o.y0 && my - 8 < o.y1)
+    || placedPills.some((q) => Math.abs(q.my - my) < 17
+                            && Math.abs(q.mx - mx) < (q.w + w) / 2 + 3);
+  for (const pill of pills) {
+    let my = pill.my;
+    let ok = !clash(pill.mx, my, pill.w);
+    for (let k = 1; !ok && k <= 5; k += 1) {
+      for (const dir of [-1, 1]) {
+        const cand = pill.my + dir * k * 17;
+        if (cand < 10 || cand > height - 10) continue;
+        if (!clash(pill.mx, cand, pill.w)) { my = cand; ok = true; break; }
+      }
+    }
+    if (!ok) {
+      // No clear space for the pill. DO NOT drop the number -- on a phone that discarded
+      // every dS on the card. Append it to the label of the row the link lands on, where
+      // there is always room and where it is still unambiguously attached to that partner.
+      dropped += 1;
+      const node = labelNodes[pill.row];
+      if (node) node.textContent += ` · ${pill.label}`;
+      continue;
+    }
+    placedPills.push({ mx: pill.mx, my, w: pill.w });
+    // Each pill is its own <g> so a drag is one transform, and focusable so it can be moved
+    // from the keyboard as well -- WCAG 2.2 SC 2.5.7 wants every dragging movement to have a
+    // single-pointer or keyboard alternative, and this one is pure convenience, not essential.
+    const grp = svgEl('g', {
+      tabindex: 0, role: 'button',
+      'aria-label': `${pill.label}. Drag, or use the arrow keys, to move this label`,
+      style: 'cursor:grab;touch-action:none',
+    });
+    grp.append(
+      svgEl('rect', { x: pill.mx - pill.w / 2, y: my - 8, width: pill.w, height: 15,
+        rx: 3, fill: P.panel, stroke: COLOUR[pill.layer] || P.ink3, 'stroke-opacity': 0.35 }),
+      svgEl('text', { x: pill.mx, y: my + 3.5, 'text-anchor': 'middle',
+        'font-size': 10.5, fill: P.ink }, pill.label));
+    movables.push({ node: grp, dx: 0, dy: 0 });
+    handles.append(grp);
+  }
+  // A row heading that absorbed a dS can grow into the span figure at the right-hand end.
+  // The span is the secondary number here -- it is stated again in the Locus card -- so it
+  // is the one that goes, rather than letting two labels overprint each other.
+  labelNodes.forEach((node, i) => {
+    if (!node || !kbNodes[i]) return;
+    const labEnd = PAD_X + node.textContent.length * 5.9;
+    const kbStart = width - PAD_X - kbNodes[i].textContent.length * 5.9;
+    if (labEnd + 8 > kbStart) kbNodes[i].remove();
+  });
+  // ---- let the reader move anything that is in the way -------------------------------
+  //
+  // Nothing here changes a number or which two genes a link joins. A pill slides; an arc
+  // only bends, because its ends stay pinned to the genes it connects -- an arc that could be
+  // dragged off its endpoints would be a drawing that lies about what is duplicated.
+  const svgPoint = (ev) => {
+    const r = svg.getBoundingClientRect();
+    const vb = svg.viewBox.baseVal;
+    return { x: (ev.clientX - r.left) * (vb.width / r.width),
+             y: (ev.clientY - r.top) * (vb.height / r.height) };
+  };
+  for (const m of movables) {
+    let origin = null;
+    const apply = () => m.node.setAttribute('transform', `translate(${m.dx} ${m.dy})`);
+    m.node.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      const p0 = svgPoint(ev);
+      origin = { x: p0.x - m.dx, y: p0.y - m.dy };
+      m.node.setPointerCapture(ev.pointerId);
+      m.node.style.cursor = 'grabbing';
+    });
+    m.node.addEventListener('pointermove', (ev) => {
+      if (!origin) return;
+      const p1 = svgPoint(ev);
+      m.dx = p1.x - origin.x;
+      m.dy = p1.y - origin.y;
+      apply();
+    });
+    const end = (ev) => {
+      if (!origin) return;
+      origin = null;
+      m.node.style.cursor = 'grab';
+      try { m.node.releasePointerCapture(ev.pointerId); } catch { /* already released */ }
+    };
+    m.node.addEventListener('pointerup', end);
+    m.node.addEventListener('pointercancel', end);
+    m.node.addEventListener('keydown', (ev) => {
+      const step = ev.shiftKey ? 12 : 4;
+      const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0],
+                      ArrowUp: [0, -step], ArrowDown: [0, step] };
+      if (moves[ev.key]) {
+        m.dx += moves[ev.key][0];
+        m.dy += moves[ev.key][1];
+        apply();
+        ev.preventDefault();
+      } else if (ev.key === 'Escape' || ev.key === '0') {
+        m.dx = 0; m.dy = 0; apply(); ev.preventDefault();
+      }
+    });
+  }
+  for (const L of links) {
+    let start = null;
+    const redraw = () => {
+      const { d } = arcPath(L.from, L.to, L.bow);
+      L.node.setAttribute('d', d);
+      L.grab.setAttribute('d', d);
+    };
+    L.grab.setAttribute('tabindex', '0');
+    L.grab.setAttribute('role', 'button');
+    L.grab.setAttribute('aria-label',
+      'Duplication link. Drag, or use the left and right arrow keys, to bend it out of the way');
+    // Sideways for a cross-row arc (it bends around what it covers), vertically for a
+    // same-row one (it is a bow over a track, so height is the only thing that means anything).
+    const axis = (p, s0) => (L.sameRow ? -(p.y - s0.y) : (p.x - s0.x));
+    L.grab.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      const p0 = svgPoint(ev);
+      start = { x: p0.x, y: p0.y, bow: L.bow };
+      L.grab.setPointerCapture(ev.pointerId);
+    });
+    L.grab.addEventListener('pointermove', (ev) => {
+      if (!start) return;
+      L.bow = start.bow + axis(svgPoint(ev), start);
+      redraw();
+    });
+    const end = (ev) => {
+      if (!start) return;
+      start = null;
+      try { L.grab.releasePointerCapture(ev.pointerId); } catch { /* already released */ }
+    };
+    L.grab.addEventListener('pointerup', end);
+    L.grab.addEventListener('pointercancel', end);
+    L.grab.addEventListener('keydown', (ev) => {
+      const step = ev.shiftKey ? 24 : 8;
+      if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') { L.bow -= step; redraw(); ev.preventDefault(); }
+      else if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') { L.bow += step; redraw(); ev.preventDefault(); }
+      else if (ev.key === 'Escape' || ev.key === '0') { L.bow = 0; redraw(); ev.preventDefault(); }
+    });
+  }
+  svg.resetLayout = () => {
+    for (const m of movables) { m.dx = 0; m.dy = 0; m.node.removeAttribute('transform'); }
+    for (const L of links) {
+      L.bow = 0;
+      const { d } = arcPath(L.from, L.to, 0);
+      L.node.setAttribute('d', d);
+      L.grab.setAttribute('d', d);
+    }
+  };
+  return { svg, suppressed, dropped };
 }
 
 function legend(built, g) {
@@ -326,7 +608,7 @@ function legend(built, g) {
   return el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' }, ...items);
 }
 
-function caption(built, g, suppressed) {
+function caption(built, g, suppressed, dropped) {
   const bits = [];
   if (built.memTotal) {
     bits.push(`${built.tdScored} of the ${built.tdShown} tandem link${built.tdShown === 1 ? '' : 's'} drawn `
@@ -338,6 +620,27 @@ function caption(built, g, suppressed) {
     bits.push(`The array’s MEDIAN dS is ${g.td.ks.toFixed(3)} — a property of the array, not of any link here.`);
   }
   if (g.allele) bits.push('The dashed link is the same gene on the other haplotype, not a duplication.');
+  // The whole-array history, stated as the array's. The distinction carried here is the
+  // point of the feature: the array went through the event, this copy did not retain a
+  // partner for it, and those are different facts.
+  if (built.second.length) {
+    const names = (ks) => ks.map((k) => LAYER[k].label).join(' and ');
+    bits.push(`Thin dotted links are second order: they are the WGD partners of this gene's `
+      + `ARRAY MEMBERS, not of this gene, and each one starts at the member it belongs to.`);
+    if (built.novelEvents.length) {
+      const orNames = built.novelEvents.map((k) => LAYER[k].label).join(' or ');
+      bits.push(`This array went through ${names(built.novelEvents)} — but this gene retains no `
+        + `${orNames} partner of its own, so its duplication class above does not name `
+        + `${built.novelEvents.length > 1 ? 'them' : 'it'}. The event is a property of the `
+        + 'locus; the class is a property of the gene.');
+    }
+    const mirrored = built.second.filter((x) => x.mirrored).length;
+    if (mirrored) {
+      bits.push(`${mirrored} of those partners ${mirrored === 1 ? 'is' : 'are'} in a tandem `
+        + 'array too, so the array itself appears to have been duplicated and both copies then '
+        + 'expanded.');
+    }
+  }
   // Suppressed labels are counted out loud. A gene silently losing its name in a dense array
   // is the same class of problem as a row silently leaving the heatmap: the reader cannot tell
   // an omission from an absence. Every gene here is still a link and still in the table below.
@@ -345,6 +648,11 @@ function caption(built, g, suppressed) {
     bits.push(`${suppressed} gene name${suppressed === 1 ? ' is' : 's are'} not printed at this `
       + 'width because the labels would overlap; those genes are still links, and the '
       + 'Duplication card below names every one of them.');
+  }
+  if (dropped) {
+    bits.push(`${dropped} dS value${dropped === 1 ? '' : 's'} had no clear space beside `
+      + `${dropped === 1 ? 'its' : 'their'} link at this width, so ${dropped === 1 ? 'it is' : 'they are'} `
+      + 'printed in the row heading instead.');
   }
   if (built.notes.length) bits.push(built.notes.join('; ') + '.');
   return el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' }, bits.join(' '));
@@ -376,19 +684,34 @@ function geneCard(g) {
     // redraw rather than written once: a card that says "3 names not printed" after the window
     // widened enough to print them all is a false statement about what is on screen.
     let width = 0;
+    let current = null;
     const leg = legend(built, g);
-    let cap = caption(built, g, 0);
+    let cap = caption(built, g, 0, 0);
+    // The reset is a real button, not just the Escape key: the keyboard route only reaches a
+    // link or label you have already focused, and after moving several the quickest way back
+    // to the drawn-as-computed layout should not be to find each one again.
+    const reset = el('button', {
+      style: 'font-size:11.5px;padding:2px 8px;border:1px solid var(--line-2);border-radius:5px;'
+        + 'background:var(--panel-2);color:var(--ink);cursor:pointer;margin-top:8px',
+      onclick: () => { if (current && current.resetLayout) current.resetLayout(); },
+    }, 'Reset the layout');
+    const howto = el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' },
+      'Any link or dS label in the way can be moved: drag it, or focus it with Tab and use the '
+      + 'arrow keys (Shift for bigger steps, Escape to put it back). A link only bends — both '
+      + 'ends stay pinned to the genes they join, so moving one cannot change which genes it '
+      + 'says are duplicates.');
     const render = () => {
       const w = Math.round(stage.getBoundingClientRect().width);
       if (!w || w === width) return;
       width = w;
-      const { svg, suppressed } = drawDiagram(g, built, w);
+      const { svg, suppressed, dropped } = drawDiagram(g, built, w);
+      current = svg;
       stage.replaceChildren(svg);
-      const next = caption(built, g, suppressed);
+      const next = caption(built, g, suppressed, dropped);
       cap.replaceWith(next);
       cap = next;
     };
-    status.replaceWith(leg, cap);
+    status.replaceWith(leg, cap, howto, reset);
     const ro = new ResizeObserver(render);
     ro.observe(stage);
     render();

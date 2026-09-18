@@ -404,6 +404,95 @@ await check('gene-tandem-pairds', '#/gene/PtXaTreH.08G070600',
   { expect: ['pair ds', 'its class', 'max tpm', 'peak tissue',
              'it is not the array median above'], wait: 1800 });
 
+// Second-order duplication history: an array MEMBER retains a WGD partner where the focal
+// gene retains none. The whole risk of this feature is that it reads as the gene's own event,
+// so assert BOTH the array-level statement and the unchanged gene-level "not called" -- a
+// regression that promoted the array's event to the gene would still render plausibly.
+// PtXaTreH.04G044000: 3-member array, no WGD of its own, members carry one salicoid and one
+// gamma partner between them.
+await check('gene-array-history', '#/gene/PtXaTreH.04G044000',
+  { expect: ['this array\u2019s history', 'this gene retains', 'no', 'partner',
+             'other array member', 'property of the locus',
+             'of an array member',                      // the layers card's row label
+             'second order',                            // the layers card's caption
+             'not called'],                             // gene-level S/A call, unchanged
+    wait: 2400 });
+
+// Dragging links and dS labels out of the way. The property that MUST hold is not that
+// something moved -- it is that a dragged link still joins the same two genes. An arc whose
+// endpoints could be dragged off its genes would be a drawing that lies about what is
+// duplicated, and it would still look fine in a screenshot. So: exactly one curve changes,
+// every endpoint of every curve is unchanged, and the keyboard route (SC 2.5.7's required
+// alternative to dragging) moves and resets a label.
+{
+  const dp = await browser.newPage({ viewport: { width: 1180, height: 1000 } });
+  const derrs = [];
+  dp.on('pageerror', (e) => derrs.push(e.message));
+  dp.on('console', (m) => { if (m.type() === 'error') derrs.push('console: ' + m.text()); });
+  await dp.goto(base + '/#/gene/PtXaTreH.04G044000', { waitUntil: 'networkidle' });
+  await dp.waitForTimeout(2400);
+  const card = dp.locator('.card').filter({ has: dp.locator('h2', { hasText: 'Duplication layers' }) }).first();
+  const arcs = card.locator('path[role=button]');
+  const pill = card.locator('g[role=button]').first();
+  await pill.scrollIntoViewIfNeeded();
+  await dp.waitForTimeout(250);
+
+  const allD = () => arcs.evaluateAll((ns) => ns.map((n) => n.getAttribute('d')));
+  const dsBefore = await allD();
+
+  // drag a label
+  const bb = await pill.boundingBox();
+  await dp.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
+  await dp.mouse.down();
+  await dp.mouse.move(bb.x + bb.width / 2 + 60, bb.y + bb.height / 2 - 30, { steps: 8 });
+  await dp.mouse.up();
+  const pillMoved = await pill.evaluate((n) => n.getAttribute('transform'));
+
+  // drag a link, grabbed at quarter length so its own dS pill does not take the press
+  const mid = await arcs.first().evaluate((n) => {
+    const q = n.getPointAtLength(n.getTotalLength() * 0.25);
+    const svg = n.ownerSVGElement; const r = svg.getBoundingClientRect(); const vb = svg.viewBox.baseVal;
+    return { x: r.left + q.x * (r.width / vb.width), y: r.top + q.y * (r.height / vb.height) };
+  });
+  await dp.mouse.move(mid.x, mid.y);
+  await dp.mouse.down();
+  await dp.mouse.move(mid.x + 50, mid.y - 40, { steps: 8 });
+  await dp.mouse.up();
+  const dsAfter = await allD();
+  const ends = (d) => {
+    const m = d.match(/M ([\d.-]+) ([\d.-]+).*?([\d.-]+) ([\d.-]+)$/);
+    return m ? `${(+m[1]).toFixed(1)},${(+m[2]).toFixed(1)}->${(+m[3]).toFixed(1)},${(+m[4]).toFixed(1)}` : d;
+  };
+  const nChanged = dsBefore.filter((d, i) => d !== dsAfter[i]).length;
+  const endsHeld = dsBefore.every((d, i) => ends(d) === ends(dsAfter[i]));
+
+  // keyboard alternative, then the reset control
+  await pill.focus();
+  await dp.keyboard.press('ArrowRight');
+  const kbMoved = await pill.evaluate((n) => n.getAttribute('transform'));
+  await dp.keyboard.press('Escape');
+  const kbReset = await pill.evaluate((n) => n.getAttribute('transform'));
+  await card.locator('button', { hasText: 'Reset the layout' }).click();
+  await dp.waitForTimeout(200);
+  const dsReset = await allD();
+  const pillReset = await pill.evaluate((n) => n.getAttribute('transform'));
+
+  const ok = !derrs.length
+    && pillMoved === 'translate(60 -30)'                  // label follows the pointer exactly
+    && nChanged === 1                                     // only the grabbed link bends
+    && endsHeld                                           // and no link leaves its genes
+    && kbMoved && kbMoved !== 'translate(0 0)'            // keyboard alternative works
+    && kbReset === 'translate(0 0)'                       // Escape restores
+    && dsReset.every((d, i) => d === dsBefore[i])         // reset restores every curve
+    && (pillReset === null || pillReset === 'translate(0 0)');
+  if (!ok) failures++;
+  console.log(`\n### duplayers:drag  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   label drag=${pillMoved}  arcs=${dsBefore.length} bent=${nChanged} `
+    + `endpoints-held=${endsHeld}  kb=${kbMoved}->${kbReset}`);
+  derrs.forEach((e) => console.log('   !! ' + e));
+  await dp.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.
