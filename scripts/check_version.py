@@ -52,6 +52,14 @@ def main():
     check("CITATION.cff date-released matches that entry", cff_date == chg_date,
           f"CITATION.cff {cff_date!r} vs CHANGELOG {chg_date!r}")
 
+    # index.html carries the build version the shipped JavaScript belongs to; app.js compares it
+    # against the manifest at boot and warns a reader holding a cached build. If it drifts from
+    # VERSION the warning either never fires or fires forever, so it is held equal here.
+    html = open(os.path.join(ROOT, "index.html")).read()
+    m = re.search(r'<meta name="atlas-build-version" content="([^"]+)">', html)
+    check("index.html build version matches VERSION", bool(m) and m.group(1) == version,
+          f"index.html '{m.group(1) if m else 'MISSING'}' vs VERSION '{version}'")
+
     print(f"\n{len(fails)} failed\n" if fails else "\nall version references agree\n")
     if fails:
         print("To release: edit VERSION, add a CHANGELOG entry, sync CITATION.cff, rebuild "

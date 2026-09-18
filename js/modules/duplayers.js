@@ -156,6 +156,31 @@ async function buildRows(g) {
   const arrayEvents = new Set(secondShown.map((x) => x.layer));
   const novelEvents = [...arrayEvents].filter((e) => !ownEvents.has(e));
 
+  // ---- links BETWEEN two partners, not just from the focal gene --------------------------
+  //
+  // Gamma came first, so a gene's salicoid sister and its gamma copy are themselves a gamma
+  // pair. Drawing only the focal gene's own links showed a star and hid the triangle -- and
+  // the triangle is the point: it is what makes "one locus carries three duplication types"
+  // legible as a history rather than a list. 10,436 of 12,198 such third edges are already in
+  // the shipped anchor table (86%), so this is a rendering gap, not a data one.
+  //
+  // Nothing is inferred. An edge is drawn only where the anchor table actually carries it,
+  // with that pair's own dS and event. The 14% with no third edge stay open, because drawing
+  // a link the table does not contain would be asserting a pair nobody scored.
+  const drawn = new Map([...secondBy.values(), ...placed.filter(Boolean)]
+    .map((p) => [p.id, p]));
+  const between = [];
+  const seenEdge = new Set();
+  for (const p of drawn.values()) {
+    for (const q of (p.wgd || [])) {
+      if (!drawn.has(q.id) || q.id === g.id) continue;
+      const key = [p.id, q.id].sort().join('|');
+      if (seenEdge.has(key)) continue;
+      seenEdge.add(key);
+      between.push({ a: p.id, b: q.id, layer: q.e === 'A' ? 'A' : 'S', ds: q.ks });
+    }
+  }
+
   // The focal gene is a tandem member only when it actually has array members. Colouring it
   // tandem-pink on a gene with no array would assert a duplication the data does not call.
   const focal = { id: g.id, hap: g.hap, chr: g.chr, start: g.start, end: g.end,
@@ -219,7 +244,7 @@ async function buildRows(g) {
   }
   return { rows, notes, tdScored: tdShown.filter((m) => pks[m] != null).length,
            tdShown: tdShown.length, memTotal: mem.length,
-           second: [...secondBy.values()], novelEvents, ownEvents: [...ownEvents] };
+           second: [...secondBy.values()], novelEvents, ownEvents: [...ownEvents], between };
 }
 
 function rowLabel(r, g) {
@@ -422,6 +447,35 @@ function drawDiagram(g, built, width) {
           : { mx: a.x, my: a.y - GENE_H / 2 - 11, label, layer: a.layer,
               w: label.length * 5.6 + 8, row, own: row });
       }
+    }
+  }
+
+  // Links between two PARTNERS (the third side of the triangle). Same geometry, but the arc
+  // leaves one partner and lands on the other, and neither end is the focal gene.
+  for (const e of (built.between || [])) {
+    const from = anchors.get(e.a);
+    const to = anchors.get(e.b);
+    if (!from || !to) continue;
+    const { d, mx, my } = arcPath(from, to, 0);
+    const spec = { from, to, sameRow: from.y === to.y, bow: 0, layer: e.layer, second: true };
+    const path = svgEl('path', {
+      d, fill: 'none', stroke: COLOUR[e.layer] || P.ink3,
+      'stroke-width': 1.2, 'stroke-opacity': 0.6, 'stroke-dasharray': '5 3',
+    });
+    const grab = svgEl('path', { d, fill: 'none', stroke: 'transparent', 'stroke-width': 14,
+      style: 'cursor:ns-resize;touch-action:none' });
+    spec.node = path; spec.grab = grab;
+    links.push(spec);
+    arcs.append(path);
+    handles.append(grab);
+    if (e.ds != null) {
+      // On its own arc, NOT above the target gene. Both the focal gene's gamma link and this
+      // one can land on the same partner, and two pills stacked over one gene say nothing
+      // about which arc each belongs to -- seen on the Fuzzy MYB locus, where dS 1.21 and
+      // dS 1.03 sat one above the other on 17G070400.
+      const label = `dS ${e.ds < 0.1 ? e.ds.toFixed(3) : e.ds.toFixed(2)}`;
+      const row = rows.findIndex((_, ri) => yOf(ri) === to.y);
+      pills.push({ mx, my, label, layer: e.layer, w: label.length * 5.6 + 8, row, own: -1 });
     }
   }
 
@@ -631,7 +685,17 @@ function caption(built, g, suppressed, dropped) {
   if ((g.td || {}).ks != null) {
     bits.push(`The array’s MEDIAN dS is ${g.td.ks.toFixed(3)} — a property of the array, not of any link here.`);
   }
-  if (g.allele) bits.push('The dashed link is the same gene on the other haplotype, not a duplication.');
+  if (g.allele) bits.push('The long-dashed grey link is the same gene on the other haplotype, not a duplication.');
+  // The third side of the triangle. Gamma came first, so this gene's salicoid sister and its
+  // gamma copy are a gamma pair in their own right; drawing only the focal gene's links showed
+  // a star and hid the history that makes the locus worth looking at.
+  if (built.between && built.between.length) {
+    const n = built.between.length;
+    bits.push(`${n} dashed link${n === 1 ? '' : 's'} join${n === 1 ? 's' : ''} two PARTNERS `
+      + 'rather than this gene: gamma came first, so this gene\u2019s salicoid sister and its '
+      + 'gamma copy are themselves a gamma pair. Each is drawn only where the anchor table '
+      + 'carries that pair, with that pair\u2019s own dS \u2014 never inferred from the other two.');
+  }
   // The whole-array history, stated as the array's. The distinction carried here is the
   // point of the feature: the array went through the event, this copy did not retain a
   // partner for it, and those are different facts.

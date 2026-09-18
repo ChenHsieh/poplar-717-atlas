@@ -557,6 +557,83 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await bp.close();
 }
 
+// Cache safety. GitHub Pages sends max-age=600 on every file and cannot be told otherwise, so
+// for ten minutes after a deploy a reader can hold a stale facets.json while fetching fresh
+// JavaScript. Every column this code reads by NAME still resolves in that state -- just to the
+// wrong thing -- so the page renders a confident number instead of failing. A reader on data
+// 0.11.2 saw 191 from a link that serves 229 for exactly this reason. Two defences, both
+// asserted: data URLs carry the manifest's version, and a mismatched build says so out loud.
+{
+  const cp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const cerrs = [];
+  const dataUrls = [];
+  cp.on('pageerror', (e) => cerrs.push(e.message));
+  cp.on('console', (m) => { if (m.type() === 'error') cerrs.push('console: ' + m.text()); });
+  cp.on('request', (r) => { if (r.url().includes('/data/')) dataUrls.push(r.url()); });
+  await cp.goto(base + '/#/browse?tandem=yes&wgd=both', { waitUntil: 'networkidle' });
+  await cp.waitForTimeout(1800);
+  const txt = await cp.evaluate(() => document.body.innerText);
+  const others = dataUrls.filter((u) => !u.includes('manifest.json'));
+  const unstamped = others.filter((u) => !u.includes('?v='));
+  const okMatch = !cerrs.length && others.length > 0 && unstamped.length === 0
+    && !txt.includes('cached build');
+  if (!okMatch) failures++;
+  console.log(`\n### cache:data-urls-carry-the-version  ${okMatch ? 'OK' : 'FAIL'}`);
+  console.log(`   ${others.length} non-manifest data fetches, ${unstamped.length} unstamped, `
+    + `banner shown: ${txt.includes('cached build')}`);
+  unstamped.slice(0, 3).forEach((u) => console.log('   !! unstamped: ' + u));
+  cerrs.forEach((e) => console.log('   !! ' + e));
+  await cp.close();
+
+  // A stale build must announce itself. Rewrite the meta before boot to simulate a reader
+  // holding yesterday's HTML and script against today's data.
+  const sp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  await sp.route('**/index.html', async (route) => {
+    const r = await route.fetch();
+    const body = (await r.text()).replace(/atlas-build-version" content="[^"]+"/,
+      'atlas-build-version" content="0.0.1"');
+    await route.fulfill({ response: r, body });
+  });
+  await sp.goto(base + '/index.html#/', { waitUntil: 'networkidle' });
+  await sp.waitForTimeout(1800);
+  const stxt = await sp.evaluate(() => document.body.innerText);
+  const okStale = stxt.includes('cached build') && stxt.includes('0.0.1');
+  if (!okStale) failures++;
+  console.log(`### cache:stale-build-warns  ${okStale ? 'OK' : 'FAIL'}`);
+  await sp.close();
+}
+
+// The third side of the triangle. Gamma predates salicoid, so a gene's salicoid sister and its
+// gamma copy are themselves a gamma pair -- drawing only the focal gene's links showed a star
+// and hid the history. PtXaTreH.08G070200 is the Fuzzy MYB locus from Chen's talk: salicoid to
+// 10G136900, gamma to 17G070400, and the 10g-17g edge that must now also appear. The count is
+// asserted so an inference bug (completing the triangle by construction rather than from the
+// anchor table) shows up as too MANY links rather than passing silently.
+{
+  const tp = await browser.newPage({ viewport: { width: 1180, height: 1000 } });
+  const terrs = [];
+  tp.on('pageerror', (e) => terrs.push(e.message));
+  tp.on('console', (m) => { if (m.type() === 'error') terrs.push('console: ' + m.text()); });
+  await tp.goto(base + '/#/gene/PtXaTreH.08G070200', { waitUntil: 'networkidle' });
+  await tp.waitForTimeout(2400);
+  const card = tp.locator('.card').filter({ has: tp.locator('h2', { hasText: 'Duplication layers' }) }).first();
+  const txt = (await card.innerText()).toLowerCase();
+  // every dS drawn on the card, in order
+  const ds = (await card.innerText()).match(/dS \d+\.\d+/g) || [];
+  const has = (v) => ds.includes(v);
+  const ok = !terrs.length
+    && has('dS 0.093')      // 08g -> 10g salicoid
+    && has('dS 1.21')       // 08g -> 17g gamma
+    && has('dS 1.03')       // 10g -> 17g gamma: the third edge
+    && txt.includes('two partners')   // 'joins' when there is one, 'join' when several
+    && txt.includes('never inferred from the other two');
+  if (!ok) failures++;
+  console.log(`\n### duplayers:third-edge-of-the-triangle  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   dS labels drawn: ${ds.join(', ')}`);
+  terrs.forEach((e) => console.log('   !! ' + e));
+  await tp.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.

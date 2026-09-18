@@ -318,5 +318,25 @@ route(/^\/study\/(\d+)$/, async (idStr) => {
         man.data_released ? ` · ${man.data_released}` : '',
         ' · ', el('a', { href: '#/module/about' }, 'provenance')));
     }
+    // A cached script against fresh data is the dangerous combination: every column this code
+    // reads by name still resolves, just to the wrong thing, so the page renders a confident
+    // number instead of failing. GitHub Pages caps caching at 10 minutes and offers no way to
+    // purge, so the only honest move is to say so rather than to let it pass silently.
+    const built = (document.querySelector('meta[name="atlas-build-version"]') || {}).content;
+    if (built && man.data_version && built !== man.data_version) {
+      const bar = el('div', {
+        role: 'status',
+        style: 'position:sticky;top:0;z-index:50;padding:9px 14px;font-size:13px;'
+          + 'background:#8a5a00;color:#fff;display:flex;gap:12px;align-items:center;flex-wrap:wrap',
+      },
+        el('span', {}, `You are viewing a cached build (v${built}) of a site now serving `
+          + `data v${man.data_version}. Numbers on this page may not match the current data.`),
+        el('button', {
+          onclick: () => location.reload(true),
+          style: 'font:inherit;padding:3px 10px;border:1px solid #fff;border-radius:5px;'
+            + 'background:transparent;color:#fff;cursor:pointer',
+        }, 'Reload'));
+      document.body.prepend(bar);
+    }
   } catch { /* footer stamp is cosmetic; never block boot on it */ }
 })();

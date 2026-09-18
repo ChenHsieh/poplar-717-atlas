@@ -97,10 +97,36 @@ export async function loadStructure(geneId) {
 const cache = new Map();
 const inflight = new Map();
 
-async function fetchJSON(path) {
+// GitHub Pages serves every file with `cache-control: max-age=600` and no way to change it.
+// That is fine for one file at a time and dangerous across a release: for ten minutes after a
+// deploy a returning reader can hold a STALE facets.json while fetching FRESH JavaScript, and
+// the two disagree silently -- a filter reads a column that moved, or one that does not exist
+// yet, and returns a confidently wrong count rather than an error. That is not hypothetical:
+// it is how a reader on data 0.11.2 saw 191 from a link that serves 229.
+//
+// So the manifest is always revalidated (cheap: an ETag 304 costs a round trip and no body),
+// and every other data URL carries the version the manifest just reported. A new release
+// changes those URLs, so a stale copy can never be served alongside a fresh manifest.
+let DATA_VERSION = null;
+export const dataVersion = () => DATA_VERSION;
+
+const MANIFEST = 'data/meta/manifest.json';
+
+async function fetchJSON(path, init) {
   if (cache.has(path)) return cache.get(path);
   if (inflight.has(path)) return inflight.get(path);
-  const p = fetch(path)
+  // Any data fetch that races the manifest would otherwise go out unstamped and could be
+  // served from a stale cache. Wait for the version first -- every caller is already async,
+  // and the manifest is one fetch that everything else needs anyway.
+  if (path !== MANIFEST && path.startsWith('data/') && DATA_VERSION === null) {
+    await loadManifest();
+    if (cache.has(path)) return cache.get(path);
+    if (inflight.has(path)) return inflight.get(path);
+  }
+  const url = (DATA_VERSION && path.startsWith('data/') && !path.includes('?'))
+    ? `${path}?v=${encodeURIComponent(DATA_VERSION)}`
+    : path;
+  const p = fetch(url, init)
     .then((r) => {
       if (!r.ok) throw new Error(`${r.status} ${path}`);
       return r.json();
@@ -119,7 +145,13 @@ async function fetchJSON(path) {
 }
 
 export const loadShard = (hap, key) => fetchJSON(`data/genes/${hap}/${key}.json`);
-export const loadManifest = () => fetchJSON('data/meta/manifest.json');
+export const loadManifest = async () => {
+  // no-store on the manifest itself: it is the thing that decides which version every other
+  // URL asks for, so it must never be the stale one. It is ~40 KB and fetched once per load.
+  const man = await fetchJSON(MANIFEST, { cache: 'no-store' });
+  if (man && man.data_version) DATA_VERSION = man.data_version;
+  return man;
+};
 
 /** One gene, one fetch. Returns null for an ID that does not exist.
  *  Checks the manifest's shard list first so a malformed ID (Chr99) resolves to "not found"

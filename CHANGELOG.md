@@ -9,6 +9,51 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.11.4 — 2026-09-18 — A cached build can no longer show the wrong number silently
+
+Reported by Chen: still seeing 191 from a link that serves 229, on data v0.11.2 while the site
+served 0.11.3. The data was right and the deploy was right — the browser was holding part of the
+previous release.
+
+**Why this is a defect and not a user error.** GitHub Pages sends `cache-control: max-age=600`
+on every file and offers no way to change it, so for ten minutes after any deploy a reader can
+hold a stale `facets.json` while fetching fresh JavaScript. That state does not fail, it
+**miscounts**: `facetRow` maps columns by NAME, so every lookup still resolves, just to the wrong
+column. New code against an old index finds no `wgd9` (every canonical-v9 query returns 0) and
+gets the old `tandem` column back (103 again). The page renders a confident wrong number.
+
+- **Every data URL now carries the manifest's `data_version`.** The manifest is fetched
+  `no-store` so it is never the stale one, and any data fetch that races it waits for the
+  version first — otherwise it would go out unstamped and could still be served from cache. A
+  stale copy can no longer sit beside a fresh manifest.
+- **A stale build announces itself.** `index.html` carries the version its JavaScript was built
+  for; when it disagrees with the manifest a banner says so and offers a reload. `check_version.py`
+  holds that meta equal to `VERSION` — confirmed to FAIL when they drift, so the warning cannot
+  quietly stop firing.
+- `check.mjs` asserts both: that no non-manifest data URL is unstamped, and that rewriting the
+  meta before boot produces the banner.
+
+**The third side of the triangle now renders.** Gamma predates salicoid, so a gene's salicoid
+sister and its gamma copy are themselves a gamma pair — and the card was drawing only the focal
+gene's own links, which showed a star where the data already held a triangle. Reported by Chen
+from the Fuzzy MYB slide: "there should also be links between the 10g and 17g right?" There
+should, and there were, in the table but not on the page.
+
+- **18,276 partner-to-partner links across 7,845 genes** now draw, dashed, each labelled with
+  that pair's own dS. Placed on their own arc rather than above the target gene, because two
+  gamma links can land on the same partner and stacked pills say nothing about which arc they
+  belong to (seen on that very locus: 1.21 and 1.03 one above the other on 17G070400).
+- **Nothing is inferred.** An edge is drawn only where the anchor table carries that pair. Of
+  12,198 such triangles, 10,436 (86%) already have their third edge; the other 1,762 render
+  without one, which is the honest state. Completing them by inference would manufacture the
+  very signal the upstream audit is measuring.
+- The remaining 14%, plus 248 third edges labelled salicoid where the topology predicts gamma,
+  are an anchor-table question and are briefed for the WGD track owner at
+  `/scratch/ch29576/wgd_triangle_audit/BRIEF.md` with the measurement scripts. The Fuzzy MYB
+  locus is the worked case: HAP1 has the third edge, HAP2 has none and its Chr10 gene carries
+  no gamma call at all, with gamma dS 1.21 against 3.08 for the same locus.
+
+
 ## 0.11.3 — 2026-09-18 — Route C becomes the default WGD call, and Browse stops accumulating filters
 
 Reported by Chen: selecting all three duplication classes returned 229 in the figures but not
