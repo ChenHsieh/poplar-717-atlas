@@ -14,6 +14,8 @@ import expression from '../modules/expression.js';
 import annotation from '../modules/annotation.js';
 import phylostrat from '../modules/phylostrat.js';
 import duplication from '../modules/duplication.js';
+import duplayers from '../modules/duplayers.js';
+import dupheatmap from '../modules/dupheatmap.js';
 import protein from '../modules/protein.js';
 import locus from '../modules/locus.js';
 import mirror from '../modules/mirror.js';
@@ -22,5 +24,7 @@ import promoter from '../modules/promoter.js';
 import about from '../modules/about.js';
 
 // annotation first: 'what is this gene' should be the top card on a gene page.
-export const MODULES = [annotation, locus, mirror, scrubber, promoter, synteny, phylostrat, duplication, protein, expression, about];
+// duplayers/dupheatmap sit either side of duplication: the picture of the layers, then the
+// card that names them, then the same copies over every sample.
+export const MODULES = [annotation, locus, mirror, scrubber, promoter, synteny, phylostrat, duplayers, duplication, dupheatmap, protein, expression, about];
 export const byId = (id) => MODULES.find((m) => m.id === id);

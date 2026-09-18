@@ -38,6 +38,13 @@ STAGES=(
   "sapelo2|build_layers.py|external genome-wide layers"
   "sapelo2|build_crossspecies.py|cross-species orthologs"
   "onedrive|patch_dup_v9_and_pav.py|duplication v9 + PAV (after build_duplication)"
+  # NOT PREVIOUSLY LISTED, and that was a real gap: `td.mem` and every `para[].r` on the
+  # shards are written by patch_duplicate_partners.py, which no stage ran. A full rebuild
+  # therefore dropped the array-member lists and the duplicate co-expression the Duplication
+  # card renders, and nothing failed -- the card just quietly lost its table. Found while
+  # adding the stage below, which depends on td.mem.
+  "repo|patch_duplicate_partners.py|array members + duplicate co-expression (after build_layers, which writes td and arrays.json)"
+  "repo|patch_td_pair_ks.py|per-PAIR tandem dS (after patch_duplicate_partners, which writes the td.mem it keys on)"
   "repo|patch_pool_idesia.py|Idesia-corrected LSG pool (after build_phylostrat; MUST precede patch_lsg_qc)"
   "repo|patch_lsg_qc.py|LSG evidence-quality flags (after patch_pool_idesia -- it drops rows for genes the corrected pool no longer holds)"
   "repo|patch_proteomics_v2.py|proteomics re-search, genome-wide (after build_layers, which writes the Tier-1 shape this replaces)"

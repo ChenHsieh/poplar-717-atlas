@@ -422,3 +422,52 @@ only what still has no second layer after that gets folded into About.
 - [x] **45 — DONE, differently than planned.** The module pages earned their place by becoming Browse launchers, so nothing needed folding away. About instead gained the one thing no module page showed: a per-layer COVERAGE table with what an absent value means in each layer.  Old text:
       Receives the residual stats from 38/39 as a "genome-wide summary" section, so numbers worth
       keeping are kept in one place instead of padding five pages.
+
+## v0.11 — every duplicate of a gene, drawn and measured (2026-09-18)
+
+- [x] **46 — SHIPPED 2026-09-18, data 0.11.0.** Three cards could say *that* a gene has
+      duplicates; none showed the copies together, and no tandem pair carried a divergence.
+      Now: a **Duplication layers** card (tandem / salicoid / gamma as separate tracks on one
+      shared kb scale, each partner in its own real neighbourhood, arcs labelled with that
+      pair's dS, the HAP1↔HAP2 allele dashed and named as not-a-duplication); a **652-sample
+      heatmap over every copy** with the low-expression filter OFF by default; and the
+      partner's own class, peak TPM and peak tissue added to all three duplicate tables.
+      New data: `sources/td_pair_ks.tsv.gz` → `td.pks`, 15,710 per-PAIR tandem dS.
+      **`td.ks` is untouched and still means the ARRAY MEDIAN** — the card says so beside the
+      new column, which is the whole reason the column did not exist before. See CHANGELOG 0.11.0.
+
+      **The generalisable finding, and it is not about duplication.**
+      `patch_duplicate_partners.py` was never a `build_all.sh` stage. A full rebuild therefore
+      dropped `td.mem` and every `para[].r` — the array-member table and the duplicate
+      co-expression — and **nothing failed**: validate_data.py checks those fields only if they
+      are present, so an empty layer validates perfectly. This is item 25's rule with the
+      polarity flipped: 25 says an aggregate a missing stage owns goes *stale*; this says a
+      LAYER a missing stage owns goes *absent*, and absence is the quieter of the two because
+      every "is it in range / does it point somewhere real" check passes vacuously on zero rows.
+      Worth a sweep: for each optional shard field, does some check assert a COUNT, or only the
+      shape of whatever rows happen to exist?
+
+- [ ] **47 — the sweep item 46 implies. RUN, and it found six more.** Diffing every
+      `patch_*.py` / `make_*_source.py` in `scripts/` against `build_all.sh`'s STAGES and its
+      two "DELIBERATELY NOT A STAGE" paragraphs takes about a minute. Six patchers besides
+      `patch_duplicate_partners.py` are owned by no stage and named nowhere in the script:
+
+          patch_chromatin_profiles.py   patch_gene_model.py     patch_map_overlays.py
+          patch_peptide_detail.py       patch_promoter_pos.py   patch_structure.py
+          patch_wgd_pairs.py
+
+      Each writes a shard layer the site renders, so a full rebuild drops all seven silently —
+      same failure shape as 46. `patch_wgd_pairs.py` is the sharpest of them: it writes `g.wgd`,
+      which the WGD anchor table and the new Duplication layers card both read, so losing it
+      empties a card that still renders.
+
+      NOT FIXED HERE, deliberately: each needs its true position established (which stage writes
+      the key it patches, and whether an earlier stage would overwrite it), and guessing an order
+      is how a build script starts producing plausible, wrong data. The `make_*_source.py`
+      scripts in the same sweep are expected to be absent — the file's own convention is that
+      they regenerate `sources/` by hand — but that convention names only two of the seven that
+      exist, so the paragraph should list them all rather than leave the reader to infer it.
+
+      Then make the sweep a check: `scripts/check_stages.py`, run from `build_all.sh`, failing
+      on any `patch_*.py` that is neither a stage nor explicitly excused. The lesson from 46 is
+      that a missing layer validates perfectly, so the only place this can be caught is here.

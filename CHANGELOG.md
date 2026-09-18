@@ -9,6 +9,60 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.11.0 — 2026-09-18 — Every duplicate of a gene, drawn and measured
+
+Three cards on the gene page could each say *that* a gene has duplicates. None of them showed the
+copies together, and none carried a divergence for a tandem pair. This release adds both, and gives
+the existing tables the three columns a reader was leaving the page to find.
+
+**Duplication layers** (new card, `js/modules/duplayers.js`). Tandem, salicoid WGD and gamma kept
+apart as separate tracks on one shared kilobase scale, each partner in a few genes of its own real
+neighbourhood, each link a labelled arc carrying that pair's own dS. The figure shape is the one the
+manuscript uses for a family (`ms1_talk_20260918/myb_case_20260917/myb_layered_locus_*.png`). The
+HAP1↔HAP2 allele is drawn too, dashed and in grey, with the card saying in words that it is the
+same gene twice phased rather than a duplication.
+
+- SVG rather than canvas, unlike every other drawn card here: the arcs carry text, the element
+  count is in the tens, and every gene is a real `<a>` with a 24 px transparent hit rectangle
+  (WCAG 2.2 SC 2.5.8) instead of hand-rolled pointer hit-testing.
+- Each track is padded by 12 kb and drawn on the widest track's scale, so a 2 kb gene and a 90 kb
+  array are not drawn the same width. Flanking genes are grey, unlabelled and marked
+  "for position only" — without them a partner track holds one gene, that gene is centred by
+  construction, and every arc on the card lands at the same x.
+
+**Per-pair tandem dS** (new data, `sources/td_pair_ks.tsv.gz` → `td.pks`). 15,710 scored pairs from
+the adopted TD union rebuild, covering 30,918 of 60,036 `td.mem` entries (51.5%). This is the number
+`patch_duplicate_partners.py` correctly refused to fake from `td.ks`: **`td.ks` is the array MEDIAN
+and stays exactly where it is.** The two are different quantities and the card says so beside the
+column. Coverage is partial by construction — `td.mem` lists every other member of an array,
+the source holds detected edges — so a dash reads "this pair was never scored", never "identical".
+`td.pks_n` carries the count, and the card's "scored N of M" sentence is recomputed from it.
+
+**The copies, over all 652 samples** (new card, `js/modules/dupheatmap.js`). One row per duplicate —
+tandem members, the other haplotype's allele, salicoid and gamma partners — over every sample,
+grouped study then tissue, with a correlation strip on the left and a tissue colour track beneath,
+after `heatmap_helper.py` in the manuscript case studies. Opt-in (one fetch per row).
+**The low-expression filter is off by default**, because a silent copy is the result in a duplicate
+family and a view that hid quiet rows first would hide the finding; when on, the control states the
+1 TPM cutoff and the number of rows removed, and the focal gene never leaves.
+
+**The three columns the tables were missing.** Every duplicate table on the Duplication card —
+tandem members, WGD anchors, paralog pairs — now carries the partner's own duplication class, its
+peak TPM across the 652 samples and its peak tissue, filled in from the partner's shard after
+render. The tandem table additionally gains the per-pair dS above.
+
+**A pipeline gap found while wiring this up.** `patch_duplicate_partners.py` was not a
+`build_all.sh` stage, so a full rebuild dropped `td.mem` and every `para[].r` — the array-member
+table and the duplicate co-expression the Duplication card renders — and nothing failed. Both it
+and the new `patch_td_pair_ks.py` are now registered stages, in dependency order after
+`build_layers.py`.
+
+**Checks.** Four new `validate_data.py` gates on `td.pks` (member membership, positivity, symmetry
+between directions, and `pks_n` recomputed rather than trusted); the membership gate was confirmed
+to fire on a deliberately corrupted shard before being trusted. `check.mjs` gains three render
+checks and one driven check that asserts the filter starts off, actually removes rows, and keeps
+the focal gene.
+
 ## 0.10.0 — 2026-09-16 — Where each gene sits in the ancestral eudicot karyotype
 
 The duplication card could say a gene is a retained gamma or salicoid duplicate, but not which

@@ -385,6 +385,70 @@ await check('module-about', '#/module/about',
              'audited out', 'derived here, not imported', 'Sources'] });
 await check('home-dark', '#/', { expect: ['63,960', 'Start here'], theme: 'dark' });
 
+// --- v0.11: duplication layers + the copies-over-all-samples heatmap ---------------------
+// A gene whose only duplicates are its own tandem array: this produces ONE track, which an
+// earlier guard treated as "nothing to draw" and silently hid the commonest case on the site.
+await check('gene-duplayers-tandem', '#/gene/PtXaTreH.08G070600',
+  { expect: ['Duplication layers', 'tandem duplication', 'ds 0.', 'array’s median ds',
+             'this gene + 3 array members'], wait: 1800 });
+// A gene with partners on OTHER chromosomes plus a HAP2 allele: the multi-track case, and the
+// one where the allele must be labelled as not a duplication.
+await check('gene-duplayers-wgd', '#/gene/PtXaTreH.17G070400',
+  { expect: ['Duplication layers', 'gamma whole-genome triplication',
+             'the same locus on the other haplotype',
+             'the same gene on the other haplotype, not a duplication'], wait: 2200 });
+// The per-PAIR tandem dS is a NEW column and is not td.ks. Assert both the column and the
+// sentence that keeps them apart -- a future patch that piped the array median into this
+// column would still render plausibly.
+await check('gene-tandem-pairds', '#/gene/PtXaTreH.08G070600',
+  { expect: ['pair ds', 'its class', 'max tpm', 'peak tissue',
+             'it is not the array median above'], wait: 1800 });
+
+// The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
+// Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
+// view must show the quiet copies -- the whole point of defaulting it off.
+{
+  const hp = await browser.newPage({ viewport: { width: 1180, height: 1400 } });
+  const herrs = [];
+  hp.on('pageerror', (e) => herrs.push(e.message));
+  hp.on('console', (m) => { if (m.type() === 'error') herrs.push('console: ' + m.text()); });
+  // 11-member array, 6 copies under 1 TPM, plus a salicoid partner and a HAP2 allele.
+  await hp.goto(base + '/#/gene/PtXaTreH.03G157300', { waitUntil: 'networkidle' });
+  await hp.waitForTimeout(1200);
+  await hp.click('button:has-text("Load the heatmap")');
+  await hp.waitForTimeout(3500);
+  const card = hp.locator('.card').filter({ has: hp.locator('h2', { hasText: 'The copies, over all 652 samples' }) }).first();
+  const hBefore = await card.locator('canvas').evaluate((c) => c.getBoundingClientRect().height);
+  const textBefore = (await card.innerText()).toLowerCase();
+  const boxChecked = await card.locator('input[type=checkbox]').isChecked();
+  await card.locator('input[type=checkbox]').check();
+  await hp.waitForTimeout(900);
+  const hAfter = await card.locator('canvas').evaluate((c) => c.getBoundingClientRect().height);
+  const textAfter = (await card.innerText()).toLowerCase();
+  // Row labels and the correlation numbers are PAINTED ON THE CANVAS, so innerText cannot see
+  // them -- an earlier version of this check asserted on 'self' and on the gene id and failed
+  // for that reason, not because the card was wrong. What the canvas CAN be asked is its
+  // height, which is rows x ROW_H + the tissue strip, so the row count is recoverable exactly.
+  const ROW_H = 22, CHROME = 4 + 14;   // must track js/modules/dupheatmap.js
+  const rowsOf = (h) => Math.round((h - CHROME) / ROW_H);
+  const nBefore = rowsOf(hBefore), nAfter = rowsOf(hAfter);
+  const ok = !herrs.length
+    && boxChecked === false                                   // unfiltered by default
+    && nBefore === 13                                         // 11 array members + allele + focal
+    && nAfter === nBefore - 6                                 // exactly the 6 quiet rows go,
+                                                              // so the focal row (not quiet) stays
+    && textBefore.includes('a silent copy is a result, not noise')
+    && textBefore.includes('hide copies that never reach 1 tpm')
+    && textBefore.includes('log2(tpm + 1)')
+    && textAfter.includes('6 of 13 copies never reach');
+  if (!ok) failures++;
+  console.log(`\n### dupheatmap:filter  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   default unchecked=${boxChecked === false}  rows ${nBefore} -> ${nAfter}`
+    + `  (canvas ${hBefore}px -> ${hAfter}px)`);
+  herrs.forEach((e) => console.log('   !! ' + e));
+  await hp.close();
+}
+
 // Search is the one interaction that has no index file behind it -- prove it resolves.
 const p = await browser.newPage({ viewport: { width: 1180, height: 900 } });
 const serrs = [];

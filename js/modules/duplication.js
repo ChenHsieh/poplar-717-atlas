@@ -4,7 +4,7 @@
 // chapter's tier-2 selection (phylostrata 16-18 plus a rank-12 comparator), NOT a genome-wide
 // duplication catalog. Tandem-array membership, by contrast, is genome-wide.
 import { el, fmt } from '../core/dom.js';
-import { loadArrays } from '../core/data.js';
+import { loadArrays, getGene } from '../core/data.js';
 import { browseHref } from '../core/browse.js';
 
 // Paralog-pair provenance, as a reader would say it. The upstream code for the first source is
@@ -32,6 +32,59 @@ function dupTypeLabel(d) {
   return parts.join(' + ') || d.t;
 }
 
+// Every duplicate table on this card answers "who" and, until now, at most one of "what kind",
+// "how diverged" and "is it expressed". A reader comparing copies needs all three in the same
+// row -- flipping to each partner's own page to read its class and its peak TPM is exactly the
+// comparison this card exists to save.
+//
+// The class and the expression live on the PARTNER's record, not on this gene's, so they are
+// filled in after a shard fetch per partner rather than blocking the card. The cells start as
+// an ellipsis and become either a value or an explicit dash; a cell never silently stays blank,
+// because a blank in a numeric column reads as a zero.
+function partnerCells() {
+  return {
+    type: el('td', { class: 'mono muted', style: 'font-size:11.5px' }, '…'),
+    max: el('td', { class: 'num muted' }, '…'),
+    top: el('td', { class: 'muted', style: 'font-size:11.5px' }, '…'),
+  };
+}
+
+function partnerHeaders() {
+  return [
+    el('th', { title: 'the partner’s own duplication class letters (A gamma, S salicoid, '
+      + 'T tandem, D dispersed, C none)' }, 'Its class'),
+    el('th', { class: 'num', title: 'highest TPM the partner reaches in any of the 652 samples '
+      + '— raw, not batch-corrected' }, 'Max TPM'),
+    el('th', { title: 'tissue with the partner’s highest WT-control median' }, 'Peak tissue'),
+  ];
+}
+
+/** Fill the deferred cells. One getGene per partner; shards are cached, and tandem members
+ *  share a shard with the focal gene, so an array of 8 is usually 1 request. */
+function fillPartners(entries) {
+  return Promise.all(entries.map(async ({ id, cells }) => {
+    let p = null;
+    try { p = await getGene(id); } catch { /* fall through to the not-found rendering */ }
+    if (!p) {
+      for (const c of Object.values(cells)) { c.textContent = '—'; c.title = 'record not found'; }
+      return;
+    }
+    const label = dupTypeLabel(p.dup);
+    cells.type.textContent = p.dup ? p.dup.t : '—';
+    cells.type.title = label || 'no duplication class on the partner record';
+    cells.type.classList.remove('muted');
+    const x = p.x;
+    // One decimal below 1,000 and a grouped integer above it: fmt() alone rendered 1.0 as
+    // "1" in a column whose neighbours read 0.8 and 1.4, which looked like a different unit.
+    cells.max.textContent = x && x.max != null
+      ? (x.max >= 1000 ? fmt(Math.round(x.max)) : x.max.toFixed(1))
+      : '—';
+    cells.max.title = x && x.max != null ? '' : 'no expression profile for this gene';
+    if (x && x.max != null) cells.max.classList.remove('muted');
+    cells.top.textContent = (x && x.top) || '—';
+  }));
+}
+
 function wgdSection(g) {
   const d = g.dup || {};
   const pairs = g.wgd || [];
@@ -51,9 +104,14 @@ function wgdSection(g) {
   wrap.append(kv);
 
   if (pairs.length) {
-    const rows = pairs.map((p) => el('tr', {},
+    const deferred = [];
+    const rows = pairs.map((p) => {
+      const cells = partnerCells();
+      deferred.push({ id: p.id, cells });
+      return el('tr', {},
       el('td', {}, el('a', { href: `#/gene/${p.id}`, class: 'mono' }, p.id)),
       el('td', {}, WGD_EVENT[p.e].name),
+      cells.type,
       el('td', { class: 'num' }, p.ks == null ? '—' : p.ks.toFixed(3)),
       el('td', { class: 'num' }, p.ss == null ? '—' : p.ss.toFixed(1)),
       el('td', { class: 'mono' }, p.cp),
@@ -61,14 +119,19 @@ function wgdSection(g) {
       el('td', { class: 'num' }, p.r == null
         ? el('span', { class: 'muted', title: 'not comparable on the batch-corrected matrix' }, 'n/c')
         : el('span', { class: 'mono' }, p.r.toFixed(2))),
-      el('td', { class: 'muted', style: 'font-size:11.5px' }, p.c ? 'dS conflict resolved' : '')));
+      cells.max, cells.top,
+      el('td', { class: 'muted', style: 'font-size:11.5px' }, p.c ? 'dS conflict resolved' : ''));
+    });
+    fillPartners(deferred);
     wrap.append(el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
       el('thead', {}, el('tr', {}, el('th', {}, 'Partner'), el('th', {}, 'Event'),
+        partnerHeaders()[0],
         el('th', { class: 'num', title: 'synonymous divergence of the anchor pair' }, 'dS'),
         el('th', { class: 'num', title: 'synonymous sites in the alignment; below 25 the dS is unreliable' }, 'Syn. sites'),
         el('th', {}, 'Chromosomes'),
         el('th', { class: 'num', title: 'collinear block (i-ADHoRe multiplicon) the anchor sits in' }, 'Block'),
         el('th', { class: 'num', title: 'Pearson r on batch-corrected log2 expression, 652 samples' }, 'Expr r'),
+        partnerHeaders()[1], partnerHeaders()[2],
         el('th', {}, ''))),
       el('tbody', {}, ...rows))));
     wrap.append(el('p', { class: 'muted', style: 'font-size:11.5px;margin:6px 0 0' },
@@ -221,21 +284,50 @@ function geneCard(g) {
         td.age ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
           `age bin ${td.age}${td.ks != null ? ` · array median Ks ${td.ks}` : ''}`) : null));
     // The card named the array and counted it, so a reader could see "7 members" and never
-    // learn which seven. No per-member dS is shown: td.ks is the ARRAY MEDIAN, and printing it
-    // next to an individual member would read as that pair's divergence.
+    // learn which seven.
+    //
+    // dS per member is NEW and is the per-PAIR value from the TD union rebuild
+    // (sources/td_pair_ks.tsv.gz -> td.pks), not td.ks. td.ks is the ARRAY MEDIAN and printing
+    // it in this column would read as that pair's divergence -- the reason this column did not
+    // exist before. It covers about half the member entries: `td.mem` lists every other member
+    // of the array, the dS table holds the DETECTED EDGES, so a dash means "this pair was never
+    // scored", never "these two are identical". `td.pks_n` counts it out below the table.
     if (td.mem && td.mem.length) {
-      const rows = td.mem.map(([id, r]) => el('tr', {},
-        el('td', {}, el('a', { href: `#/gene/${id}`, class: 'mono' }, id)),
-        el('td', { class: 'num' }, r == null
-          ? el('span', { class: 'muted', title: 'not comparable on the batch-corrected matrix' }, 'n/c')
-          : el('span', { class: 'mono' }, r.toFixed(2)))));
+      const pks = td.pks || {};
+      const deferred = [];
+      const rows = td.mem.map(([id, r]) => {
+        const cells = partnerCells();
+        deferred.push({ id, cells });
+        return el('tr', {},
+          el('td', {}, el('a', { href: `#/gene/${id}`, class: 'mono' }, id)),
+          cells.type,
+          el('td', { class: 'num' }, pks[id] == null
+            ? el('span', { class: 'muted', title: 'this pair was not scored as a detected '
+                + 'tandem edge — it is not a dS of zero' }, '—')
+            : el('span', { class: 'mono' }, pks[id].toFixed(4))),
+          el('td', { class: 'num' }, r == null
+            ? el('span', { class: 'muted', title: 'not comparable on the batch-corrected matrix' }, 'n/c')
+            : el('span', { class: 'mono' }, r.toFixed(2))),
+          cells.max, cells.top);
+      });
+      fillPartners(deferred);
+      const scored = td.pks_n ? td.pks_n[0] : Object.keys(pks).length;
       kv.append(el('dt', {}, 'Other members'),
         el('dd', {},
           el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
             el('thead', {}, el('tr', {}, el('th', {}, 'Gene'),
+              partnerHeaders()[0],
+              el('th', { class: 'num', title: 'synonymous divergence of THIS pair, from the '
+                + 'tandem union rebuild — not the array median above' }, 'Pair dS'),
               el('th', { class: 'num', title: 'Pearson r on batch-corrected log2 expression, '
-                + '652 samples' }, 'Expr r'))),
+                + '652 samples' }, 'Expr r'),
+              partnerHeaders()[1], partnerHeaders()[2])),
             el('tbody', {}, ...rows))),
+          el('div', { class: 'muted', style: 'font-size:11.5px;margin-top:5px' },
+            `Pair dS is the divergence of this gene against that member specifically, scored for `
+            + `${scored} of the ${td.mem.length} member${td.mem.length === 1 ? '' : 's'} listed. `
+            + 'It is not the array median above, and a dash means the pair was never scored as a '
+            + 'detected tandem edge rather than that the two copies are identical.'),
           td.more
             ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:4px' },
                 `and ${td.more} more, not listed.`)
@@ -280,8 +372,13 @@ function geneCard(g) {
 
 
   if (para && para.length) {
-    const rows = para.map((p) => el('tr', {},
+    const deferredPara = [];
+    const rows = para.map((p) => {
+      const cells = partnerCells();
+      deferredPara.push({ id: p.id, cells });
+      return el('tr', {},
       el('td', {}, el('a', { href: `#/gene/${p.id}`, class: 'mono' }, p.id)),
+      cells.type,
       el('td', { class: 'num' }, p.ks0 ? el('span', { class: 'muted' }, '0 *')
         : p.ks == null ? '—' : p.ks.toFixed(4)),
       el('td', { class: 'num' }, p.ka == null ? '—' : p.ka.toFixed(4)),
@@ -291,15 +388,21 @@ function geneCard(g) {
         ? el('span', { class: 'muted', title: 'one partner is outside the batch-corrected '
             + 'matrix, so the pair is not comparable — this is not a correlation of zero' }, 'n/c')
         : el('span', { class: 'mono' }, p.r.toFixed(2))),
+      cells.max, cells.top,
       el('td', { class: 'muted', style: 'font-size:11.5px' },
-        (PAIR_SRC[p.src] || p.src) + (p.sat ? ' · saturated' : ''))));
+        (PAIR_SRC[p.src] || p.src) + (p.sat ? ' · saturated' : '')));
+    });
+    fillPartners(deferredPara);
     card.append(
       el('h3', { style: 'font-size:13px;margin:14px 0 6px' }, `Paralog pairs (${para.length})`),
       el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
-        el('thead', {}, el('tr', {}, el('th', {}, 'Paralog'), el('th', { class: 'num' }, 'dS'),
+        el('thead', {}, el('tr', {}, el('th', {}, 'Paralog'),
+          partnerHeaders()[0],
+          el('th', { class: 'num' }, 'dS'),
           el('th', { class: 'num' }, 'dN'), el('th', { class: 'num' }, 'ω'),
           el('th', { class: 'num', title: 'Pearson r on batch-corrected log2 expression, '
             + '652 samples' }, 'Expr r'),
+          partnerHeaders()[1], partnerHeaders()[2],
           el('th', {}, 'Source'))),
         el('tbody', {}, ...rows))));
     if (para.some((p) => p.ks0)) {

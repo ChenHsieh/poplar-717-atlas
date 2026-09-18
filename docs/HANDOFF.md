@@ -2,7 +2,7 @@
 
 For whoever picks this up next, on any machine. Read this before touching `data/`.
 
-## The two things that will bite you
+## The three things that will bite you
 
 ### 1. The build destroys before it creates
 
@@ -43,6 +43,24 @@ the job. If a tree does get wiped, `git checkout -- data/` restores it; the comm
 `scripts/validate_data.py` is the backstop: it asserts the canonical per-layer counts (PAV
 805/859, TD 6663/6385, 191 contrasts, every gene has a `cre` record and a locus tile), so a
 partial build fails loudly rather than shipping.
+
+### 3. A patcher that is not a STAGE is an invisible hole (found 2026-09-18)
+
+`build_all.sh` is only as complete as its `STAGES` list, and **nothing checked that list against
+the scripts that exist**. `patch_duplicate_partners.py` was in neither the list nor either
+"DELIBERATELY NOT A STAGE" paragraph, so a full rebuild dropped `td.mem` and every `para[].r` --
+the array-member table and the duplicate co-expression on the Duplication card -- and every
+check passed. That is the difference between this and problem 1: problem 1 leaves a STALE value,
+which a recompute-and-diff gate catches (TODO 25). This leaves an ABSENT layer, and the
+validator's per-field checks ("is r inside [-1,1]", "does this partner id exist") are all
+vacuously true over zero rows. Only the count assertions above can see it, and there is no count
+assertion for most layers.
+
+A one-minute sweep -- every `patch_*.py` in `scripts/` diffed against the STAGES list -- found
+**six more unowned patchers**: `patch_chromatin_profiles.py`, `patch_gene_model.py`,
+`patch_map_overlays.py`, `patch_peptide_detail.py`, `patch_promoter_pos.py`,
+`patch_structure.py`, `patch_wgd_pairs.py`. TODO 47 carries the list and the proposed
+`scripts/check_stages.py` gate. **Before trusting a rebuild, run that diff.**
 
 ### Determinism
 

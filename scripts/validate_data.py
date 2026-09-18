@@ -274,6 +274,42 @@ def main():
     check("no gene lists itself as its own array partner", not self_mem,
           f"{len(self_mem)} genes, e.g. {self_mem[:3]}" if self_mem else "")
 
+    # ---- per-PAIR tandem dS (td.pks) ------------------------------------------------------
+    # Three ways this can be wrong silently, all of which render as a plausible number:
+    # a dS attached to a gene that is not an array member of this gene; a dS that is not
+    # symmetric (A->B and B->A must be the same pair); and a pks_n count that no longer
+    # matches the map after a member list changed. The card states the count in words, so a
+    # stale count is a false statement, not a cosmetic drift.
+    pks_orphan, pks_count, pks_range, pks_asym = [], [], [], []
+    pks_all = {}
+    for gid, (_h, _p, rec) in genes.items():
+        td = rec.get("td") or {}
+        pks = td.get("pks") or {}
+        members = {m[0] for m in (td.get("mem") or [])}
+        for pid, ds in pks.items():
+            if pid not in members:
+                pks_orphan.append((gid, pid))
+            if not (0 < ds < 100):
+                pks_range.append((gid, pid, ds))
+            pks_all[(gid, pid)] = ds
+        n = td.get("pks_n")
+        if td.get("mem") and (not n or n[0] != len(pks) or n[1] != len(td["mem"])):
+            pks_count.append((gid, n, len(pks), len(td.get("mem") or [])))
+    for (a, b), ds in pks_all.items():
+        other = pks_all.get((b, a))
+        if other is not None and abs(other - ds) > 1e-6:
+            pks_asym.append((a, b, ds, other))
+    check("every per-pair tandem dS names an actual array member of that gene", not pks_orphan,
+          f"{len(pks_orphan)} orphaned, e.g. {pks_orphan[:3]}" if pks_orphan
+          else f"{len(pks_all):,} directed entries")
+    check("every per-pair tandem dS is a positive, finite divergence", not pks_range,
+          f"{len(pks_range)} out of range, e.g. {pks_range[:3]}" if pks_range else "")
+    check("per-pair tandem dS is symmetric between the two partners", not pks_asym,
+          f"{len(pks_asym)} disagree, e.g. {pks_asym[:3]}" if pks_asym else "")
+    check("td.pks_n matches the map and the member list it counts", not pks_count,
+          f"{len(pks_count)} stale, e.g. {pks_count[:3]}" if pks_count
+          else "the card's 'scored N of M' sentence is recomputed, not trusted")
+
     # atac.pf promises a fetchable profile; a broken promise is a dead button
     prof_shards = {}
     pf_bad, pf_n = [], 0
