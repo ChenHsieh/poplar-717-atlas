@@ -310,6 +310,36 @@ def main():
           f"{len(pks_count)} stale, e.g. {pks_count[:3]}" if pks_count
           else "the card's 'scored N of M' sentence is recomputed, not trusted")
 
+    # ---- route C combined call (dup.cc) ---------------------------------------------------
+    # The whole point of shipping this beside the canonical letters is that a reader can see
+    # the disagreement, so the two things that must hold are: `ccd` is set exactly when the
+    # calls actually differ (a stale flag would under- or over-report the correction), and the
+    # totals still reproduce the published figure the source was gated against.
+    cc_bad, cc_tot = [], {"HAP1": {"s": 0, "a": 0}, "HAP2": {"s": 0, "a": 0}}
+    cc_dis = 0
+    for gid, (h, _p, rec) in genes.items():
+        d = rec.get("dup") or {}
+        cc = d.get("cc")
+        if not cc:
+            if d.get("ccd"):
+                cc_bad.append((gid, "ccd without cc"))
+            continue
+        hap = "HAP1" if h == "hap1" else "HAP2"
+        cc_tot[hap]["s"] += int(bool(cc.get("s")))
+        cc_tot[hap]["a"] += int(bool(cc.get("a")))
+        differs = (int(bool(cc.get("s"))) != int(bool(d.get("s")))
+                   or int(bool(cc.get("a"))) != int(bool(d.get("a"))))
+        if differs:
+            cc_dis += 1
+        if differs != bool(d.get("ccd")):
+            cc_bad.append((gid, f"ccd={d.get('ccd')} but differs={differs}"))
+    check("dup.ccd is set exactly where the two WGD calls differ", not cc_bad,
+          f"{len(cc_bad)} wrong, e.g. {cc_bad[:3]}" if cc_bad else f"{cc_dis:,} genes disagree")
+    want_cc = {"HAP1": {"s": 14748, "a": 4857}, "HAP2": {"s": 14747, "a": 4910}}
+    check("the combined call still reproduces its published totals", cc_tot == want_cc,
+          f"got {cc_tot}, want {want_cc}" if cc_tot != want_cc
+          else "HAP1 14,748/4,857; HAP2 14,747/4,910")
+
     # atac.pf promises a fetchable profile; a broken promise is a dead button
     prof_shards = {}
     pf_bad, pf_n = [], 0

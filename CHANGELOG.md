@@ -9,6 +9,39 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.11.1 — 2026-09-18 — The gamma dS was in the wrong place, and the route C call ships beside the canonical one
+
+**The gamma dS bug, and it was worse than a missing number.** Every gamma anchor carries a dS
+(16,804 entries, 100%), so nothing was absent from the data — it was being drawn in a place that
+said the wrong thing. A dS label sat at its arc's MIDPOINT, which for a cross-row link is nowhere
+near the partner it describes: on a gene with both a salicoid and a gamma partner, the gamma
+value (1.50) rendered just above the SALICOID track while the salicoid value was displaced into a
+row heading. A reader would have attached each number to the wrong event. A cross-row dS now sits
+directly above the partner gene it belongs to; only a same-row tandem arc keeps the apex, where
+its two ends are the only genes it could refer to.
+
+**Route C re-adjudication, shown but not adopted.** The gamma-branch route C work re-scored every
+WGD anchor pair against the ancestral eudicot karyotype: it takes the topology call where grape
+and segment dS independently agree with it, keeps the canonical call otherwise, and sets aside
+split-evidence pairs. It disagrees with the canonical v9 letters on **904 genes** (567 gain
+salicoid, 173 lose it; 122 gain gamma, 485 lose it), moving HAP1 to 14,748 / 4,857 and HAP2 to
+14,747 / 4,910.
+
+- Shipped as `dup.cc` **beside** `dup.s` / `dup.a`, with `dup.ccd` flagging the disagreements —
+  the treatment the withdrawn LSG pool got in 0.4.0: show the correction, never silently swap it.
+  The gene page shows both under **Route C re-adjudication**, badged *proposed, not adopted*.
+- **Nothing on the site computes anything from the route C call.** The canonical v9 letters remain
+  the called class everywhere, because MS1's own 2026-09-16 reconciliation still lists v9 as
+  canonical and marks this correction "nothing applied, for the WGD track owner" (open item (t)),
+  and the manuscript quotes the v8 figures. Publishing the route C call as *the* class would put
+  the atlas ahead of its own source table.
+- Gated on the published figure: `make_wgd_combined_call_source.py` refuses to write unless it
+  reproduces `main_dupclass_euler_combined_call_*_stats.csv` exactly, and `validate_data.py`
+  re-asserts those totals plus that `ccd` is set exactly where the two calls differ.
+- A drop-in patch for the canonical table is at `/scratch/ch29576/wgd_combined_call_patch/`
+  (63,960 rows, 904 changed). It is a file rather than an edit because `ms1-dup` is a one-way
+  mirror of OneDrive — the canonical table lives on the Mac.
+
 ## The duplication history of the array, not just of the gene
 
 A tandem array can have gone through salicoid WGD or gamma while THIS copy retained no partner

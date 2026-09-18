@@ -410,8 +410,17 @@ function drawDiagram(g, built, width) {
       handles.append(grab);
       if (a.ds != null) {
         const label = `dS ${a.ds < 0.1 ? a.ds.toFixed(3) : a.ds.toFixed(2)}`;
-        pills.push({ mx, my, label, layer: a.layer, w: label.length * 5.6 + 8,
-                     row: rows.findIndex((_, ri) => yOf(ri) === a.y) });
+        const row = rows.findIndex((_, ri) => yOf(ri) === a.y);
+        // WHERE A dS SITS DECIDES WHICH LINK A READER THINKS IT BELONGS TO, and the arc
+        // midpoint is the wrong answer for a cross-row link: on a gene with a salicoid and a
+        // gamma partner the gamma value landed just above the SALICOID track, which is worse
+        // than not showing it. A cross-row dS now sits directly above the partner gene it
+        // describes; only a same-row (tandem) arc keeps the apex, where its two ends are the
+        // only genes it could refer to.
+        pills.push(dy === 0
+          ? { mx, my, label, layer: a.layer, w: label.length * 5.6 + 8, row, own: row }
+          : { mx: a.x, my: a.y - GENE_H / 2 - 11, label, layer: a.layer,
+              w: label.length * 5.6 + 8, row, own: row });
       }
     }
   }
@@ -433,7 +442,9 @@ function drawDiagram(g, built, width) {
   const obstacles = [];
   rows.forEach((r, ri) => {
     const ry = yOf(ri);
-    obstacles.push({ x0: -Infinity, x1: Infinity, y0: ry - BAND, y1: ry + BAND });
+    // `row` marks which track this band belongs to, so a pill deliberately parked above its
+    // own partner is not treated as colliding with that partner's track.
+    obstacles.push({ row: ri, x0: -Infinity, x1: Infinity, y0: ry - BAND, y1: ry + BAND });
     const lab = rowLabel(r, g);
     obstacles.push({ x0: PAD_X - 4, x1: PAD_X + lab.length * TEXT_CH + 4,
                      y0: ry - 52, y1: ry - 34 });
@@ -442,18 +453,19 @@ function drawDiagram(g, built, width) {
                      y0: ry - 52, y1: ry - 34 });
   });
   const placedPills = [];
-  const clash = (mx, my, w) =>
-    obstacles.some((o) => mx + w / 2 > o.x0 && mx - w / 2 < o.x1 && my + 8 > o.y0 && my - 8 < o.y1)
+  const clash = (mx, my, w, own) =>
+    obstacles.some((o) => o.row !== own
+      && mx + w / 2 > o.x0 && mx - w / 2 < o.x1 && my + 8 > o.y0 && my - 8 < o.y1)
     || placedPills.some((q) => Math.abs(q.my - my) < 17
                             && Math.abs(q.mx - mx) < (q.w + w) / 2 + 3);
   for (const pill of pills) {
     let my = pill.my;
-    let ok = !clash(pill.mx, my, pill.w);
+    let ok = !clash(pill.mx, my, pill.w, pill.own);
     for (let k = 1; !ok && k <= 5; k += 1) {
       for (const dir of [-1, 1]) {
         const cand = pill.my + dir * k * 17;
         if (cand < 10 || cand > height - 10) continue;
-        if (!clash(pill.mx, cand, pill.w)) { my = cand; ok = true; break; }
+        if (!clash(pill.mx, cand, pill.w, pill.own)) { my = cand; ok = true; break; }
       }
     }
     if (!ok) {

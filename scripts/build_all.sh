@@ -45,6 +45,7 @@ STAGES=(
   # adding the stage below, which depends on td.mem.
   "repo|patch_duplicate_partners.py|array members + duplicate co-expression (after build_layers, which writes td and arrays.json)"
   "repo|patch_td_pair_ks.py|per-PAIR tandem dS (after patch_duplicate_partners, which writes the td.mem it keys on)"
+  "repo|patch_wgd_combined_call.py|route C combined Ks+topology WGD call, BESIDE the canonical letters (after patch_dup_v9_and_pav, which writes the dup.s/dup.a it is compared against)"
   "repo|patch_pool_idesia.py|Idesia-corrected LSG pool (after build_phylostrat; MUST precede patch_lsg_qc)"
   "repo|patch_lsg_qc.py|LSG evidence-quality flags (after patch_pool_idesia -- it drops rows for genes the corrected pool no longer holds)"
   "repo|patch_proteomics_v2.py|proteomics re-search, genome-wide (after build_layers, which writes the Tier-1 shape this replaces)"

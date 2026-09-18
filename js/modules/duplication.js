@@ -153,6 +153,49 @@ function wgdSection(g) {
   }
   wrap.append(kv);
 
+  // The route C combined Ks + topology call, beside the canonical letters rather than instead
+  // of them. It disagrees on 904 genes, and which one is right is not the atlas's call to
+  // make: MS1's 2026-09-16 reconciliation still lists v9 as canonical and marks this
+  // "nothing applied, for the WGD track owner". Same treatment as the withdrawn LSG pool --
+  // show the correction, never silently swap it.
+  const cc = d.cc;
+  if (cc) {
+    const evName = { s: 'salicoid WGD', a: 'gamma' };
+    const ccSays = ['s', 'a'].filter((k) => cc[k]).map((k) => evName[k]).join(' + ')
+      || (cc.r ? 'set aside for review' : 'neither');
+    const v9Says = [d.s ? 'salicoid WGD' : null, d.a ? 'gamma' : null].filter(Boolean).join(' + ')
+      || 'neither';
+    const row = el('div', { style: 'margin-top:10px' },
+      el('h3', { style: 'font-size:13px;margin:0 0 6px;display:flex;align-items:center;gap:8px' },
+        'Route C re-adjudication',
+        el('span', { class: 'badge', style: 'font-size:11px;padding:0 6px' }, 'proposed, not adopted')));
+    const ckv = el('dl', { class: 'kv' });
+    ckv.append(
+      el('dt', {}, 'Canonical call'),
+      el('dd', {}, el('strong', {}, v9Says),
+        el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+          'master duplication table v9 — rule 5c plus a dS conflict resolution. This is what '
+          + 'the rest of this page, and the manuscript, use.')),
+      el('dt', {}, 'Combined Ks + topology call'),
+      el('dd', {}, el('strong', {}, ccSays),
+        cc.r ? el('span', { class: 'muted' }, ' · this gene sits on a split-evidence pair') : null,
+        el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+          'Re-adjudicated against the ancestral eudicot karyotype (route C): the topology call '
+          + 'where grape and segment dS independently agree with it, the canonical call '
+          + 'otherwise, split-evidence pairs set aside.')));
+    row.append(ckv);
+    if (d.ccd) {
+      row.append(el('div', { class: 'warn' },
+        el('strong', {}, 'The two calls disagree for this gene. '),
+        `Canonical says ${v9Says}; the route C re-adjudication says ${ccSays}. `
+        + 'They differ on 904 genes genome-wide: 567 gain salicoid and 173 lose it, 122 gain '
+        + 'gamma and 485 lose it (net +394 salicoid, −363 gamma). Neither is overridden here, and nothing downstream on this site '
+        + 'uses the route C call — it is shown so the disagreement is visible rather than '
+        + 'buried in a figure.'));
+    }
+    wrap.append(row);
+  }
+
   if (pairs.length) {
     const deferred = [];
     const rows = pairs.map((p) => {

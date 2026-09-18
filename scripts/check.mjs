@@ -493,6 +493,30 @@ await check('gene-array-history', '#/gene/PtXaTreH.04G044000',
   await dp.close();
 }
 
+// Route C re-adjudication shown BESIDE the canonical call, never instead of it. The risk is
+// that a reader takes the proposed call for the called one, so assert that the canonical
+// letters are still what the page leads with, that the badge says it is not adopted, and that
+// a disagreeing gene says so in words. PtXaTreH.09G077400: canonical gamma, route C salicoid.
+await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
+  { expect: ['route c re-adjudication', 'proposed, not adopted', 'canonical call',
+             'combined ks + topology call', 'the two calls disagree for this gene',
+             'master duplication table v9', 'retained duplicate'], wait: 1800 });
+// A gene where the two agree must NOT show the disagreement warning.
+{
+  const ap = await browser.newPage({ viewport: { width: 1180, height: 1000 } });
+  const aerrs = [];
+  ap.on('pageerror', (e) => aerrs.push(e.message));
+  await ap.goto(base + '/#/gene/PtXaTreH.01G176200', { waitUntil: 'networkidle' });
+  await ap.waitForTimeout(1600);
+  const txt = (await ap.evaluate(() => document.getElementById('view').innerText)).toLowerCase();
+  const ok = !aerrs.length && txt.includes('route c re-adjudication')
+    && !txt.includes('the two calls disagree for this gene');
+  if (!ok) failures++;
+  console.log(`\n### routec:agreeing-gene-has-no-warning  ${ok ? 'OK' : 'FAIL'}`);
+  aerrs.forEach((e) => console.log('   !! ' + e));
+  await ap.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.
