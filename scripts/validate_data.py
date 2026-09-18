@@ -310,6 +310,25 @@ def main():
           f"{len(pks_count)} stale, e.g. {pks_count[:3]}" if pks_count
           else "the card's 'scored N of M' sentence is recomputed, not trusted")
 
+    # The facet index is what Browse counts, and a facet can be internally consistent while
+    # meaning something different from the rest of the site. That is not hypothetical: the
+    # tandem facet was built from syn.flags.ar (GENESPACE placement, 6,804 genes) while every
+    # other surface used the curated union set (13,048), so Browse returned 103 for
+    # tandem + both WGDs where the canonical intersection is 385. Every check passed, because
+    # nothing compared the facet's MEANING to the canonical count.
+    fac_path = os.path.join(DATA, "index", "facets.json")
+    if os.path.exists(fac_path):
+        fac = json.load(open(fac_path))
+        cols = fac.get("cols") or fac.get("columns") or []
+        if "tandem" in cols:
+            ti = cols.index("tandem")
+            n_fac_td = sum(1 for row in fac["rows"] if row[ti])
+            want_td = 6663 + 6385
+            check("the tandem facet counts the CURATED union set, not GENESPACE placement",
+                  n_fac_td == want_td,
+                  f"facet says {n_fac_td:,}, canonical union set is {want_td:,}"
+                  if n_fac_td != want_td else f"{n_fac_td:,} genes, matching dup.td")
+
     # ---- route C combined call (dup.cc) ---------------------------------------------------
     # The whole point of shipping this beside the canonical letters is that a reader can see
     # the disagreement, so the two things that must hold are: `ccd` is set exactly when the
@@ -612,7 +631,8 @@ def main():
                 1 if r.get("allele") else 0,
                 1 if ann.get("at") else 0,
                 (1 if (r.get("dup") or {}).get("s") else 0) | (2 if (r.get("dup") or {}).get("a") else 0),
-                1 if flags.get("ar") else 0,
+                # must track build_facets.py: the CURATED union set, not GENESPACE's `ar`
+                1 if (r.get("dup") or {}).get("td") else 0,
                 len(r.get("pres") or []),
                 1 if ps.get("amb") else 0,
                 sum(1 << i for i, t in enumerate(

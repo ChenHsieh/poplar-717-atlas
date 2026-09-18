@@ -9,6 +9,37 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.11.2 — 2026-09-18 — Browse was filtering on a different tandem set from everything else
+
+**Browse disagreed with the class figures, and the reason was a definition, not a count.** The
+`tandem` facet was built from `syn.flags.ar` — GENESPACE's tandem PLACEMENT, 6,804 genes — while
+the Venn, the Duplication card and this repo's own canonical assertion all use `dup.td`, the
+curated union set of 13,048. The two overlap badly: 6,865 curated members are not flagged `ar`
+and 621 `ar` genes are not curated members. Selecting **tandem + both WGDs returned 103 where the
+canonical intersection is 385**. Reported by Chen from the live site.
+
+Nothing caught it because nothing was comparing Browse's ANSWER to the canonical numbers: the
+facet was internally consistent, reproduced exactly by the validator's own recompute, and wrong.
+Same family as 0.3.11's stale facet index (TODO 24) — a facet can agree with itself and still
+mean something the rest of the site does not.
+
+- `build_facets.py` now reads `dup.td`. The GENESPACE placement is still reachable, as the
+  Synteny class filter's `tandem_array_member` option, and the filter is relabelled
+  **"In curated tandem array"** so the two cannot be read as the same thing.
+- `validate_data.py` asserts the tandem facet equals the canonical 13,048, and its facet
+  recompute was updated in step. The new gate was confirmed to FAIL on the old index before
+  being trusted.
+- `check.mjs` gains a driven check asserting five Browse counts against the class figures —
+  13,048 / 385 / 1,647 / 955 / 20,959. Counting the intersection is the only thing that would
+  have caught this.
+
+**Every deep-linked Browse URL was throwing, and only that path.** The loop that seeds each
+filter widget from the URL ran BEFORE `const inputs` was declared, so any `#/browse?...` with a
+filter died on `Cannot access 'inputs' before initialization` and rendered nothing, while a plain
+`#/browse` worked because the loop body never executed. The one path the seeding exists to serve
+was the only one that failed — which is why it survived a suite that renders `#/browse` on every
+run. Moved after the widgets are built; the new Browse check exercises deep links by construction.
+
 ## 0.11.1 — 2026-09-18 — The gamma dS was in the wrong place, and the route C call ships beside the canonical one
 
 **The gamma dS bug, and it was worse than a missing number.** Every gamma anchor carries a dS

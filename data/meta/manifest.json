@@ -145,7 +145,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.11.1",
+ "data_version": "0.11.2",
  "duplicate_coexpr": {
   "basis": "Pearson r on log2(ComBat-corrected TPM + 1) over 652 samples -- the same matrix the neighbour co-expression (nb) uses, because a 652-sample correlation spans 28 studies and is therefore a cross-study comparison.",
   "coverage": "A pair needs BOTH partners in the ComBat matrix (59,599 of 63,960 genes), so 7,707 of 32,333 duplicate pairs have no value. Absence means 'not comparable', not 'uncorrelated'.",
@@ -1335,24 +1335,24 @@
   },
   "unstable": 639
  },
- "tier": "full",
  "td_pair_ks": {
-  "scored_pairs": 15710,
-  "member_entries_with_ds": 30918,
-  "member_entries_total": 60036,
   "basis": "Per-pair dS from the adopted TD union rebuild (union_pairs_final.csv), retained edges passing the source's own Ka/Ks coverage QC, dS > 0.",
-  "not_the_array_median": "`td.ks` remains the ARRAY MEDIAN and is a different quantity. A member without a `pks` entry was never scored as a pair; it does not mean the two copies are identical."
+  "member_entries_total": 60036,
+  "member_entries_with_ds": 30918,
+  "not_the_array_median": "`td.ks` remains the ARRAY MEDIAN and is a different quantity. A member without a `pks` entry was never scored as a pair; it does not mean the two copies are identical.",
+  "scored_pairs": 15710
  },
+ "tier": "full",
  "wgd_combined_call": {
-  "genes_with_a_call": 32170,
+  "canonical": "master_duplication_table_v9 (v8 rule 5c + dS resolution) remains the atlas's called class. The combined call is shown beside it as a proposed correction, NOT applied upstream as of 2026-09-16.",
   "genes_disagreeing_with_v9": 904,
+  "genes_with_a_call": 32170,
   "movement": {
-   "into_salicoid": 567,
-   "out_of_salicoid": 173,
    "into_gamma": 122,
-   "out_of_gamma": 485
+   "into_salicoid": 567,
+   "out_of_gamma": 485,
+   "out_of_salicoid": 173
   },
-  "rule": "topology where grape and segment Ks independently agree; v8 otherwise; split-evidence pairs set aside as `review`.",
-  "canonical": "master_duplication_table_v9 (v8 rule 5c + dS resolution) remains the atlas's called class. The combined call is shown beside it as a proposed correction, NOT applied upstream as of 2026-09-16."
+  "rule": "topology where grape and segment Ks independently agree; v8 otherwise; split-evidence pairs set aside as `review`."
  }
 }

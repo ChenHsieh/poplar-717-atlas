@@ -39,7 +39,10 @@ const FILTERS = [
     test: (r, v) => (r.allele ? 'yes' : 'no') === v },
   { id: 'at', label: 'Has Arabidopsis hit', kind: 'select', options: ['yes', 'no'],
     test: (r, v) => (r.at ? 'yes' : 'no') === v },
-  { id: 'tandem', label: 'In tandem array', kind: 'select', options: ['yes', 'no'],
+  // The CURATED union set (13,048 genes), the same one the Duplication card and the class
+  // figures use. GENESPACE's looser tandem placement is the Synteny class filter's
+  // `tandem_array_member` option, and the two are not interchangeable.
+  { id: 'tandem', label: 'In curated tandem array', kind: 'select', options: ['yes', 'no'],
     test: (r, v) => (r.tandem ? 'yes' : 'no') === v },
   // Events are not exclusive: a gene retained from both the gamma triplication and the salicoid
   // WGD matches either choice. The call is the curated gene-level letter, not the pair table.
@@ -197,12 +200,6 @@ export async function browseView() {
   const pager = el('div', { style: 'display:flex;gap:9px;align-items:center;margin-top:12px' });
   const setsHolder = el('div', {});
 
-  // a filter seeded from the URL must show in its widget, or Browse looks unfiltered
-  for (const [id, v] of Object.entries(state.values)) {
-    const w = inputs.get(id);
-    if (w) w.value = v;
-  }
-
   const render = () => {
     drawChips();
     clear(summary).append(
@@ -249,6 +246,17 @@ export async function browseView() {
     inputs.set(f.id, input);
     controls.append(el('label', { style: 'display:block;font-size:11.5px;color:var(--ink-2)' },
       f.label, el('div', { style: 'margin-top:3px' }, input)));
+  }
+
+  // A filter seeded from the URL must show in its widget, or Browse looks unfiltered.
+  // This MUST run after `inputs` is populated. It used to sit above the widget loop, where
+  // `const inputs` was still in the temporal dead zone -- so any deep link carrying a filter
+  // threw "Cannot access 'inputs' before initialization" and rendered nothing, while a plain
+  // /#/browse worked because the loop body never executed. The one path the seeding exists
+  // to serve was the only one that failed.
+  for (const [id, v] of Object.entries(state.values)) {
+    const w = inputs.get(id);
+    if (w) w.value = v;
   }
 
   /** Active filters as removable chips. Without these, what is being filtered lives only in

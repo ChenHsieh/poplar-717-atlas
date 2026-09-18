@@ -517,6 +517,41 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await ap.close();
 }
 
+// Browse must return the SAME numbers as the duplication class figures. It did not: the
+// tandem facet was built from syn.flags.ar (GENESPACE placement, 6,804 genes) while the Venn,
+// the Duplication card and validate_data.py all use the curated union set (13,048), so
+// "tandem + both WGDs" returned 103 against a canonical 385. Every check passed, because
+// nothing compared Browse's ANSWER to the canonical intersection. These are those numbers.
+// They also exercise deep-linked filters, which used to throw before `inputs` existed.
+{
+  const bp = await browser.newPage({ viewport: { width: 1180, height: 1000 } });
+  const berrs = [];
+  bp.on('pageerror', (e) => berrs.push(e.message));
+  bp.on('console', (m) => { if (m.type() === 'error') berrs.push('console: ' + m.text()); });
+  const want = [
+    ['tandem=yes', 13048, 'curated union tandem set'],
+    ['tandem=yes&wgd=both', 385, 'tandem AND both WGDs (Venn S n A n T, both haplotypes)'],
+    ['tandem=yes&wgd=salicoid', 1647, 'tandem AND salicoid'],
+    ['tandem=yes&wgd=gamma', 955, 'tandem AND gamma'],
+    ['wgd=neither&tandem=no', 20959, 'neither WGD nor curated tandem'],
+  ];
+  const got = [];
+  for (const [q, n] of want) {
+    await bp.goto(base + '/#/browse?' + q, { waitUntil: 'networkidle' });
+    await bp.waitForTimeout(1800);
+    const txt = await bp.evaluate(() => document.getElementById('view').innerText);
+    const m = txt.match(/([\d,]+)\s*\n?\s*of [\d,]+ genes match/i);
+    got.push(m ? parseInt(m[1].replace(/,/g, ''), 10) : null);
+  }
+  const ok = !berrs.length && want.every(([, n], i) => got[i] === n);
+  if (!ok) failures++;
+  console.log(`\n### browse:counts-match-the-class-figures  ${ok ? 'OK' : 'FAIL'}`);
+  want.forEach(([q, n, label], i) => console.log(
+    `   ${got[i] === n ? 'ok ' : 'BAD'} ${String(got[i]).padStart(6)} (want ${String(n).padStart(6)})  ${label}`));
+  berrs.forEach((e) => console.log('   !! ' + e));
+  await bp.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.

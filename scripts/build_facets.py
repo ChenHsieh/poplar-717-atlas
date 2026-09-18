@@ -76,7 +76,14 @@ def main():
             # WGD events from the curated gene-level letters, non-exclusive: bit 0 salicoid,
             # bit 1 gamma. A gene can carry both (and tandem/dispersed besides).
             (1 if dup.get("s") else 0) | (2 if dup.get("a") else 0),
-            1 if flags.get("ar") else 0,
+            # THE CURATED UNION TANDEM SET (dup.td), not syn.flags.ar. `ar` is GENESPACE's
+            # tandem PLACEMENT and covers 6,804 genes against the canonical 13,048: 6,865
+            # curated members are not flagged `ar` and 621 `ar` genes are not curated members.
+            # Browsing on `ar` made every tandem count disagree with the Venn, the Duplication
+            # card and this repo's own canonical assertion -- selecting tandem + both WGDs
+            # returned 103 where the canonical intersection is 385. The GENESPACE placement is
+            # still reachable: it is the `tandem_array_member` option of the Synteny class filter.
+            1 if dup.get("td") else 0,
             # 0 is a REAL value here (OrthoFinder assigned no orthogroup), not missing data.
             # `or -1` collapsed it to null and the browse table showed those genes as "—".
             len(r.get("pres") or []),
