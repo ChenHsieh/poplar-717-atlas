@@ -9,6 +9,43 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.13.1 — 2026-09-19 — `#/status`: the gates this build passed, published
+
+The About page told readers the data was validated and published none of the evidence. Seventy-six
+integrity gates ran on every build and their verdicts died in a terminal on the cluster.
+
+`validate_data.py` now records each gate **as it executes** — `check()` appends the verdict, so
+this is not a summary written afterwards — into `data/meta/gates.json`, and `#/status` renders
+the record as a boot log:
+
+```
+tandem (TD) gene counts match the canonical union set ... [ OK ]
+  {'hap1': 6663, 'hap2': 6385}
+dup.ccd is set exactly where the two WGD calls differ ... [ OK ]
+  904 genes disagree
+```
+
+The record is written **even when a gate fails** — a build that shipped with a known failure
+should say so on the site rather than hide it — and the page warns when the record's data version
+differs from the one being served.
+
+**On the visual language.** The control-room aesthetic (a reference Chen shared) is borrowed only
+where it is earned: a boot sequence with a right-aligned verdict column is what this data
+literally is, and the dot leader is a real alignment device — it ties a long label to a
+right-aligned value across a wide screen, which is the job it did on a teletype. What is **not**
+borrowed is the decorative half of that language: no invented telemetry, no callsign columns, no
+character-scatter standing in for a point cloud. On a page whose entire argument is that its
+numbers are real, texture imitating data would undo the argument it is dressing up.
+
+**The page states what the gates do not prove.** They check the committed data against itself;
+they cannot tell a reader an upstream measurement was correct. And a gate passing over *zero rows*
+proves nothing — this project shipped exactly that after the expression repack, when "every
+pointer resolves" passed while iterating over an empty set. So where a gate asserts a count rather
+than a shape, the count is in its detail line, which is the difference worth reading.
+
+`check.mjs` asserts the page renders **every** recorded gate rather than a truncated sample, and
+that the header counts agree with the lines beneath them.
+
 ## 0.13.0 — 2026-09-19 — `#/family/<gene>`: the whole descent group, walked to exhaustion
 
 The atlas holds a homology graph and showed one node of it at a time. "What is the full

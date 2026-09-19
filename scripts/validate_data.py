@@ -18,8 +18,13 @@ SCAF_RE = re.compile(r"^PtXa(TreH|AlbH)\.T\d+$")
 BUCKET_SPAN = 25000   # mirrors build_data.py and js/core/data.js
 
 fails = []
+# Every gate's verdict, recorded as it runs so the site can publish the checks it passed
+# rather than merely asserting that checks exist. The About page tells a reader the data is
+# validated; until now the evidence for that claim lived only in a terminal on the cluster.
+results = []
 def check(name, ok, detail=""):
     print(f"  {'PASS' if ok else 'FAIL'}  {name}{'  — ' + detail if detail else ''}")
+    results.append({"name": name, "ok": bool(ok), "detail": detail})
     if not ok:
         fails.append(name)
 
@@ -804,6 +809,24 @@ def main():
             if ids and (ids[0] < 0 or ids[-1] >= len(idx)):
                 oob += 1
     check("search postings are in range", oob == 0, f"{oob} tokens out of range")
+
+    # Publish the verdicts. Written even when a gate fails -- a build that shipped with a
+    # known failure should say so on the site, not hide it.
+    try:
+        gates_path = os.path.join(DATA, "meta", "gates.json")
+        man_v = json.load(open(os.path.join(DATA, "meta", "manifest.json"))).get("data_version")
+        json.dump({
+            "data_version": man_v,
+            "n_checks": len(results),
+            "n_failed": len(fails),
+            "checks": results,
+            "what_this_is": "Every integrity gate this build ran over the committed data, with "
+                            "its verdict. These are not a summary written afterwards: check() "
+                            "records each line as it executes.",
+        }, open(gates_path, "w"), indent=1)
+        print(f"\n  wrote {len(results)} gate verdicts to data/meta/gates.json")
+    except Exception as e:                     # never let publishing break validation
+        print(f"\n  could not write gates.json: {e}")
 
     print()
     if fails:

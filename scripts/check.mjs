@@ -862,6 +862,46 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await fp.close();
 }
 
+// #/status -- the gates this build passed, rendered as a boot log. The site told readers its
+// data was validated and published none of the verdicts; they lived in a terminal on the
+// cluster. Asserted: every recorded gate reaches the page (not a truncated sample), the counts
+// in the header agree with the lines below them, and the page states the caveat that makes the
+// whole record honest -- a gate passing over zero rows proves nothing, which this project has
+// actually shipped.
+{
+  const sp = await browser.newPage({ viewport: { width: 1180, height: 1600 } });
+  const serrs = [];
+  sp.on('pageerror', (e) => serrs.push(e.message));
+  sp.on('console', (m) => { if (m.type() === 'error') serrs.push('console: ' + m.text()); });
+  await sp.goto(base + '/#/status', { waitUntil: 'networkidle' });
+  await sp.waitForTimeout(2400);
+  const txt = await sp.evaluate(() => document.getElementById('view').innerText);
+  const okLines = (txt.match(/\[ OK \]/g) || []).length;
+  const failLines = (txt.match(/\[ FAIL \]/g) || []).length;
+  const claimed = parseInt(((txt.match(/(\d+)\s*\n\s*gates run/) || [])[1] || '0'), 10);
+  const claimedFail = parseInt(((txt.match(/(\d+)\s*\n\s*failed/) || [])[1] || '-1'), 10);
+
+  // fetch the record directly and compare -- the page must not drop or invent a line
+  const rec = await sp.evaluate(async () => {
+    const r = await fetch('data/meta/gates.json');
+    return r.ok ? r.json() : null;
+  });
+
+  const ok = !serrs.length
+    && rec && rec.n_checks > 40
+    && okLines + failLines === rec.n_checks     // every gate reaches the page
+    && claimed === rec.n_checks                 // the header agrees with the lines
+    && failLines === rec.n_failed && claimedFail === rec.n_failed
+    && /passes over zero rows/.test(txt)        // the caveat that makes the record honest
+    && /check\.mjs/.test(txt);                  // rendered-page checks named as separate
+  if (!ok) failures++;
+  console.log(`\n### status:gates-published-in-full  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   record has ${rec ? rec.n_checks : '?'} gates (${rec ? rec.n_failed : '?'} failed); `
+    + `page renders ${okLines} OK + ${failLines} FAIL, header claims ${claimed}`);
+  serrs.forEach((e) => console.log('   !! ' + e));
+  await sp.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.

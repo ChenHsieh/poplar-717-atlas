@@ -128,7 +128,10 @@ function overview(man) {
       sourceTable(man.sources || {}),
       el('p', { class: 'muted', style: 'margin:12px 0 0;font-size:12px' },
         'Source files live on Sapelo2 and are not in this repository, so the build is not '
-        + 'reproducible from a clone alone — the committed data/ directory is the artifact.')),
+        + 'reproducible from a clone alone — the committed data/ directory is the artifact.'),
+      // The page claims the data is validated; this is where the claim can be checked.
+      el('p', { style: 'margin:10px 0 0;font-size:13px' },
+        el('a', { href: '#/status' }, 'See every integrity gate this build ran, and its verdict →'))),
 
     evidenceCard(),
 

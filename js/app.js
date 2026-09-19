@@ -10,6 +10,7 @@ import { renderMap } from './modules/genomemap.js';
 import { pairView } from './modules/pair.js';
 import { karyotypeView } from './modules/karyotype.js';
 import { familyView } from './modules/family.js';
+import { statusView } from './modules/status.js';
 
 const view = () => document.getElementById('view');
 const setView = (node) => { const v = clear(view()); v.append(node); window.scrollTo(0, 0); };
@@ -262,6 +263,14 @@ route(/^\/karyotype$/, async () => {
 route(/^\/family\/(.+)$/, async (id) => {
   loading(`Walking the descent group of ${id}\u2026`);
   setView(await familyView(id));
+  markNav();
+});
+
+// #/status -- the gates this build passed, as a boot log. The verdicts are published by
+// validate_data.py as each gate executes; nothing here is written after the fact.
+route(/^\/status$/, async () => {
+  loading('Reading the gate record\u2026');
+  setView(await statusView());
   markNav();
 });
 
