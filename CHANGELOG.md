@@ -9,6 +9,33 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.12.4 — 2026-09-19 — The numbers stated in prose are now checked too
+
+`check_aggregates.py` recomputes every manifest aggregate and diffs it against the shards. But
+the About page — the page a reader is told to consult *before citing anything* — states several
+figures in sentences rather than reading them from the manifest: the per-haplotype gene counts,
+the HAP1/HAP2 Pfam gap, the count of syntelog pairs whose ω is undefined. Prose was outside
+every existing gate, so the one page that exists to keep the atlas honest was the one place a
+number could rot unobserved. This repo has already shipped a withdrawn figure on a rendered page
+for two days (0.3.11, the 1,725 LSG pool) — the same failure on a different surface.
+
+`scripts/check_prose_numbers.py` recomputes each claim from the committed shards and asserts the
+formatted string is on the page. It is a `build_all.sh` step, and it was confirmed to FAIL on a
+deliberately altered digit before being trusted.
+
+All six claims currently hold: HAP1 32,137 / HAP2 31,823, Pfam 26,132 / 3,222, 716 syntelog
+pairs with Ks 0.
+
+**It does not rewrite the prose, on purpose.** A sentence is a claim with words around it, and a
+script that silently swapped the digits could leave those words false. When it fails, a human
+reads the sentence and decides what it should now say.
+
+**The first draft of the check was itself wrong, which is the point.** It counted Ks-0 *genes*
+(1,432) against the page's *pairs* (716) and reported the page as broken — the page was right.
+So the check now asserts the flag is symmetric across each pair first: an odd total would mean
+one side of some pair carries it and the other does not, a real defect the pair count would
+quietly average over.
+
 ## 0.12.3 — 2026-09-19 — The provenance records were always there, and nobody could reach them
 
 `sources/*.provenance.json` is where this project does its most careful writing: what a layer is

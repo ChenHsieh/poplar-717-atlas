@@ -152,6 +152,8 @@ fi
 
 echo; echo "== shard-derivable aggregates =="; python3 scripts/check_aggregates.py
 
+echo; echo "== numbers stated in prose =="; python3 scripts/check_prose_numbers.py
+
 echo; echo "== version consistency =="; python3 scripts/check_version.py
 
 echo
