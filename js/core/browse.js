@@ -15,7 +15,9 @@ const PAGE = 100;
 // collected from the modules so that a filter's data source (the facet index) and its
 // definition stay in one place -- the module `filters` arrays operate on full gene records
 // and are for the gene page, not for this.
-const FILTERS = [
+// Exported so the home page can count its question links with these EXACT predicates --
+// a second implementation would be a second set of numbers, and they would drift.
+export const FILTERS = [
   { id: 'hap', label: 'Haplotype', kind: 'select', options: ['hap1', 'hap2'],
     test: (r, v) => r.hap === v },
   { id: 'cls', label: 'Synteny class', kind: 'select',
@@ -56,6 +58,12 @@ const FILTERS = [
     options: ['salicoid', 'gamma', 'both', 'either', 'neither'],
     test: (r, v) => ({ salicoid: (r.wgd & 1) > 0, gamma: (r.wgd & 2) > 0, both: r.wgd === 3,
                        either: r.wgd > 0, neither: r.wgd === 0 })[v] },
+  // The disagreement itself, as a filter. It cannot be expressed with the two columns above:
+  // a gene carrying BOTH events under BOTH calls matches "route C salicoid AND v9 gamma"
+  // while agreeing completely, which is how a first draft of the home page's question
+  // reported 7,574 disagreements instead of 904.
+  { id: 'wgd_disputed', label: 'WGD call disputed (route C vs v9)', kind: 'select',
+    options: ['yes', 'no'], test: (r, v) => (r.ccd ? 'yes' : 'no') === v },
   { id: 'wgd9', label: 'WGD event (canonical v9)', kind: 'select',
     options: ['salicoid', 'gamma', 'both', 'either', 'neither'],
     test: (r, v) => ({ salicoid: (r.wgd9 & 1) > 0, gamma: (r.wgd9 & 2) > 0, both: r.wgd9 === 3,

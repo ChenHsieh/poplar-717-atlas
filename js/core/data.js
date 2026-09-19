@@ -185,12 +185,49 @@ export async function loadAllShards(onProgress) {
 /* ---------- expression ---------- */
 export const loadExprSamples = () => fetchJSON('data/expr/samples.json');
 export const loadExprStudies = () => fetchJSON('data/expr/studies.json');
+/** One gene's own bytes out of a concatenated blob of per-gene gzip members.
+ *
+ *  GitHub Pages answers a Range request with a real 206 and serves the range
+ *  identity-encoded even when the client offers gzip, so the offsets on the shard record are
+ *  stable. The member inflates to exactly the JSON array the old bucket held - this is a
+ *  container change, not a quantisation, so nothing downstream needs to know.
+ *
+ *  ~1.1 KB per gene instead of the 786 KB bucket that carried 250 genes to draw one card. */
+async function fetchRangeJSON(path, off, len) {
+  const key = `${path}#${off}+${len}`;
+  if (cache.has(key)) return cache.get(key);
+  if (DATA_VERSION === null) await loadManifest();
+  const url = `${path}?v=${encodeURIComponent(DATA_VERSION)}`;
+  const r = await fetch(url, { headers: { Range: `bytes=${off}-${off + len - 1}` } });
+  if (!r.ok && r.status !== 206) throw new Error(`${r.status} ${path} range`);
+  const buf = await r.arrayBuffer();
+  const head = new Uint8Array(buf, 0, 2);
+  // A host that ignored Range would hand back the whole file; a host that inflated it for us
+  // would hand back plain JSON. Sniff rather than assume, exactly as loadStructure does.
+  const text = (head[0] === 0x1f && head[1] === 0x8b)
+    ? await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
+    : new TextDecoder().decode(buf);
+  const j = JSON.parse(text);
+  cache.set(key, j);
+  return j;
+}
+
 export const loadExprBucket = (bucketKey) => fetchJSON(`data/expr/buckets/${bucketKey}.json`);
 
 /** Full 652-sample vector for one gene, fetched on demand (the gene shard only carries the
  *  tissue-baseline summary, not the vector -- see docs/EXPRESSION_DESIGN.md). */
 export async function loadExprVector(gene) {
   if (!gene.x) return null;
+  // Range first, bucket second. The fallback is not politeness: a reader can hold this
+  // script against a cached data tree from before the repack (Pages caches for ten minutes
+  // and cannot be told otherwise), and a hard failure there would be a blank expression card
+  // rather than a slow one.
+  if (gene.x.o) {
+    const hap = gene.id.startsWith('PtXaTreH') ? 'hap1' : 'hap2';
+    try { return await fetchRangeJSON(`data/expr/raw_${hap}.gzb`, gene.x.o[0], gene.x.o[1]); }
+    catch { /* fall through to the bucket */ }
+  }
+  if (!gene.x.b) return null;
   const bucket = await loadExprBucket(gene.x.b);
   return bucket[gene.id] || null;
 }
@@ -201,7 +238,13 @@ export async function loadExprVector(gene) {
  *  every gene without one; callers must check it before offering the option at all. */
 export const loadCombatBucket = (bucketKey) => fetchJSON(`data/expr/combat_buckets/${bucketKey}.json`);
 export async function loadCombatVector(gene) {
-  if (!gene.x || !gene.x.cb) return null;
+  if (!gene.x) return null;
+  if (gene.x.co) {
+    const hap = gene.id.startsWith('PtXaTreH') ? 'hap1' : 'hap2';
+    try { return await fetchRangeJSON(`data/expr/cb_${hap}.gzb`, gene.x.co[0], gene.x.co[1]); }
+    catch { /* fall through to the bucket */ }
+  }
+  if (!gene.x.cb) return null;
   const bucket = await loadCombatBucket(gene.x.cb);
   return bucket[gene.id] || null;
 }
@@ -284,6 +327,7 @@ export function facetRow(facets, i) {
     at: !!o.at,
     wgd: o.wgd | 0,       // route C combined call
     wgd9: o.wgd9 | 0,     // canonical master v9
+    ccd: !!o.ccd,         // the two WGD calls disagree for this gene
     tandem: !!o.tandem,
     npres: o.npres,   // 0 means OrthoFinder assigned no orthogroup at all
     amb: !!o.amb,

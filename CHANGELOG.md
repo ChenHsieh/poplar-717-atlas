@@ -9,6 +9,34 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.11.5 — 2026-09-18 — Start from a question, and the disagreement becomes browsable
+
+Out of a ten-lens exploration of the atlas (recovered notes:
+`/scratch/ch29576/atlas_exploration_20260918/RECOVERED_IDEAS.md`), the two cheapest wins.
+
+**The home page asks questions instead of offering a search box.** Eight of them, each a real
+Browse query with its cutoff stated in the sentence — "in a curated tandem array, peak
+expression in xylem, τ ≥ 0.8" — because "expressed" and "tissue-specific" are not absolute
+properties, and a question that hides its threshold invites reading it as one.
+
+Counts are computed **in the browser from the facet index, using Browse's own filter
+predicates**, never precomputed into the manifest. A baked aggregate goes stale the moment a
+patcher runs without its owning stage — TODO 25 documents exactly that, and this page shipped
+a withdrawn LSG count for two days that way. Computing it here makes the home number and the
+page it links to the same calculation rather than two that can disagree. `check.mjs` asserts
+the round trip in both directions.
+
+**A `wgd_disputed` facet, because the question that needed it exposed a trap.** "Where do the
+two WGD calls disagree" was first written as `{wgd: 'salicoid', wgd9: 'gamma'}` and reported
+**7,574** — a gene carrying BOTH events under BOTH calls matches that while agreeing about
+everything. The real answer is **904**, and it is not derivable from the two event columns:
+the disagreement is its own fact and now has its own column. It is also the provenance answer,
+since the route C correction was visible only one gene page at a time, and "which 904 genes
+moved" is the question anyone auditing it actually has.
+
+**Repacked the object store.** 417 MiB of loose objects collected; 787 MiB → 382 MiB. One
+command, no design decision attached.
+
 ## 0.11.4 — 2026-09-18 — A cached build can no longer show the wrong number silently
 
 Reported by Chen: still seeing 191 from a link that serves 229, on data v0.11.2 while the site

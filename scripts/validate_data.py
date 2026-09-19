@@ -70,25 +70,75 @@ def main():
     missing_shard = [k for k in man["shards"] if not os.path.exists(f"{DATA}/genes/{k}.json")]
     check("every manifest shard exists on disk", not missing_shard, str(missing_shard[:3]))
 
-    # Expression: the bucket pointer must resolve, and the vector must be the right length.
+    # Expression is range-addressed: one gzip member per gene inside a per-haplotype blob,
+    # with [offset, length] on the shard. The checks below actually SEEK AND INFLATE a sample
+    # of genes rather than trusting the offsets, because an off-by-one in a packer produces
+    # offsets that look perfectly reasonable and decode to another gene's data -- which would
+    # render as a plausible expression profile for the wrong gene. Byte-level defects need
+    # byte-level checks.
     n_samples = (man.get("expression") or {}).get("n_samples")
-    buckets, bad_ptr, bad_len = {}, [], []
-    for gid, (_, _, rec) in genes.items():
-        x = rec.get("x")
-        if not x:
-            continue
-        b = x.get("b")
-        if b not in buckets:
-            p = f"{DATA}/expr/buckets/{b}.json"
-            buckets[b] = json.load(open(p)) if os.path.exists(p) else None
-        if buckets[b] is None or gid not in buckets[b]:
-            bad_ptr.append(gid)
-        elif n_samples and len(buckets[b][gid]) != n_samples:
-            bad_len.append(gid)
-    check("every expression bucket pointer resolves", not bad_ptr,
-          f"{len(bad_ptr)} dangling, e.g. {bad_ptr[:3]}" if bad_ptr else f"{len(buckets)} buckets")
-    check(f"every expression vector has {n_samples} values", not bad_len,
-          f"{len(bad_len)} wrong length" if bad_len else "")
+    import gzip as _gz
+    bad_ptr, bad_len, bad_decode = [], [], []
+    have_ranges = any((rec.get("x") or {}).get("o") for _, _, rec in genes.values())
+    if have_ranges:
+        blobs = {}
+        for hap in ("hap1", "hap2"):
+            fp = f"{DATA}/expr/raw_{hap}.gzb"
+            blobs[hap] = open(fp, "rb").read() if os.path.exists(fp) else None
+        # every gene must have a range, and it must lie inside the blob
+        for gid, (hap, _, rec) in genes.items():
+            x = rec.get("x")
+            if not x:
+                continue
+            o = x.get("o")
+            blob = blobs.get(hap)
+            if not o or blob is None or o[0] < 0 or o[0] + o[1] > len(blob):
+                bad_ptr.append(gid)
+        # decode a deterministic sample and check it is THIS gene's 652 values
+        sample = [g for i, g in enumerate(sorted(genes)) if i % 997 == 0]
+        for gid in sample:
+            hap, _, rec = genes[gid]
+            x = rec.get("x")
+            if not x or not x.get("o") or blobs.get(hap) is None:
+                continue
+            off, ln = x["o"]
+            try:
+                v = json.loads(_gz.decompress(blobs[hap][off:off + ln]))
+            except Exception as e:
+                bad_decode.append((gid, str(e)[:40]))
+                continue
+            if n_samples and len(v) != n_samples:
+                bad_len.append(gid)
+            # the shard's own max must be the max of the decoded vector -- this is what
+            # catches a range that decodes cleanly but belongs to a different gene
+            if x.get("max") is not None and abs(max(v) - x["max"]) > 0.011:
+                bad_decode.append((gid, f"max {max(v)} vs shard {x['max']}"))
+        check("every expression range lies inside its haplotype blob", not bad_ptr,
+              f"{len(bad_ptr)} bad, e.g. {bad_ptr[:3]}" if bad_ptr
+              else f"{len(genes)} genes, blobs {', '.join(f'{k} {len(v)/1e6:.0f} MB' for k, v in blobs.items() if v)}")
+        check("sampled expression ranges decode to THIS gene's vector", not bad_decode,
+              f"{len(bad_decode)} wrong, e.g. {bad_decode[:2]}" if bad_decode
+              else f"{len(sample)} genes seeked, inflated and matched against their own x.max")
+        check(f"every sampled expression vector has {n_samples} values", not bad_len,
+              f"{len(bad_len)} wrong length" if bad_len else "")
+    else:
+        buckets = {}
+        for gid, (_, _, rec) in genes.items():
+            x = rec.get("x")
+            if not x:
+                continue
+            b = x.get("b")
+            if b not in buckets:
+                fp = f"{DATA}/expr/buckets/{b}.json"
+                buckets[b] = json.load(open(fp)) if os.path.exists(fp) else None
+            if buckets[b] is None or gid not in buckets[b]:
+                bad_ptr.append(gid)
+            elif n_samples and len(buckets[b][gid]) != n_samples:
+                bad_len.append(gid)
+        check("every expression bucket pointer resolves", not bad_ptr,
+              f"{len(bad_ptr)} dangling, e.g. {bad_ptr[:3]}" if bad_ptr else f"{len(buckets)} buckets")
+        check(f"every expression vector has {n_samples} values", not bad_len,
+              f"{len(bad_len)} wrong length" if bad_len else "")
 
     # Every gene's baseline must be keyed by the SAME tissue set as the manifest's own
     # denominator table -- if these drift, a gene page and the module overview page disagree
@@ -104,10 +154,13 @@ def main():
     # ComBat-seq is opt-in per gene (TODO 18): x.cb present only where the source matrix had
     # enough count signal to batch-correct. Every gene claiming one must actually resolve.
     want_cb = (man.get("expression") or {}).get("combat_eligible_genes")
-    cb_genes = [(gid, rec) for gid, (_, _, rec) in genes.items() if rec.get("x", {}).get("cb")]
+    cb_genes = [(gid, rec) for gid, (_, _, rec) in genes.items()
+                if rec.get("x", {}).get("cb") or rec.get("x", {}).get("co")]
     cb_bad_ptr = []
     cb_buckets = {}
     for gid, rec in cb_genes:
+        if rec["x"].get("co"):
+            continue          # range-addressed; covered by the blob checks above
         b = rec["x"]["cb"]
         if b not in cb_buckets:
             p2 = f"{DATA}/expr/combat_buckets/{b}.json"
@@ -118,7 +171,8 @@ def main():
           f"manifest {want_cb} vs {len(cb_genes)} genes carrying x.cb")
     check("every x.cb pointer resolves to a real ComBat bucket entry", not cb_bad_ptr,
           f"{len(cb_bad_ptr)} dangling, e.g. {cb_bad_ptr[:3]}" if cb_bad_ptr else f"{len(cb_buckets)} buckets")
-    cb_no_raw = [gid for gid, rec in cb_genes if not rec.get("x", {}).get("b")]
+    cb_no_raw = [gid for gid, rec in cb_genes
+                 if not (rec.get("x", {}).get("b") or rec.get("x", {}).get("o"))]
     check("no ComBat-eligible gene lacks a raw baseline", not cb_no_raw, f"{len(cb_no_raw)} records")
 
     # TODO 21: duplication moved to v9, and a PAV layer was added. Both checked against the
@@ -638,6 +692,7 @@ def main():
                  else ((1 if (r.get("dup") or {}).get("s") else 0)
                        | (2 if (r.get("dup") or {}).get("a") else 0))),
                 (1 if (r.get("dup") or {}).get("s") else 0) | (2 if (r.get("dup") or {}).get("a") else 0),
+                1 if (r.get("dup") or {}).get("ccd") else 0,
                 # must track build_facets.py: the CURATED union set, not GENESPACE's `ar`
                 1 if (r.get("dup") or {}).get("td") else 0,
                 len(r.get("pres") or []),

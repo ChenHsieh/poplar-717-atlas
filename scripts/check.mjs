@@ -634,6 +634,55 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await tp.close();
 }
 
+// The home page's question links. Each count is computed in the browser from the facet index
+// with Browse's OWN predicates, so the number on the home page and the number on the page it
+// links to cannot drift. Asserted BOTH ways here: the home page shows a count, and following
+// the link produces the same count. The disputed-WGD one is the interesting case -- a first
+// draft expressed it as {wgd:'salicoid', wgd9:'gamma'} and reported 7,574, because a gene
+// carrying both events under both calls matches that while agreeing about everything. The
+// real answer is 904 and it needed its own facet column.
+{
+  const qp = await browser.newPage({ viewport: { width: 1180, height: 1400 } });
+  const qerrs = [];
+  qp.on('pageerror', (e) => qerrs.push(e.message));
+  qp.on('console', (m) => { if (m.type() === 'error') qerrs.push('console: ' + m.text()); });
+  await qp.goto(base + '/#/', { waitUntil: 'networkidle' });
+  await qp.waitForTimeout(3200);
+  const card = qp.locator('.card').filter({ has: qp.locator('h2', { hasText: 'Start from a question' }) }).first();
+  const found = await card.count();
+  const txt = found ? await card.innerText() : '';
+  const counts = (txt.match(/\u00b7 [\d,]+ genes/g) || []);
+  const links = found ? await card.locator('a').evaluateAll((ns) => ns.map((n) => n.getAttribute('href'))) : [];
+
+  // follow three of them and check the destination agrees
+  const checks = [
+    ['#/browse?tandem=yes&top=xylem&tau_min=0.8', 283],
+    ['#/browse?wgd_disputed=yes', 904],
+    ['#/browse?allele=no', 12098],
+  ];
+  const got = [];
+  for (const [href, want] of checks) {
+    await qp.goto(base + '/' + href, { waitUntil: 'networkidle' });
+    await qp.waitForTimeout(1500);
+    const t = await qp.evaluate(() => document.getElementById('view').innerText);
+    const m = t.match(/([\d,]+)\s*\n?\s*of [\d,]+ genes match/i);
+    got.push(m ? parseInt(m[1].replace(/,/g, ''), 10) : null);
+  }
+
+  const ok = !qerrs.length && found > 0
+    && counts.length === 8                                   // every question got a live count
+    && links.length === 8
+    && txt.includes('904')                                   // the real disagreement count
+    && !txt.includes('7,574')                                // never the wrong one
+    && checks.every(([, want], i) => got[i] === want);        // home count == destination count
+  if (!ok) failures++;
+  console.log(`\n### home:questions-round-trip  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${counts.length}/8 live counts; destinations ${got.join(', ')} `
+    + `(want ${checks.map(([, w]) => w).join(', ')})`);
+  qerrs.forEach((e) => console.log('   !! ' + e));
+  await qp.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.

@@ -87,6 +87,13 @@ def main():
              | (2 if (dup.get("cc") or {}).get("a") else 0)) if dup.get("cc")
             else ((1 if dup.get("s") else 0) | (2 if dup.get("a") else 0)),
             (1 if dup.get("s") else 0) | (2 if dup.get("a") else 0),
+            # Does the route C re-adjudication DISAGREE with the canonical v9 call for this
+            # gene? Browsable rather than footnoted: the disagreement is currently visible
+            # only by opening one gene page at a time, and "which 904 genes moved" is the
+            # question anyone auditing the correction actually has. Not derivable from the
+            # two wgd columns -- a gene carrying both events under both calls matches
+            # "salicoid AND gamma" without disagreeing about anything.
+            1 if dup.get("ccd") else 0,
             # THE CURATED UNION TANDEM SET (dup.td), not syn.flags.ar. `ar` is GENESPACE's
             # tandem PLACEMENT and covers 6,804 genes against the canonical 13,048: 6,865
             # curated members are not flagged `ar` and 621 `ar` genes are not curated members.
@@ -117,7 +124,7 @@ def main():
         ])
 
     out = {
-        "cols": ["hap", "chr", "cls", "ps", "tau", "top", "allele", "at", "wgd", "wgd9",
+        "cols": ["hap", "chr", "cls", "ps", "tau", "top", "allele", "at", "wgd", "wgd9", "ccd",
                  "tandem", "npres", "amb", "xin", "w", "ms", "aek"],
         "vocab": {"chr": chrs, "cls": clss, "top": tops, "xin": XIN_TISSUES},
         "rows": rows,

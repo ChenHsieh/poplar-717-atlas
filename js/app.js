@@ -1,9 +1,10 @@
 import { el, clear, fmt } from './core/dom.js';
 import { getGene, loadManifest, hapLabel, loadExprStudies,
-         loadExprSamples, searchGenesRanked } from './core/data.js';
+         loadExprSamples, searchGenesRanked, loadFacets, facetRow } from './core/data.js';
 import { MODULES, byId } from './core/registry.js';
 import { route, start, navigate } from './core/router.js';
-import { browseView } from './core/browse.js';
+import { browseView, browseHref, FILTERS } from './core/browse.js';
+import { QUESTIONS, countQuestion } from './core/questions.js';
 import { searchResultsView } from './core/search.js';
 import { renderMap } from './modules/genomemap.js';
 
@@ -118,6 +119,8 @@ route(/^\/$/, async () => {
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(lsg)), el('div', { class: 'l' }, 'lineage-specific candidates (PS ≥ 18)')),
     ),
 
+    questionsCard(),
+
     el('div', { class: 'card' },
       el('h2', {}, 'Start here'),
       el('div', { class: 'kv' },
@@ -148,6 +151,42 @@ route(/^\/$/, async () => {
   ));
   markNav();
 });
+
+/** Questions the shipped layers can answer, each one a real Browse query.
+ *
+ *  Counts are filled in AFTER first paint, from the facet index, using Browse's own filter
+ *  predicates. Two reasons this is not precomputed into the manifest: a baked aggregate goes
+ *  stale the moment a patcher runs without its owning stage (TODO 25 -- and this very page
+ *  shipped a withdrawn LSG count for two days that way), and computing it here makes the
+ *  number and the page it links to the same calculation rather than two that can disagree.
+ *
+ *  Never blocks the home page: if the facet index is slow or fails, every question still
+ *  links correctly and simply shows no count. */
+function questionsCard() {
+  const counts = QUESTIONS.map(() => el('span', { class: 'muted', style: 'font-size:12px' }, ''));
+  const card = el('div', { class: 'card' },
+    el('h2', {}, 'Start from a question', el('span', { class: 'tag' }, 'live counts')),
+    el('div', { class: 'kv' }, ...QUESTIONS.flatMap((q, i) => [
+      el('dt', {}, el('a', { href: browseHref(q.params) }, q.q)),
+      el('dd', {}, el('span', { class: 'muted', style: 'font-size:12.5px' }, q.sub),
+        ' ', counts[i])])),
+    el('p', { class: 'muted', style: 'margin:12px 0 0;font-size:11.5px' },
+      'Every cutoff is stated in the question, because "expressed" and "tissue-specific" are '
+      + 'not absolute properties. Each link opens Browse with those filters already set, and '
+      + 'the count beside it is computed with the same predicates that page uses.'));
+
+  (async () => {
+    try {
+      const facets = await loadFacets();
+      const rows = facets.rows.map((_, i) => facetRow(facets, i));
+      QUESTIONS.forEach((q, i) => {
+        const n = countQuestion(q, rows, FILTERS);
+        if (n != null) counts[i].textContent = '· ' + fmt(n) + ' genes';
+      });
+    } catch { /* counts are a bonus; the links work regardless */ }
+  })();
+  return card;
+}
 
 route(/^\/gene\/(.+)$/, async (id) => {
   loading(`Loading ${id}…`);
