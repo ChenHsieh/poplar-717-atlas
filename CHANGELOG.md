@@ -9,6 +9,37 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## CI was testing against a server that ignores Range
+
+Release 0.12.0 moved per-gene expression to byte ranges and made the client refuse any response
+that is not a `206`. The refusal is the substance of the design, not a nicety: a host that
+ignores `Range` answers `200` with the whole blob, and a client that accepted that would inflate
+its first member and draw **another gene's** expression profile — correctly, legibly, and
+silently wrong.
+
+`scripts/serve_ranges.py` was written in that same release precisely because
+`python3 -m http.server` does exactly that. Local checks moved to it. **CI did not.**
+`.github/workflows/checks.yml` kept serving with `python3 -m http.server`, so every expression
+fetch in CI failed, and the suite died six minutes in on a locator waiting for a `.card` that
+could never fill. The message named a missing card. The cause was the server.
+
+Two changes:
+
+- CI serves with `scripts/serve_ranges.py`, so it exercises what GitHub Pages actually does
+  (verified 206, identity-encoded).
+- `check.mjs` **preflights its base URL** with a real Range request and refuses to start without
+  a `206`, printing the reason and the fix. A misconfigured host now fails in under a second
+  under its own name instead of six minutes later under someone else's.
+
+The second is the more important one. This bug was trivial to fix and expensive to *read*,
+because the suite reported the symptom furthest from the cause — and the same class of mistake
+had already been caught once here, when a gate that "passed" was iterating over zero rows. A
+check that does not validate its own preconditions can fail for reasons it will never name.
+
+Also in this release: the footer links to `#/status`, beside the build number it already states.
+
+110 render checks pass.
+
 ## 0.13.1 — 2026-09-19 — `#/status`: the gates this build passed, published
 
 The About page told readers the data was validated and published none of the evidence. Seventy-six

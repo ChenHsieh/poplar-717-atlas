@@ -32,7 +32,12 @@ jobs:
 
       - name: Serve and run render checks
         run: |
-          python3 -m http.server 8931 --bind 127.0.0.1 &
+          # NOT `python3 -m http.server`: it ignores Range and answers 200 with the whole blob.
+          # Per-gene expression is addressed by byte range, and the loader refuses any non-206
+          # (a host that ignores Range hands back another gene's profile, which renders
+          # perfectly and is wrong), so on that server every expression fetch fails. GitHub
+          # Pages does honour Range, so serve_ranges.py is what production actually behaves like.
+          python3 scripts/serve_ranges.py 8931 . &
           for i in $(seq 1 30); do
             curl -sf http://127.0.0.1:8931/index.html >/dev/null && break
             sleep 1

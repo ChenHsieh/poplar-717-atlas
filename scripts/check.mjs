@@ -11,6 +11,28 @@ const base = process.argv[2] || 'http://127.0.0.1:8931';
 const outdir = process.argv[3] || 'shots';   // relative, so CI can write it too
 fs.mkdirSync(outdir, { recursive: true });
 
+// Preflight: refuse to run against a host that ignores Range. Per-gene expression is addressed
+// by byte range and the loader requires a 206, so on `python3 -m http.server` every expression
+// fetch fails -- and the symptom is a six-minute locator timeout naming a missing .card, not
+// the server. CI shipped exactly that. Fail here instead, by name. This also guards the more
+// dangerous version of the same mistake: a client that did NOT insist on 206 would inflate the
+// first member of the blob and draw another gene's profile without erroring at all.
+{
+  const probe = `${base}/data/expr/raw_hap1.gzb`;
+  const r = await fetch(probe, { headers: { Range: 'bytes=0-99' } }).catch((e) => e);
+  if (r instanceof Error) {
+    console.log(`!! cannot reach ${probe}: ${r.message}`);
+    console.log('!! usage: node scripts/check.mjs [base-url] [outdir] -- is the server up?');
+    process.exit(1);
+  }
+  if (r.status !== 206) {
+    console.log(`!! ${base} answered ${r.status} to a Range request, not 206.`);
+    console.log('!! That host does not implement Range, so no per-gene expression can load.');
+    console.log('!! Serve with:  python3 scripts/serve_ranges.py <port> .');
+    process.exit(1);
+  }
+}
+
 // Sapelo2 has no bundled browser download, so the path is pinned there; CI passes its own.
 const SAPELO_CHROME = '/scratch/ch29576/tools/webcheck/browsers/chromium-1234/chrome-linux64/chrome';
 const browser = await chromium.launch({

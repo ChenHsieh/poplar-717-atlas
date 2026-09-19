@@ -395,7 +395,10 @@ route(/^\/study\/(\d+)$/, async (idStr) => {
       f.append(el('div', { style: 'margin-top:5px' },
         `data v${man.data_version}`,
         man.data_released ? ` · ${man.data_released}` : '',
-        ' · ', el('a', { href: '#/module/about' }, 'provenance')));
+        ' · ', el('a', { href: '#/module/about' }, 'provenance'),
+        // The footer already states which build you are reading; the gates that build passed
+        // belong next to it, not two clicks away inside another page.
+        ' · ', el('a', { href: '#/status' }, 'build status')));
     }
     // A cached script against fresh data is the dangerous combination: every column this code
     // reads by name still resolves, just to the wrong thing, so the page renders a confident
