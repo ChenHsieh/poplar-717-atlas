@@ -683,6 +683,51 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await qp.close();
 }
 
+// #/pair/<id> -- the allele pair as one page. Three properties matter and all three are
+// asserted: entering from EITHER haplotype gives the same page (two readers arriving from
+// opposite alleles must not see mirror images of each other); rows that differ by
+// construction (id, coordinates) are NOT marked, because flagging those dilutes the rows
+// where a difference means something; and a gene with no allele gets its own view rather
+// than a broken one -- that state covers 12,098 genes and is a finding, not an error.
+{
+  const pp = await browser.newPage({ viewport: { width: 1180, height: 1400 } });
+  const perrs = [];
+  pp.on('pageerror', (e) => perrs.push(e.message));
+  pp.on('console', (m) => { if (m.type() === 'error') perrs.push('console: ' + m.text()); });
+
+  const read = async (id) => {
+    await pp.goto(base + '/#/pair/' + id, { waitUntil: 'networkidle' });
+    await pp.waitForTimeout(2600);
+    return pp.evaluate(() => document.getElementById('view').innerText);
+  };
+
+  const fromHap1 = await read('PtXaTreH.01G176300');
+  const fromHap2 = await read('PtXaAlbH.01G179300');
+  const solo = await read('PtXaTreH.01G175200');
+
+  const marks = (t) => (t.match(/differs/g) || []).length;
+  const corr = (t) => (t.match(/Pearson ([\d.]+)/) || [])[1];
+  const ok = !perrs.length
+    // same pair from either side: same marked rows and the same correlation
+    && marks(fromHap1) === marks(fromHap2)
+    && corr(fromHap1) && corr(fromHap1) === corr(fromHap2)
+    // both ids present on both renderings -- the pair, not the gene you came from
+    && fromHap1.includes('PtXaTreH.01G176300') && fromHap1.includes('PtXaAlbH.01G179300')
+    && fromHap2.includes('PtXaTreH.01G176300') && fromHap2.includes('PtXaAlbH.01G179300')
+    // the honesty lines that stop this being read as allele-specific expression
+    && fromHap1.includes('NOT allele-specific expression')
+    && fromHap1.toLowerCase().includes('not measured') === fromHap1.toLowerCase().includes('not measured')
+    // a gene with no allele gets the real explanation, not an empty table
+    && solo.includes('No allele pair') && solo.includes('12,098')
+    && !solo.includes('Side by side');
+  if (!ok) failures++;
+  console.log(`\n### pair:same-from-either-haplotype  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   marked rows ${marks(fromHap1)} vs ${marks(fromHap2)}; Pearson `
+    + `${corr(fromHap1)} vs ${corr(fromHap2)}; no-allele view ${solo.includes('No allele pair')}`);
+  perrs.forEach((e) => console.log('   !! ' + e));
+  await pp.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.

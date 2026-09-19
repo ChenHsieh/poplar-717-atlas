@@ -9,6 +9,39 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.12.1 — 2026-09-19 — `#/pair/<id>`: the allele pair as the primitive
+
+This is one of very few resources carrying both phased haplotypes of a hybrid clone, and until
+now that showed up as a cross-reference: a line on the annotation card saying "the other allele
+is X", which you follow, losing the first gene off the screen. Every question that is actually
+about the hybrid — does one allele carry a duplication the other lost, do the two disagree about
+age, is one of them silent — meant holding two pages in your head.
+
+One page, two columns, a row per property. **The comparison is the page.**
+
+The first pair it was tested on makes the case: HAP1 sits in a **2-member** tandem array and
+HAP2 in a **5-member** one — haplotype-asymmetric expansion, visible at a glance — with leaf
+expression 0.70 against 0.00.
+
+- **Enter from either haplotype and get the same page.** HAP1 is always on the left, so two
+  readers arriving from opposite alleles are not looking at mirror images of each other.
+- **Rows that differ by construction are not marked.** Two alleles always have different ids and
+  coordinates; flagging those buried the four rows that mean something under seven badges. A
+  span difference is marked only past 10%, because 4.46 kb against 4.49 is not a finding.
+- **"not measured" is never rendered as blank.** HAP2 domain annotation is thinner than HAP1 for
+  release reasons, and an empty cell in a two-column layout reads as "nothing there" rather than
+  "not measured".
+- **The correlation says what it is not.** Pearson on log2(TPM+1) across all 652 samples,
+  computed in the browser from the two profiles the page already fetched, shown beside the share
+  of samples where both alleles are under 1 TPM — and an explicit statement that this is **not**
+  allele-specific expression, since reads mapping equally well to both alleles are not resolved
+  in this quantification. TODO 19 closed ASE deliberately; a number of this shape invites exactly
+  that misreading, so the page refuses it in words.
+- **A gene with no allele gets its own view**, naming the 12,098 genes in that state, rather than
+  an empty table. It is a finding, not an error.
+
+Reachable from the allele card on every gene page, and `check.mjs` asserts all three properties.
+
 ## 0.12.0 — 2026-09-19 — Expression is range-addressed: 786 KB per gene becomes 1.1 KB
 
 A gene page fetched `data/expr/buckets/<hap>/<n>.json` — 250 genes × 652 samples, **786 KB** —

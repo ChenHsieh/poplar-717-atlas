@@ -128,7 +128,12 @@ function alleleCard(g) {
   }
   const kv = el('dl', { class: 'kv' });
   kv.append(el('dt', {}, `${other} allele`),
-    el('dd', {}, el('a', { href: `#/gene/${a.id}`, class: 'mono' }, a.id)));
+    el('dd', {}, el('a', { href: `#/gene/${a.id}`, class: 'mono' }, a.id),
+      // Following the cross-reference loses the gene you came from. The pair route keeps
+      // both on screen, which is the only way to SEE that one allele carries a duplication
+      // the other lost, or that they disagree about age.
+      el('div', { style: 'margin-top:4px' },
+        el('a', { href: `#/pair/${g.id}` }, 'Compare the two alleles side by side \u2192'))));
   if (a.ks0) {
     kv.append(el('dt', {}, 'Divergence'),
       el('dd', {}, el('span', {}, 'identical at synonymous sites (Ks = 0)'),

@@ -7,6 +7,7 @@ import { browseView, browseHref, FILTERS } from './core/browse.js';
 import { QUESTIONS, countQuestion } from './core/questions.js';
 import { searchResultsView } from './core/search.js';
 import { renderMap } from './modules/genomemap.js';
+import { pairView } from './modules/pair.js';
 
 const view = () => document.getElementById('view');
 const setView = (node) => { const v = clear(view()); v.append(node); window.scrollTo(0, 0); };
@@ -233,6 +234,15 @@ route(/^\/gene\/(.+)$/, async (id) => {
       (ord.p && ord.n) ? el('span', { class: 'muted' }, '   neighbours on the chromosome   ') : null,
       ord.n ? el('a', { href: `#/gene/${ord.n}`, class: 'mono' }, ord.n + ' →') : null) : null,
     cards));
+  markNav();
+});
+
+// #/pair/<id> -- the allele pair as one page. Takes EITHER haplotype's id and always
+// presents HAP1 on the left, so two readers arriving from opposite alleles see the same
+// picture rather than mirror images of it.
+route(/^\/pair\/(.+)$/, async (id) => {
+  loading(`Loading the allele pair for ${id}\u2026`);
+  setView(await pairView(id));
   markNav();
 });
 
