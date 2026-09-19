@@ -1,6 +1,7 @@
 // Provenance page. Renders what the build actually recorded -- every source file with its
 // sha256 and mtime -- rather than a hand-maintained prose list that drifts from the data.
 import { el, fmt, pct } from '../core/dom.js';
+import { evidenceCard } from '../core/evidence.js';
 
 const SHORT = (p) => p.replace('/scratch/ch29576/', '').replace('/work/cjtlab/', 'work:');
 
@@ -128,6 +129,8 @@ function overview(man) {
       el('p', { class: 'muted', style: 'margin:12px 0 0;font-size:12px' },
         'Source files live on Sapelo2 and are not in this repository, so the build is not '
         + 'reproducible from a clone alone — the committed data/ directory is the artifact.')),
+
+    evidenceCard(),
 
     el('div', { class: 'card' },
       el('h2', {}, 'Citation & licence'),

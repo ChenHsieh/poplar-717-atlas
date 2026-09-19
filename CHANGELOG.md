@@ -9,6 +9,32 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.12.3 — 2026-09-19 — The provenance records were always there, and nobody could reach them
+
+`sources/*.provenance.json` is where this project does its most careful writing: what a layer is
+FOR, the gate that had to pass before it was allowed in, what it deliberately does not claim,
+and — most usefully — what was tried and rejected. **Nineteen of those files are committed,
+served over HTTP, and nothing in the interface linked to any of them.** A reader wanting to know
+why the ComBat matrix is still two full copies, or why a tandem member can have no dS, had no
+route to the answer short of cloning the repo.
+
+They are now one click from the About page, fetched on demand, rendered as prose.
+
+- **Nothing is summarised.** The record's own words render as written. A summary would be a
+  second thing to keep true, and the whole value of these files is that they were written by
+  whoever had to defend the number.
+- The route C record now states, where a reader can see it, that the call the site leads with is
+  **"NOT APPLIED to the canonical tables"**, alongside its gate and its movement numbers. The
+  question "why does the atlas lead with a call its own source table contradicts?" has an answer
+  in the project's own voice rather than a maintainer's paraphrase.
+- **Internal cluster paths are trimmed.** The records were written for a maintainer and quote
+  absolute paths, including agent worktree directories (`.claude/worktrees/…`) that mean nothing
+  to a reader and look like a leak on a public site. They now collapse to `ms1-dup/data/…`, the
+  same convention the source table above already used. `check.mjs` asserts that no `/scratch/`,
+  `/home/` or worktree path reaches a public page.
+- A source with no published record says so, and says that it predates the sidecar convention
+  rather than rendering an empty panel.
+
 ## 0.12.2 — 2026-09-19 — `#/karyotype`: navigate by the ancestral genome, not the modern one
 
 The whole duplication half of this atlas is about descent — which ancestral chromosome a gene

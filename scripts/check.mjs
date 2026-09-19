@@ -779,6 +779,44 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await kp.close();
 }
 
+// The provenance sidecars, made reachable. 19 of them are committed and served over HTTP and
+// nothing in the interface linked to any of them -- they are where this project does its most
+// careful writing (the gate a layer had to pass, what it deliberately does not claim, what was
+// tried and rejected). Asserted: the records open and carry their own caveats, and no internal
+// cluster path -- especially an agent worktree directory -- reaches a public page.
+{
+  const ep = await browser.newPage({ viewport: { width: 1180, height: 1400 } });
+  const eerrs = [];
+  ep.on('pageerror', (e) => eerrs.push(e.message));
+  ep.on('console', (m) => { if (m.type() === 'error') eerrs.push('console: ' + m.text()); });
+  await ep.goto(base + '/#/module/about', { waitUntil: 'networkidle' });
+  await ep.waitForTimeout(2200);
+  const card = ep.locator('.card').filter({ has: ep.locator('h2', { hasText: 'Why each layer says what it says' }) }).first();
+  const buttons = await card.locator('button').count();
+
+  await card.locator('button', { hasText: 'Route C re-adjudication' }).click();
+  await ep.waitForTimeout(1100);
+  const routeC = await card.innerText();
+
+  await card.locator('button', { hasText: 'Per-pair tandem dS' }).click();
+  await ep.waitForTimeout(1100);
+  const tdPair = await card.innerText();
+
+  const leaks = /\.claude\/worktrees|\/scratch\/ch29576\/|\/home\/ch29576\//.test(routeC + tdPair);
+  const ok = !eerrs.length
+    && buttons === 19
+    // each record carries the caveat that is the reason it exists
+    && /not applied/i.test(routeC)
+    && /array median/i.test(tdPair)
+    && !leaks;
+  if (!ok) failures++;
+  console.log(`\n### about:provenance-records-reachable  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${buttons} records; routeC states NOT APPLIED: ${/not applied/i.test(routeC)}; `
+    + `tandem states array-median caveat: ${/array median/i.test(tdPair)}; path leak: ${leaks}`);
+  eerrs.forEach((e) => console.log('   !! ' + e));
+  await ep.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.
