@@ -169,8 +169,43 @@ def main():
             cb_bad_ptr.append(gid)
     check("manifest combat_eligible_genes matches the shard count", want_cb == len(cb_genes),
           f"manifest {want_cb} vs {len(cb_genes)} genes carrying x.cb")
-    check("every x.cb pointer resolves to a real ComBat bucket entry", not cb_bad_ptr,
-          f"{len(cb_bad_ptr)} dangling, e.g. {cb_bad_ptr[:3]}" if cb_bad_ptr else f"{len(cb_buckets)} buckets")
+    # Once the buckets are gone this check has nothing to iterate and passes vacuously -- the
+    # exact shape of failure this repo keeps finding (a layer whose owning stage never ran
+    # validates perfectly, because every per-item check is true over zero items). So assert on
+    # whichever representation is actually in use, and assert a COUNT, not just a shape.
+    cb_ranged = [gid for gid, rec in cb_genes if rec["x"].get("co")]
+    if cb_ranged:
+        import gzip as _gz2
+        cb_blobs = {}
+        for hap in ("hap1", "hap2"):
+            fp = f"{DATA}/expr/cb_{hap}.gzb"
+            cb_blobs[hap] = open(fp, "rb").read() if os.path.exists(fp) else None
+        cb_out, cb_bad_decode = [], []
+        for gid in cb_ranged:
+            hap = genes[gid][0]
+            off, ln = genes[gid][2]["x"]["co"]
+            blob = cb_blobs.get(hap)
+            if blob is None or off < 0 or off + ln > len(blob):
+                cb_out.append(gid)
+        for gid in [g for i, g in enumerate(sorted(cb_ranged)) if i % 997 == 0]:
+            hap = genes[gid][0]
+            off, ln = genes[gid][2]["x"]["co"]
+            try:
+                v = json.loads(_gz2.decompress(cb_blobs[hap][off:off + ln]))
+                if n_samples and len(v) != n_samples:
+                    cb_bad_decode.append((gid, f"{len(v)} values"))
+            except Exception as e:
+                cb_bad_decode.append((gid, str(e)[:40]))
+        check("every ComBat range lies inside its haplotype blob", not cb_out,
+              f"{len(cb_out)} out of bounds, e.g. {cb_out[:3]}" if cb_out
+              else f"{len(cb_ranged):,} ranged genes")
+        check("sampled ComBat ranges decode to a full vector", not cb_bad_decode,
+              f"{len(cb_bad_decode)} bad, e.g. {cb_bad_decode[:2]}" if cb_bad_decode
+              else f"{len([g for i, g in enumerate(sorted(cb_ranged)) if i % 997 == 0])} sampled")
+    else:
+        check("every x.cb pointer resolves to a real ComBat bucket entry", not cb_bad_ptr,
+              f"{len(cb_bad_ptr)} dangling, e.g. {cb_bad_ptr[:3]}" if cb_bad_ptr
+              else f"{len(cb_buckets)} buckets")
     cb_no_raw = [gid for gid, rec in cb_genes
                  if not (rec.get("x", {}).get("b") or rec.get("x", {}).get("o"))]
     check("no ComBat-eligible gene lacks a raw baseline", not cb_no_raw, f"{len(cb_no_raw)} records")

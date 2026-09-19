@@ -16,7 +16,7 @@
 // reader compare the duplication-class view against the expression view side by side
 // rather than losing one to see the other.
 import { el, clear } from '../core/dom.js';
-import { getGene, loadLocusTile, loadExprBucket, loadContrasts } from '../core/data.js';
+import { getGene, loadLocusTile, loadExprVector, loadContrasts } from '../core/data.js';
 import { palette } from '../core/palette.js';
 
 const MB = 1_000_000;
@@ -236,12 +236,16 @@ function geneCard(g) {
     refresh();
   }
 
-  const bucketCache = new Map();
+  // One range request per gene rather than one bucket per 250. This window holds ~17 genes,
+  // so the contrast mode went from pulling up to three 786 KB buckets to about 19 KB total.
+  // loadExprVector caches per gene, so dragging between contrasts refetches nothing.
+  const vecCache = new Map();
   async function vectorFor(rec) {
-    if (!rec.x || !rec.x.b) return null;
-    if (!bucketCache.has(rec.x.b)) bucketCache.set(rec.x.b, loadExprBucket(rec.x.b));
-    const bucket = await bucketCache.get(rec.x.b);
-    return bucket[rec.id] || null;
+    if (!rec.x) return null;
+    if (!vecCache.has(rec.id)) {
+      vecCache.set(rec.id, loadExprVector(rec).catch(() => null));
+    }
+    return vecCache.get(rec.id);
   }
   async function paintContrast(contrast) {
     state.mode = 'contrast'; state.contrast = contrast;

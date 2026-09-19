@@ -145,7 +145,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.11.5",
+ "data_version": "0.12.0",
  "duplicate_coexpr": {
   "basis": "Pearson r on log2(ComBat-corrected TPM + 1) over 652 samples -- the same matrix the neighbour co-expression (nb) uses, because a 652-sample correlation spans 28 studies and is therefore a cross-study comparison.",
   "coverage": "A pair needs BOTH partners in the ComBat matrix (59,599 of 63,960 genes), so 7,707 of 32,333 duplicate pairs have no value. Absence means 'not comparable', not 'uncorrelated'.",
@@ -204,6 +204,21 @@
    "founder": 861,
    "synteny": 485
   }
+ },
+ "expr_ranges": {
+  "combat_bytes": {
+   "hap1": 35958356,
+   "hap2": 35550520
+  },
+  "encoding": "one gzip member per gene, concatenated; the member inflates to the same JSON array the bucket held, byte for byte. Values are UNCHANGED - this is a container change, not a quantisation.",
+  "genes_combat": 59599,
+  "genes_raw": 63960,
+  "raw_bytes": {
+   "hap1": 36508536,
+   "hap2": 36123717
+  },
+  "rejected": "Storing ComBat as a per-study offset table: measured NOT additive in log space (within-study spread of the log2 delta, median 0.43, p90 1.15), so both matrices are kept.",
+  "why": "A gene page fetched 786 KB of its 250 neighbours' expression to draw one card. A range request fetches ~1.1 KB."
  },
  "expression": {
   "bucket_size": 250,

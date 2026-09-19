@@ -54,6 +54,11 @@ STAGES=(
   "repo|patch_chromatin.py|GSE128434 chromatin at the P. trichocarpa ortholog (after build_crossspecies)"
   "repo|patch_karyotype.py|ancestral eudicot karyotype, route C, exploratory (before build_facets, which indexes it)"
   "onedrive|build_combat.py|ComBat-seq view (after build_expression)"
+  # MUST come after both expression stages and before build_facets. It reads the bucket trees,
+  # packs one gzip member per gene into per-haplotype blobs, writes [offset, length] onto each
+  # shard, and the buckets are then deleted. Skipping it leaves shards pointing at ranges that
+  # do not exist; running it twice is harmless (it rewrites the blobs from the buckets).
+  "onedrive|build_expr_ranges.py|range-addressable expression blobs (after build_expression AND build_combat)"
   "onedrive|build_contrasts.py|contrast index (after build_expression)"
   "onedrive|build_locus.py|locus tiles + genome map"
   "any|build_facets.py|facet index (MUST be last)"

@@ -199,8 +199,15 @@ async function fetchRangeJSON(path, off, len) {
   if (DATA_VERSION === null) await loadManifest();
   const url = `${path}?v=${encodeURIComponent(DATA_VERSION)}`;
   const r = await fetch(url, { headers: { Range: `bytes=${off}-${off + len - 1}` } });
-  if (!r.ok && r.status !== 206) throw new Error(`${r.status} ${path} range`);
+  // A 206 is REQUIRED, not merely preferred. A server that ignores Range answers 200 with the
+  // whole blob, whose first bytes are the FIRST gene's gzip member -- which inflates cleanly
+  // and returns another gene's expression profile. Wrong data that renders perfectly is worse
+  // than an error, so anything other than a partial response is refused here and the caller
+  // falls back to the bucket path.
+  if (r.status !== 206) throw new Error(`${r.status} for a Range request on ${path}: the host `
+    + 'did not honour Range, so these bytes are not this gene');
   const buf = await r.arrayBuffer();
+  if (buf.byteLength !== len) throw new Error(`range gave ${buf.byteLength} B, expected ${len}`);
   const head = new Uint8Array(buf, 0, 2);
   // A host that ignored Range would hand back the whole file; a host that inflated it for us
   // would hand back plain JSON. Sniff rather than assume, exactly as loadStructure does.

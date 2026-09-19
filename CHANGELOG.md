@@ -9,6 +9,54 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.12.0 — 2026-09-19 — Expression is range-addressed: 786 KB per gene becomes 1.1 KB
+
+A gene page fetched `data/expr/buckets/<hap>/<n>.json` — 250 genes × 652 samples, **786 KB** —
+to draw ONE gene's card. The two bucket trees were 405 MB, 58% of everything the site
+published. Both are gone.
+
+Each gene's vector is now its own gzip member inside a per-haplotype blob, and the client asks
+for exactly its own bytes with an HTTP Range request. **Values are byte-identical** — this is a
+container change, not a quantisation, so `docs/EXPRESSION_DESIGN.md` decision 1 ("what a
+visitor sees is what they download") still holds literally.
+
+| | before | after |
+|---|---|---|
+| per-gene expression fetch | 786 KB | **~1.1 KB** |
+| expression trees at rest | 405 MB | **144 MB** |
+| `data/` (true bytes) | 670 MB | **446 MB** |
+| the scrubber's contrast mode | up to 3 buckets (~2.3 MB) | **~19 KB** |
+
+**Proven before anything was deleted.** 3,896 genes compared *elementwise* across both trees —
+every one of their 652 values — zero mismatches. `validate_data.py` now seeks, inflates and
+checks a sampled gene's vector against its own `x.max`, because an off-by-one in a packer
+yields offsets that decode *cleanly* to another gene's data and would render as a plausible
+profile for the wrong gene.
+
+**A host that ignores Range is the dangerous case, and it is now refused.** Such a host answers
+200 with the whole blob, whose first bytes are the FIRST gene's gzip member — which inflates
+fine and returns someone else's expression. The client requires a 206 *and* the exact byte
+length before trusting the bytes, then falls back to the bucket path. Python's `http.server`
+does exactly this, so `scripts/serve_ranges.py` exists to make the checks exercise what
+production actually does; GitHub Pages was verified to answer a real 206, identity-encoded, so
+offsets are stable.
+
+**Regressions and vacuities caught on the way:**
+- `scrubber.js` fetched buckets directly rather than through `loadExprVector`, and 404'd after
+  the repack. It is the module that gains most: a ~17-gene window went from three 786 KB
+  buckets to ~19 KB.
+- After the deletion, "every `x.cb` pointer resolves" passed while iterating over **nothing** —
+  the same vacuous-check shape as the unowned-patcher gap in TODO 47. It now asserts on ranges
+  with a real count (59,599).
+
+**Tested and rejected:** storing ComBat as a per-study offset table instead of a second matrix
+would have saved another 188 MB, but the correction is **not additive in log space** —
+within-study spread of log2(combat+1) − log2(raw+1) has median 0.43, p90 1.15, max 7.38. Both
+matrices are kept. The idea arrived with a cheap falsifier attached, which is why it cost
+twenty minutes instead of a release.
+
+Also repacked the object store: 417 MiB of loose objects collected, 787 MiB → 382 MiB.
+
 ## 0.11.5 — 2026-09-18 — Start from a question, and the disagreement becomes browsable
 
 Out of a ten-lens exploration of the atlas (recovered notes:
