@@ -442,6 +442,15 @@ function geneCard(g) {
           td.pseudo ? el('div', {}, el('span', { class: 'badge' }, 'pseudogene-like')) : null,
           td.note ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' }, td.note) : null));
     }
+    if (g.fam) {
+      // The layers card draws one hop. The family is the transitive closure of that, which is
+      // where "a relative of a relative" lives -- and it is a different question.
+      kv.append(el('dt', {}, 'Descent group'),
+        el('dd', {}, el('a', { href: `#/family/${g.id}` },
+          'Every gene reachable from this one \u2192'),
+          el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+            'Tandem, whole-genome-duplication, allele and paralog edges, walked to exhaustion.')));
+    }
     const members = el('div', { style: 'margin-top:4px' });
     kv.append(el('dt', {}, 'Array members'), el('dd', {}, members));
     if (td.aid) {

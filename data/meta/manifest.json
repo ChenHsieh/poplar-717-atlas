@@ -145,7 +145,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.12.4",
+ "data_version": "0.13.0",
  "duplicate_coexpr": {
   "basis": "Pearson r on log2(ComBat-corrected TPM + 1) over 652 samples -- the same matrix the neighbour co-expression (nb) uses, because a 652-sample correlation spans 28 studies and is therefore a cross-study comparison.",
   "coverage": "A pair needs BOTH partners in the ComBat matrix (59,599 of 63,960 genes), so 7,707 of 32,333 duplicate pairs have no value. Absence means 'not comparable', not 'uncorrelated'.",
@@ -268,6 +268,20 @@
    "aek"
   ],
   "n_rows": 63960
+ },
+ "families": {
+  "definition": "connected components over tandem membership, WGD anchor pairs, HAP1/HAP2 alleles and paralog pairs. A singleton is NOT a family and carries no id -- a gene with no homology edge is not in one.",
+  "edges": {
+   "allele": 51862,
+   "para": 2692,
+   "tandem": 60036,
+   "wgd": 46308
+  },
+  "genes_in_a_family": 60612,
+  "largest": 85,
+  "n_families": 16266,
+  "singletons": 3348,
+  "why_drawable": "measured before building the view: the largest component is 85 genes, so no family is too large to render."
  },
  "gene_model": {
   "intron_support": {

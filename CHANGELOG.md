@@ -9,6 +9,43 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.13.0 — 2026-09-19 — `#/family/<gene>`: the whole descent group, walked to exhaustion
+
+The atlas holds a homology graph and showed one node of it at a time. "What is the full
+duplication family of this gene, and which relatives are only reachable *through* another
+member?" took N page loads and a notebook.
+
+**The measurement came first, and it gated the build.** Connected components over tandem
+membership, WGD anchor pairs, HAP1/HAP2 alleles and paralog pairs — 160,898 directed edges —
+give **16,266 families over 60,612 genes, median 3 members, largest 85**. Had those edges
+chained the genome into one giant component, this view would have rendered 20,000 rows and been
+useless. That was the falsifier, run before any of it was written.
+
+On the Fuzzy MYB locus it reads as a complete history: three tandem neighbours and both WGD
+partners at one step, their HAP2 counterparts at two steps *via the allele edge*, then members
+at three and four steps — 10 genes across 6 chromosome/haplotype locations.
+
+**Then the measurement changed the design.** The proposal was a radial layout with radius = dS
+from the focal gene. That cannot be drawn honestly: **most members have no dS to the focal gene
+at all**, because they are reached through another member, so their radius would be invented. A
+force-directed layout is worse — its equilibrium encodes nothing, while a reader correctly
+assumes position in a scientific figure means something.
+
+So the page renders what the data supports: every member, the edge type that **first reached**
+it, and **graph distance**, which is exact. A card titled "Why this is a table and not a
+picture" says so, and points at the Duplication-layers card for the single hop where the
+geometry is real.
+
+- A gene with no homology edge gets the real explanation — 3,348 genes are in that state — and
+  is deliberately **not** given a family of one, which would make "this gene has a family" true
+  of every gene in the atlas.
+- A component member the walk never reached is listed as `unreached` rather than dropped; a
+  missing row would read as a smaller family.
+- Clicking any member recentres the family on it, and `check.mjs` asserts that recentring on the
+  furthest member yields the **identical membership** — a family that changed depending on where
+  you entered would be a bug in the walk, not a view.
+- New: `scripts/build_families.py`, `data/index/families.json` (1.45 MB), `x.fam` on each gene.
+
 ## 0.12.4 — 2026-09-19 — The numbers stated in prose are now checked too
 
 `check_aggregates.py` recomputes every manifest aggregate and diffs it against the shards. But

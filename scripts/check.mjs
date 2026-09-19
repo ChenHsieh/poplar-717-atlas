@@ -817,6 +817,51 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await ep.close();
 }
 
+// #/family/<gene> -- the descent group, walked to exhaustion. Built only after measuring that
+// components are drawable (largest 85, median 3); had the edges chained the genome together
+// this would show 20,000 rows. Asserted: the member count matches the rows actually rendered,
+// the focal gene is at distance 0 and its direct partners at 1, recentring on another member
+// gives the SAME family, and a gene with no homology edge gets the real explanation rather
+// than a family of one.
+{
+  const fp = await browser.newPage({ viewport: { width: 1180, height: 1400 } });
+  const ferrs = [];
+  fp.on('pageerror', (e) => ferrs.push(e.message));
+  fp.on('console', (m) => { if (m.type() === 'error') ferrs.push('console: ' + m.text()); });
+
+  const read = async (id) => {
+    await fp.goto(base + '/#/family/' + id, { waitUntil: 'networkidle' });
+    await fp.waitForTimeout(3400);
+    const txt = await fp.evaluate(() => document.getElementById('view').innerText);
+    const rows = await fp.locator('#view tbody tr').count();
+    const ids = await fp.locator('#view tbody tr td:first-child').allInnerTexts();
+    return { txt, rows, ids: ids.map((s) => s.trim()).sort() };
+  };
+
+  const a = await read('PtXaTreH.08G070200');           // Fuzzy MYB: tandem + both WGDs
+  const b2 = await read('PtXaAlbH.08G074000');          // furthest member of the same family
+  const solo = await read('PtXaTreH.01G175200');        // no homology edge at all
+
+  const claimed = parseInt(((a.txt.match(/(\d+)\s*\n\s*genes in the family/) || [])[1] || '0'), 10);
+  const sameFamily = a.ids.length === b2.ids.length
+    && a.ids.every((x, i) => x === b2.ids[i]);
+
+  const ok = !ferrs.length
+    && claimed === a.rows                                  // the stat and the table agree
+    && a.rows >= 8
+    && /focal/.test(a.txt)                                 // the focal gene is marked, not given a distance
+    && a.txt.includes('tandem') && a.txt.includes('salicoid WGD') && a.txt.includes('gamma')
+    && sameFamily                                          // recentring gives the same membership
+    && solo.txt.includes('No descent group') && solo.txt.includes('3,348')
+    && solo.rows === 0;
+  if (!ok) failures++;
+  console.log(`\n### family:walk-and-recentre  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${a.rows} members (claimed ${claimed}); recentring gives the same set: `
+    + `${sameFamily}; no-family view: ${solo.txt.includes('No descent group')}`);
+  ferrs.forEach((e) => console.log('   !! ' + e));
+  await fp.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.

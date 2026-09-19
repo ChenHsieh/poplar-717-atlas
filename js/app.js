@@ -9,6 +9,7 @@ import { searchResultsView } from './core/search.js';
 import { renderMap } from './modules/genomemap.js';
 import { pairView } from './modules/pair.js';
 import { karyotypeView } from './modules/karyotype.js';
+import { familyView } from './modules/family.js';
 
 const view = () => document.getElementById('view');
 const setView = (node) => { const v = clear(view()); v.append(node); window.scrollTo(0, 0); };
@@ -253,6 +254,14 @@ route(/^\/pair\/(.+)$/, async (id) => {
 route(/^\/karyotype$/, async () => {
   loading('Reducing the ancestral karyotype\u2026');
   setView(await karyotypeView());
+  markNav();
+});
+
+// #/family/<gene id> -- the whole descent group, entered from any member. Clicking a member
+// recentres on it, so "steps from here" always means steps from the gene you are looking at.
+route(/^\/family\/(.+)$/, async (id) => {
+  loading(`Walking the descent group of ${id}\u2026`);
+  setView(await familyView(id));
   markNav();
 });
 
