@@ -9,6 +9,37 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.12.2 — 2026-09-19 — `#/karyotype`: navigate by the ancestral genome, not the modern one
+
+The whole duplication half of this atlas is about descent — which ancestral chromosome a gene
+came from, which gamma copy, which salicoid copy. That sits on 63,608 genes and was shown as a
+paragraph on one card, one gene at a time. **The frame the data is organised around was the one
+frame a reader could not navigate in.**
+
+Seven ancestral eudicot chromosomes, each split into three gamma copies, each into two salicoid
+copies. 42 cells, every gene already knows its own, and **every cell is a Browse query**.
+
+- **No new data.** The grid reduces in the browser from the `aek` facet column, which packs the
+  three numbers as `chromosome*100 + gamma*10 + salicoid`. Precomputing it into the manifest
+  would create another aggregate a build stage owns and can leave stale (TODO 25) for a table
+  that derives in milliseconds from a file Browse already fetches.
+- **Each cell shows its HAP1 / HAP2 split**, so a cell where the haplotypes disagree is visible
+  without opening anything.
+- **The `aek` Browse filter now accepts a salicoid copy**, so every cell is a real, shareable
+  query rather than a picture of one.
+- `check.mjs` pins the round trip: a cell claims a count, its link must land on exactly that
+  count. The grid and Browse are two code paths over one column, and this repo has already
+  shipped two numbers that disagreed for precisely that reason (0.11.2, 0.11.3). It also asserts
+  the counts partition the corpus — 63,608 placed + 352 not placed = 63,960 — so a cell cannot
+  quietly vanish.
+- Labelled **exploratory** throughout, with the two caveats that stop the obvious misreadings:
+  gamma and salicoid copy numbers are completeness **ranks within one ancestral chromosome, not
+  subgenomes** (they read as subgenome labels to anyone who has seen a polyploid paper), and an
+  empty cell is an absence of collinear evidence, never a proven loss.
+
+This also puts route C — the atlas's most distinctive and least visible layer, badged "proposed,
+not adopted" — somewhere a reader can actually use it.
+
 ## 0.12.1 — 2026-09-19 — `#/pair/<id>`: the allele pair as the primitive
 
 This is one of very few resources carrying both phased haplotypes of a hybrid clone, and until

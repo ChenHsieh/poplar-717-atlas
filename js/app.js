@@ -8,6 +8,7 @@ import { QUESTIONS, countQuestion } from './core/questions.js';
 import { searchResultsView } from './core/search.js';
 import { renderMap } from './modules/genomemap.js';
 import { pairView } from './modules/pair.js';
+import { karyotypeView } from './modules/karyotype.js';
 
 const view = () => document.getElementById('view');
 const setView = (node) => { const v = clear(view()); v.append(node); window.scrollTo(0, 0); };
@@ -246,6 +247,15 @@ route(/^\/pair\/(.+)$/, async (id) => {
   markNav();
 });
 
+// #/karyotype -- the ancestral genome as a navigable surface. The grid is reduced in the
+// browser from the `aek` facet column; precomputing it would create another aggregate a build
+// stage owns and can leave stale, for a table that takes milliseconds to derive.
+route(/^\/karyotype$/, async () => {
+  loading('Reducing the ancestral karyotype\u2026');
+  setView(await karyotypeView());
+  markNav();
+});
+
 route(/^\/browse$/, async () => {
   loading('Loading the gene index…');
   setView(await browseView());
@@ -354,6 +364,8 @@ route(/^\/study\/(\d+)$/, async (idStr) => {
   const nav = document.querySelector('header.top nav');
   MODULES.filter((m) => m.overview)
     .forEach((m) => nav.append(el('a', { href: `#/module/${m.id}` }, m.label)));
+  // Karyotype is a route, not a module (it has no per-gene card), so it is appended by hand.
+  nav.append(el('a', { href: '#/karyotype' }, 'Karyotype'));
   initSearch();
   start();
   markNav();

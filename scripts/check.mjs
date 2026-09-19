@@ -728,6 +728,57 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await pp.close();
 }
 
+// #/karyotype -- the ancestral genome as a navigable surface, reduced in the browser from the
+// `aek` facet column. The property that matters is the round trip: a cell claims a count and
+// its link must land on exactly that count, because the grid and Browse are two different code
+// paths over the same column and this repo has already shipped two numbers that disagreed for
+// exactly that reason (0.11.2 and 0.11.3). Also asserted: the counts partition the corpus
+// (placed + not placed == 63,960), and the "not subgenomes" caveat is present, since copy
+// RANKS read as subgenome labels to anyone who has seen a polyploid paper.
+{
+  const kp = await browser.newPage({ viewport: { width: 1180, height: 1300 } });
+  const kerrs = [];
+  kp.on('pageerror', (e) => kerrs.push(e.message));
+  kp.on('console', (m) => { if (m.type() === 'error') kerrs.push('console: ' + m.text()); });
+  await kp.goto(base + '/#/karyotype', { waitUntil: 'networkidle' });
+  await kp.waitForTimeout(3600);
+  const txt = await kp.evaluate(() => document.getElementById('view').innerText);
+  const cells = await kp.locator('#view a[href*="AEK"]').count();
+
+  // take three cells, read the count each claims, follow it, compare
+  const picked = await kp.locator('#view a[href*="salicoid_copy"]').evaluateAll(
+    (ns) => ns.filter((_, i) => i % 13 === 0).slice(0, 3).map((n) => ({
+      href: n.getAttribute('href'),
+      claim: parseInt((n.innerText.split('\n')[0] || '').replace(/,/g, ''), 10),
+    })));
+  const landed = [];
+  for (const c of picked) {
+    await kp.goto(base + '/' + c.href, { waitUntil: 'networkidle' });
+    await kp.waitForTimeout(1500);
+    const t = await kp.evaluate(() => document.getElementById('view').innerText);
+    const m = t.match(/([\d,]+)\s*\n?\s*of [\d,]+ genes match/i);
+    landed.push(m ? parseInt(m[1].replace(/,/g, ''), 10) : null);
+  }
+
+  const num = (re) => { const m = txt.match(re); return m ? parseInt(m[1].replace(/,/g, ''), 10) : null; };
+  const placed = num(/([\d,]+)\s*\n\s*genes placed on the ancestral genome/);
+  const unplaced = num(/([\d,]+)\s*\n\s*not placed/);
+
+  const ok = !kerrs.length
+    && cells >= 40
+    && picked.length === 3
+    && picked.every((c, i) => Number.isFinite(c.claim) && landed[i] === c.claim)
+    && placed + unplaced === 63960                    // the counts partition the corpus
+    && txt.includes('not subgenomes')                 // the caveat that stops the misreading
+    && txt.includes('absence of evidence');           // an empty cell is not a proven loss
+  if (!ok) failures++;
+  console.log(`\n### karyotype:cells-round-trip  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${cells} clickable cells; claims ${picked.map((c) => c.claim).join(', ')} `
+    + `-> landed ${landed.join(', ')}; ${placed} placed + ${unplaced} not placed`);
+  kerrs.forEach((e) => console.log('   !! ' + e));
+  await kp.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.

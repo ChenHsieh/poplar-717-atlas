@@ -73,12 +73,15 @@ export const FILTERS = [
   // pool unrelated copies. "not placed" includes the HAP1 unplaced-scaffold genes, never assessed.
   { id: 'aek', label: 'Ancestral chromosome (exploratory)', kind: 'select',
     options: [1, 2, 3, 4, 5, 6, 7].flatMap((c) => [`AEK${c}`,
-      ...[1, 2, 3].map((k) => `AEK${c}_gamma_copy_${k}`)]).concat('not_placed'),
+      ...[1, 2, 3].flatMap((k) => [`AEK${c}_gamma_copy_${k}`,
+        ...[1, 2].map((t) => `AEK${c}_gamma_copy_${k}_salicoid_copy_${t}`)])]).concat('not_placed'),
     test: (r, v) => {
       if (v === 'not_placed') return r.aek < 0;
-      const m = /^AEK([1-7])(?:_gamma_copy_([1-3]))?$/.exec(v);
+      // salicoid copy added so every cell of the #/karyotype grid is a real, shareable query
+      const m = /^AEK([1-7])(?:_gamma_copy_([1-3])(?:_salicoid_copy_([12]))?)?$/.exec(v);
       return !!m && r.aek >= 0 && Math.floor(r.aek / 100) === +m[1]
-        && (!m[2] || Math.floor(r.aek / 10) % 10 === +m[2]);
+        && (!m[2] || Math.floor(r.aek / 10) % 10 === +m[2])
+        && (!m[3] || r.aek % 10 === +m[3]);
     } },
   // w is stored as an integer per-mille. -1 means no reciprocal-best P. trichocarpa ortholog
   // and -2 means a pair exists but omega could not be estimated; both are real states, so a
