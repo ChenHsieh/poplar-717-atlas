@@ -298,8 +298,10 @@ function mergeViewGroups(cards) {
       .replace(/\s+layers$/i, '');             // "Duplication layers" -> "Duplication"
     const tagSpan = el('span', { class: 'tag' }, members[0].getAttribute('data-view-tag') || '');
     const tabs = el('div', { class: 'viewtabs', role: 'tablist' });
-    const host = el('div', { class: 'card viewgroup' },
-      el('h2', {}, titleText, tagSpan), tabs);
+    const host = el('div', {
+      class: 'card viewgroup',
+      'data-card': members[0].getAttribute('data-view-group'),
+    }, el('h2', {}, titleText, tagSpan), tabs);
 
     members[0].replaceWith(host);
 
@@ -317,9 +319,14 @@ function mergeViewGroups(cards) {
         id: `vp-${m.getAttribute('data-view-group')}-${m.getAttribute('data-view-key')}`,
       });
       if (i) panel.setAttribute('hidden', 'until-found');
-      while (m.firstChild) panel.append(m.firstChild);
       panel.dataset.view = m.getAttribute('data-view-key') || String(i);
-      if (i) m.remove();                        // members[0] was already replaced
+      // Move the CARD ELEMENT itself, not its children. Moving the children detaches the
+      // card, and a module that mutates its own card after construction -- card.append(...)
+      // from a button handler -- then writes into a node no longer in the document. The
+      // Expression card does exactly that: "Show all 652 samples" appends a holder to
+      // `card`, so with the children moved the button silently did nothing. Keeping the card
+      // in the tree keeps every such closure valid, and its data-card stamp comes along.
+      panel.append(m);
       host.append(panel);
       return panel;
     });
@@ -432,7 +439,8 @@ route(/^\/gene\/(.+)$/, async (id) => {
 
   const kb = ((g.end - g.start) / 1000).toFixed(2);
   const cards = el('div', { class: 'cards' },
-    el('div', { class: 'card' },
+    // built here rather than by a module, so it is stamped by hand like the rest
+    el('div', { class: 'card', 'data-card': 'location' },
       el('h2', {}, 'Location', el('span', { class: 'tag' }, 'v5.1')),
       el('dl', { class: 'kv' },
         el('dt', {}, 'Haplotype'), el('dd', {}, hapLabel(g.hap)),
@@ -461,7 +469,16 @@ route(/^\/gene\/(.+)$/, async (id) => {
     const made = [];
     for (const m of geneSectionModules(sec)) {
       const c = m.geneCard(g, man);   // an element, or a fragment of several cards
-      if (c) made.push(c);
+      if (!c) continue;
+      // Stamp which module drew each card. Checks kept identifying cards by their HEADING
+      // TEXT or by position ("the first .locus-canvas", "canvases[1]"), and both broke this
+      // week -- headings move when cards merge, and a shared style class is not identity.
+      // Stamped BEFORE appending, because appending a fragment empties it.
+      const nodes = c.nodeType === Node.DOCUMENT_FRAGMENT_NODE ? [...c.children] : [c];
+      nodes.forEach((n) => {
+        if (n.classList && n.classList.contains('card') && !n.dataset.card) n.dataset.card = m.id;
+      });
+      made.push(c);
     }
     const opensWithLocation = sec.id === 'identity';
     if (!made.length && !opensWithLocation) continue;   // no dead band, and no dead nav link

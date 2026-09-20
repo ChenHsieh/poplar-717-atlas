@@ -1246,6 +1246,75 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await vp.close();
 }
 
+// Response by contrast: the distribution behind the Expression card's single `resp.v` number.
+// Computed in the browser from the gene's own 652-sample vector and the control/perturbation
+// sample indices already shipped in contrasts.json -- nothing new is built for it.
+//
+// The expected values here were computed INDEPENDENTLY in python straight off the blob
+// (mockups/compute_contrasts.py) before the panel existed, so this is a cross-implementation
+// check, not the panel agreeing with itself. PtXaTreH.19G110500 is a WNK-family kinase and the
+// two largest responses in the whole panel are both drought, off a real expression base --
+// annotation and measurement agreeing is the reason this gene was chosen for the check.
+//
+// The n columns are the substance, not decoration: the median contrast here is 3 samples per
+// side and 27 of the 191 have a single sample on one side. Those bars must be drawn (hiding
+// them would misrepresent the panel), dimmed, and counted in the caveat.
+{
+  const xp = await browser.newPage({ viewport: { width: 1180, height: 1000 } });
+  const xerrs = [];
+  xp.on('pageerror', (e) => xerrs.push(e.message));
+  xp.on('console', (m) => { if (m.type() === 'error') xerrs.push('console: ' + m.text()); });
+  await xp.goto(base + '/#/gene/PtXaTreH.19G110500', { waitUntil: 'networkidle' });
+  await xp.waitForTimeout(3000);
+
+  await xp.evaluate(() => {
+    const pn = document.querySelector('.viewpanel[data-view="contrasts"]');
+    const host = pn && pn.closest('.card.viewgroup');
+    const i = host ? [...host.querySelectorAll('.viewpanel')].indexOf(pn) : -1;
+    if (i >= 0) host.querySelectorAll('.viewtab')[i].click();
+  });
+  await xp.waitForTimeout(1200);
+
+  const c = await xp.evaluate(() => {
+    const pn = document.querySelector('.viewpanel[data-view="contrasts"]');
+    if (!pn) return { missing: true };
+    const vals = [...pn.querySelectorAll('.lfc-val')].map((v) => v.textContent);
+    const ns = [...pn.querySelectorAll('.lfc-n')].map((v) => v.textContent);
+    const weak = [...pn.querySelectorAll('.lfc-fill')].map((v) => v.classList.contains('weak'));
+    const host = pn.closest('.card.viewgroup');
+    return {
+      total: (pn.textContent.match(/All (\d+) shipped contrasts/) || [])[1],
+      median: pn.querySelector('.kv dd')?.textContent,
+      top: vals[0], topN: ns[0], topLabel: pn.querySelector('.lfc-lab')?.textContent,
+      second: vals[1],
+      nWeak: weak.filter(Boolean).length,
+      weakAllLowN: weak.every((w, i) => w === /^1v|v1$/.test(ns[i])),
+      caveat: (pn.textContent.match(/(\d+) of these \d+ contrasts have a single sample/) || [])[1],
+      states: /not a differential-expression test/.test(pn.textContent)
+        && /no multiple-testing correction/.test(pn.textContent),
+      reverseNotClaimed: !/which genes respond/i.test(pn.textContent),
+      tabs: [...host.querySelectorAll('.viewtab')].map((t) => t.textContent),
+      heading: host.querySelector('h2')?.childNodes[0]?.textContent.trim(),
+    };
+  });
+
+  const ok = !xerrs.length && !c.missing
+    && c.total === '191' && c.median === '0.579'
+    && c.top === '+6.13' && c.topN === '3v3' && /chronic drought/.test(c.topLabel || '')
+    && c.second === '+5.86'
+    && c.caveat === '27' && c.nWeak === 2 && c.weakAllLowN
+    && c.states && c.reverseNotClaimed
+    && c.heading === 'Expression' && c.tabs.length === 2;
+  if (!ok) failures++;
+  console.log(`\n### expression:response-by-contrast  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   "${c.heading}" tabs [${(c.tabs || []).join(' | ')}]; scored ${c.total}, median ${c.median}`);
+  console.log(`   top ${c.top} (n=${c.topN}) ${c.topLabel}; second ${c.second}`);
+  console.log(`   ${c.caveat} single-sample contrasts; ${c.nWeak} of the drawn bars dimmed, all of them low-n: ${c.weakAllLowN}`);
+  console.log(`   states it is not a DE test: ${c.states}; does not claim the reverse question: ${c.reverseNotClaimed}`);
+  xerrs.forEach((e) => console.log('   !! ' + e));
+  await xp.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.
@@ -1259,7 +1328,10 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await hp.waitForTimeout(1200);
   await hp.click('button:has-text("Load the heatmap")');
   await hp.waitForTimeout(3500);
-  const card = hp.locator('.card').filter({ has: hp.locator('h2', { hasText: 'The copies, over all 652 samples' }) }).first();
+  // Every gene card carries data-card = the module that drew it (stamped in app.js). Prefer
+  // that to a heading, which moves when cards merge, and to a position, which moves when the
+  // running order changes -- both happened this week.
+  const card = hp.locator('[data-card="dupheatmap"]').first();
   const hBefore = await card.locator('canvas').evaluate((c) => c.getBoundingClientRect().height);
   const textBefore = (await card.innerText()).toLowerCase();
   const boxChecked = await card.locator('input[type=checkbox]').isChecked();
@@ -1369,14 +1441,12 @@ for (const [label, vw, vh, dpr] of [['locus-desktop', 1180, 900, 1], ['locus-pho
   // genome map and scrubber canvases, so a page-wide index silently measures another card
   // the moment the running order changes -- which is exactly how this check broke.
   await lp.evaluate(() => {
-    const d = [...document.querySelectorAll('details.card-fold')]
-      .find((x) => /Locus/.test(x.querySelector('.fold-title')?.textContent || ''));
+    const d = document.querySelector('details.card-fold:has([data-card="locus"])');
     if (d) d.open = true;
   });
   await lp.waitForTimeout(1100);
   const r = await lp.evaluate(() => {
-    const host = [...document.querySelectorAll('details.card-fold')]
-      .find((x) => /Locus/.test(x.querySelector('.fold-title')?.textContent || ''));
+    const host = document.querySelector('details.card-fold:has([data-card="locus"])');
     const cv = host && host.querySelector('.locus-canvas');
     if (!cv) return { missing: true };
     const box = cv.getBoundingClientRect();
@@ -1573,10 +1643,11 @@ await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
   const h = await mp.$('h2:has-text("This locus on")');
   await h.scrollIntoViewIfNeeded();
   await mp.waitForTimeout(500);
-  // Scoped to the mirror card by its heading. This used to index canvases[1] out of a
-  // page-wide '.locus-canvas' list, which broke the moment the gene page's running order
-  // changed -- '.locus-canvas' is a shared style class, not this card's identity.
-  const mcard = await mp.$('.card:has(h2:has-text("This locus on HAP2 too"))');
+  // Scoped by the module stamp. This used to index canvases[1] out of a page-wide
+  // '.locus-canvas' list, which broke the moment the gene page's running order changed --
+  // '.locus-canvas' is a shared style class, not this card's identity -- and then by heading
+  // text, which is one merge away from moving too.
+  const mcard = await mp.$('[data-card="mirror"]');
   const box = await (await mcard.$('.locus-canvas')).boundingBox();
   await mp.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.8);
   await mp.waitForTimeout(700);
@@ -1608,7 +1679,9 @@ await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
   await h.scrollIntoViewIfNeeded();
   await sp.waitForTimeout(500);
   // Switch mode WITHOUT ever touching the <select> -- the exact scenario that failed.
-  await sp.click('button:has-text("By contrast")');
+  // Scoped to the scrubber's own card. A page-wide substring selector for "By contrast" also
+  // matched the Expression card's contrast view tab once that existed.
+  await sp.locator('[data-card="scrubber"] button:has-text("By contrast")').first().click();
   await sp.waitForTimeout(700);
   const text = await viewText(sp);
   const ok = text.includes('log2((mean perturbation') && text.includes('Orange = higher') && !serrs2.length;
@@ -1616,9 +1689,17 @@ await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
   console.log(`\n### scrubber:contrast-mode-no-manual-select  ${ok ? 'OK' : 'FAIL'}`);
   serrs2.forEach((e) => console.log('   !! ' + e));
   // Click-through still works from this card too.
-  const canvases = await sp.$$('.locus-canvas');
-  const box = await canvases[canvases.length - 1].boundingBox();
-  await sp.mouse.click(box.x + box.width * 0.05, box.y + box.height * 0.5);
+  // '.locus-canvas' is a shared style class (locus, mirror, genome map, scrubber), so "the
+  // last one on the page" is a position, not an identity. Scope by the module stamp.
+  //
+  // Clicked ELEMENT-RELATIVE, not by viewport coordinates. viewText() above reveals every
+  // collapsed view panel, which makes the page taller and moves this canvas; a click at
+  // coordinates measured before that lands somewhere else entirely, and the check failed
+  // while the canvas worked. locator.click scrolls the target into view and resolves the
+  // position against the element itself, so it cannot drift.
+  const cv = sp.locator('[data-card="scrubber"] .locus-canvas').first();
+  const cbox = await cv.boundingBox();
+  await cv.click({ position: { x: cbox.width * 0.05, y: cbox.height * 0.5 } });
   await sp.waitForTimeout(600);
   const navigated = sp.url() !== base + '/#/gene/PtXaTreH.05G120200';
   if (!navigated) failures++;

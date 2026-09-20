@@ -9,6 +9,56 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## Response by contrast, and a card that could be moved without breaking
+
+The Expression card stated one number for perturbation response — `resp.v`, a median |log2FC| —
+and no way to see which comparison moved the gene. **Contrasts** is now a second view of that
+card: every shipped contrast scored for this gene, the ten largest drawn as diverging bars.
+
+Nothing new is built or shipped for it. `data/expr/contrasts.json` already names each
+comparison's control and perturbation sample indices and `loadExprVector` already returns the
+gene's 652 values; the fold change is those two facts multiplied out in the browser. The reverse
+question — *which genes respond to drought* — needs every gene's vector and is deliberately not
+attempted.
+
+**Every bar carries its sample counts**, because that is what decides whether a bar means
+anything. The median contrast here is n=3 per side and 27 of the 191 have a single sample on one
+side; those are drawn (hiding them would misrepresent the panel), dimmed, and counted in a
+caveat. The card states that it is a descriptive ratio and not a differential-expression test:
+no dispersion model, no multiple-testing correction, study not accounted for.
+
+The numbers were computed independently in python straight off the expression blob *before* the
+panel existed, and the browser reproduces them exactly — 191 contrasts, median 0.579, +6.13
+chronic drought at n=3v3 on a WNK-family kinase, where annotation and measurement agree. The
+check asserts those values, so it is a cross-implementation comparison rather than the panel
+agreeing with itself.
+
+### The merge was detaching cards
+
+`mergeViewGroups()` moved a card's CHILDREN into its panel, which detaches the card element. Any
+module that mutates its own card after construction then wrote into a node no longer in the
+document — and the Expression card does exactly that: "Show all 652 samples →" appends a holder
+to `card`. **That button silently did nothing** in the previous release. It now moves the card
+element itself, so every such closure stays valid.
+
+### Cards have identities now
+
+Checks kept finding cards by heading text or by position, and both kept breaking: `.locus-canvas`
+is a style class shared by four modules, `canvases[canvases.length - 1]` is a position, and
+`.card.viewgroup` stopped being unique the moment Expression became a second merged card. Every
+gene card now carries `data-card="<module id>"`, stamped in `app.js` — including the inline
+Location card and the merged hosts, and carried along when a card moves into a panel. The
+scrubber, mirror, dupheatmap and locus checks now key off that.
+
+The new view was also renamed from "Response by contrast" to **Contrasts**: the scrubber card has
+a button labelled "By contrast", one name contained the other, and a substring selector for
+either matched both. That is a problem for a reader before it is a problem for a selector.
+
+One check was clicking a canvas at viewport coordinates measured before `viewText()` revealed the
+collapsed panels, which makes the page taller and moves the target. It clicks element-relative now.
+
+116 render checks pass.
+
 ## Duplication: one card, two views — and the other haplotype drawn properly
 
 The gene page ran a 645px figure called **Duplication layers** directly above a 1422px card
