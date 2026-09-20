@@ -21,7 +21,9 @@ const STRATUM = { 12: 'Pentapetalae', 16: 'Salicaceae', 17: 'Saliceae', 18: 'Pop
 
 const DUP_CODE = { S: 'salicoid WGD', A: 'gamma WGD', T: 'tandem', D: 'dispersed' };
 
-function dupTypeLabel(d) {
+// Exported so the gene page's overview strip names the classes with this exact
+// vocabulary rather than growing a second one that can drift from it.
+export function dupTypeLabel(d) {
   if (!d) return null;
   if (d.t === 'C') return 'no duplication detected';
   const parts = [];

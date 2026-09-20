@@ -9,6 +9,68 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## The gene page gets an order, a summary, and a way around it
+
+A gene page carries nineteen cards. Until now their running order was **the order the modules
+happened to be imported in** — so a predicted promoter motif could sit above the duplication
+class, and the expression summary landed near the bottom. Nobody chose that.
+
+**The cards are now in bands, ordered by what the evidence is.** Identity, Duplication,
+Synteny & position and Expression are measured on this assembly. `Predicted & indirect` is
+last — and last rather than merely lower, so a reader who stops scrolling partway has stopped
+*before* the weakest evidence rather than in the middle of it. That band says why it is there:
+motif and structure calls are predictions, the chromatin is measured in *P. trichocarpa* and
+transferred, and a phylostratigraphic rank is a property of the database it was searched against.
+
+**An "At a glance" strip** answers *what am I looking at* in one card: duplication class,
+synteny class, peak tissue and τ, responsiveness, allele. It **computes nothing** — every value
+is repeated in full, with its caveats, in the card it came from, so it cannot drift from what it
+summarises. It deliberately shows no syntelog count: `syn.n` is how many of the twelve panel
+genomes the orthogroup spans, and the only literal syntelog list on the record (`aek.an[].sl`)
+ships marked *exploratory*, so it stays in the card carrying that caveat.
+
+**A sticky section nav**, built from the cards that actually rendered rather than a fixed list,
+so a band that produces nothing leaves no dead link.
+
+### The two locus cards were drawing the same thing
+
+`mirror.js` fetches the same `loadLocusTile` data as `locus.js` and draws the same genes over
+the same window — its own header comment says so. Two full-width strips of the same
+neighbourhood ran back to back. The Locus card now **folds shut by default**. It is folded and
+not deleted because it is the only view with exon/UTR structure and the only panning control on
+the page; the mirror has none, so removing it would leave no non-gesture way to move along the
+chromosome (SC 2.5.1, Level A). The fold names what it adds rather than being a mystery drawer.
+
+### The header was ten tabs in import order
+
+Now six: `Home · Browse · Map · Karyotype · Layers ▾ · About`. Ways in stay visible, the five
+per-topic overviews group under Layers **in the same order as the gene page's bands**, About is
+last. A `<details>`, so keyboard operation and expanded state come from the platform; the group
+marks itself when the current page is one of its children, or the header would show nothing
+selected on five of the site's pages. Every one of the ten destinations is still one click away,
+which is the only thing that makes grouping acceptable and is asserted in the checks. The phone
+header drops from 170px to 127px.
+
+### Latent bugs this surfaced
+
+- `locus-desktop`, `locus-phone` and `mirror:cross-haplotype-click` all broke the moment the
+  running order changed. They were reading `document.querySelector('.locus-canvas')` and
+  `canvases[1]` — but `.locus-canvas` is a shared **style** class used by the locus, mirror,
+  genome map and scrubber canvases. Those checks were measuring whichever canvas happened to be
+  first, and passed only by accident of import order. All three are now scoped to their own card.
+- The first scroll-spy compared `IntersectionObserver` rects, which are snapshots from when each
+  entry last fired, so scrolling back to the top left the last band still marked.
+- Its trigger line then sat *above* where `scroll-margin-top` parks a heading, so jumping to a
+  band marked the band before it.
+- `text-transform: uppercase` turns **τ into "T" and ω into "Ω"**.
+- On a phone `header.top` wraps to three rows (170px measured, not 47), so the section nav's
+  sticky offset is measured at runtime and the nav becomes one swipeable row below 640px.
+
+`registry.js` now refuses to load if a module draws a gene card and is named in no band — that
+card would otherwise simply stop being appended, with nothing failing.
+
+114 render checks pass.
+
 ## CI was testing against a server that ignores Range
 
 Release 0.12.0 moved per-gene expression to byte ranges and made the client refuse any response

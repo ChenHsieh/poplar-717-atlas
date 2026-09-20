@@ -150,8 +150,15 @@ function geneModelCard(g) {
 }
 
 function geneCard(g) {
-  const card = el('div', { class: 'card' },
-    el('h2', {}, 'Locus', el('span', { class: 'tag' }, 'v5.1 structure')));
+  // The mirror card above draws the SAME neighbourhood from the SAME locus tile, so two
+  // full-width strips of the same genes ran back to back. This one folds shut by default and
+  // is not deleted: it is the only view with exon/UTR structure, and the only panning control
+  // on the page -- the mirror has none, so removing it would leave no non-gesture way to move
+  // along the chromosome (SC 2.5.1, Level A).
+  const card = el('div', {
+    class: 'card',
+    'data-secondary': 'Same window on one haplotype, with exon structure and panning',
+  }, el('h2', {}, 'Locus', el('span', { class: 'tag' }, 'v5.1 structure')));
   const stage = el('div', { class: 'locus-stage' });
   const canvas = el('canvas', { class: 'locus-canvas' });
   stage.append(canvas);

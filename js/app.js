@@ -1,7 +1,9 @@
 import { el, clear, fmt } from './core/dom.js';
 import { getGene, loadManifest, hapLabel, loadExprStudies,
          loadExprSamples, searchGenesRanked, loadFacets, facetRow } from './core/data.js';
-import { MODULES, byId } from './core/registry.js';
+import { MODULES, byId, GENE_SECTIONS, geneSectionModules } from './core/registry.js';
+import { dupTypeLabel } from './modules/duplication.js';
+import { classBadge } from './modules/synteny.js';
 import { route, start, navigate } from './core/router.js';
 import { browseView, browseHref, FILTERS } from './core/browse.js';
 import { QUESTIONS, countQuestion } from './core/questions.js';
@@ -83,6 +85,11 @@ function markNav() {
   document.querySelectorAll('header.top nav a').forEach((a) => {
     const h = a.getAttribute('href').slice(1);
     a.classList.toggle('on', h === p || (h !== '/' && p.startsWith(h)));
+  });
+  // A grouped tab must show that the page you are on lives inside it; otherwise the header
+  // says nothing is selected on five of the site's pages.
+  document.querySelectorAll('header.top .navmenu').forEach((d) => {
+    d.classList.toggle('on', [...d.querySelectorAll('a')].some((a) => a.classList.contains('on')));
   });
 }
 addEventListener('hashchange', markNav);
@@ -192,6 +199,129 @@ function questionsCard() {
   return card;
 }
 
+/* ---------------------------------------------------------------------------------------
+ *  The gene page got long. Fourteen or more cards now, and before this the running order was
+ *  whatever order the modules were imported in -- so a predicted promoter motif could sit
+ *  above the duplication class, and the expression summary landed near the bottom.
+ *
+ *  Two things fix that, and they are deliberately different:
+ *    glanceCard()  answers "what am I looking at" in one card, so a reader who reads nothing
+ *                  else still leaves with the duplication class, the syntelogs and the peak
+ *                  tissue. It states only fields already on the record -- it computes nothing
+ *                  new, so it cannot disagree with the card it summarises.
+ *    sectionNav()  is built FROM THE CARDS THAT ACTUALLY RENDERED, not from a fixed list, so
+ *                  a band that produced nothing for this gene never appears as a dead link.
+ * ------------------------------------------------------------------------------------- */
+
+function glanceCard(g) {
+  const bits = [];
+
+  const dt = dupTypeLabel(g.dup);
+  if (dt) {
+    bits.push(['Duplication', el('span', {}, dt,
+      g.dup && g.dup.td ? el('span', { class: 'muted' }, ' · in a tandem array') : null)]);
+  }
+
+  // NOT a syntelog count. `syn.n` is how many of the 12 panel genomes the orthogroup spans,
+  // which is what synteny.js calls it; the only literal list of syntelogs on the record is
+  // aek.an[].sl, and that is shipped `exploratory`, so it stays in the card that carries its
+  // caveat rather than being promoted to a summary strip.
+  const s = g.syn;
+  if (s && s.cls) {
+    bits.push(['Synteny', el('span', {}, classBadge(s.cls),
+      s.n != null ? el('span', { class: 'muted' }, `  orthogroup spans ${s.n} of 12 genomes`) : null,
+      s.stable === false ? el('span', { class: 'badge', style: 'margin-left:6px' },
+        '\u26a0 sensitivity-unstable') : null)]);
+  }
+
+  const x = g.x;
+  if (x && x.top) {
+    bits.push(['Expression', el('span', {},
+      el('strong', {}, x.top), ` ${fmt(Math.round(x.t && x.t[x.top] != null ? x.t[x.top] : 0))} TPM`,
+      x.tau != null ? el('span', { class: 'muted' }, ` · τ ${x.tau}`) : null)]);
+  }
+  if (g.resp && g.resp.v != null) {
+    bits.push(['Responsiveness', el('span', {},
+      el('span', { class: 'mono' }, g.resp.v.toFixed(3)),
+      el('span', { class: 'muted' }, ` median |log2FC|${g.resp.n ? ` over ${g.resp.n} contrasts` : ''}`))]);
+  }
+  if (g.allele && g.allele.id) {
+    bits.push(['Allele', el('span', {},
+      el('a', { href: `#/gene/${g.allele.id}`, class: 'mono' }, g.allele.id),
+      el('span', { class: 'muted' }, ' · '),
+      el('a', { href: `#/pair/${g.id}` }, 'side by side'))]);
+  }
+  if (!bits.length) return null;
+
+  return el('div', { class: 'card glance' },
+    el('h2', {}, 'At a glance'),
+    el('dl', { class: 'kv' }, ...bits.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v)])),
+    el('p', { class: 'muted', style: 'margin:11px 0 0;font-size:11.5px' },
+      'Every value here is repeated in full, with its caveats, in the card it came from. '
+      + 'Nothing is computed for this strip.'));
+}
+
+/** Sticky in-page nav. `bands` is the list that actually produced cards. */
+function sectionNav(bands) {
+  if (bands.length < 2) return null;
+  const links = bands.map((b) => el('a', { href: `#/gene/${b.gene}`, 'data-sec': b.id,
+    class: 'secnav-link' }, b.label));
+  const nav = el('nav', { class: 'secnav' }, ...links);
+
+  // Anchor scrolling by hash would fight the hash router, so move the page directly.
+  links.forEach((a, i) => a.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    const h = document.getElementById('sec-' + bands[i].id);
+    if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+
+  // Mark the band the reader is currently inside: the LAST heading that has passed under the
+  // sticky bars. Positions are read live on each frame rather than cached from an
+  // IntersectionObserver entry -- an entry's boundingClientRect is a snapshot from when it
+  // fired, so headings that did not change state keep reporting where they used to be, and
+  // scrolling back to the top left the last band still marked.
+  let queued = false;
+  const spy = () => {
+    queued = false;
+    if (!nav.isConnected) {                       // view replaced by the router
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      return;
+    }
+    // Must sit BELOW where scroll-margin-top parks a heading (--top-h + 54px in app.css),
+    // or jumping to a band marks the one before it: the heading lands at 107px while the
+    // line was at 96px, so it never counted as reached. The slack is that difference plus
+    // room for the nav wrapping to two rows on a narrow screen.
+    const line = (parseFloat(getComputedStyle(document.documentElement)
+      .getPropertyValue('--top-h')) || 47) + nav.offsetHeight + 36;
+    let current = bands[0] && bands[0].id;
+    bands.forEach((b) => {
+      const h = document.getElementById('sec-' + b.id);
+      if (h && h.getBoundingClientRect().top <= line) current = b.id;
+    });
+    const changed = links.some((a) => a.classList.contains('on') !== (a.dataset.sec === current));
+    links.forEach((a) => a.classList.toggle('on', a.dataset.sec === current));
+
+    // Below 640px the nav is one swipeable row, so the active chip can sit off-screen.
+    // Bring it into the nav's own scroll box -- set scrollLeft rather than calling
+    // scrollIntoView, which would also scroll the PAGE and fight the reader.
+    if (changed && nav.scrollWidth > nav.clientWidth + 2) {
+      const on = links.find((a) => a.classList.contains('on'));
+      if (on) {
+        const pad = 12;
+        if (on.offsetLeft < nav.scrollLeft + pad) nav.scrollLeft = Math.max(0, on.offsetLeft - pad);
+        else if (on.offsetLeft + on.offsetWidth > nav.scrollLeft + nav.clientWidth - pad)
+          nav.scrollLeft = on.offsetLeft + on.offsetWidth - nav.clientWidth + pad;
+      }
+    }
+  };
+  const onScroll = () => { if (!queued) { queued = true; requestAnimationFrame(spy); } };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  requestAnimationFrame(spy);
+  return nav;
+}
+
 route(/^\/gene\/(.+)$/, async (id) => {
   loading(`Loading ${id}…`);
   const [g, man] = await Promise.all([getGene(id), loadManifest()]);
@@ -223,11 +353,41 @@ route(/^\/gene\/(.+)$/, async (id) => {
       + '"novel gene" calls. Treat any lineage-specific claim for this gene with care.'));
   }
 
-  for (const m of MODULES) {
-    if (!m.geneCard) continue;
-    const c = m.geneCard(g, man);   // an element, or a fragment of several cards
-    if (c) cards.append(c);
+  // The Location card built above belongs to Identity, so that band opens already non-empty.
+  const glance = glanceCard(g);
+  const bands = [];
+  for (const sec of GENE_SECTIONS) {
+    const made = [];
+    for (const m of geneSectionModules(sec)) {
+      const c = m.geneCard(g, man);   // an element, or a fragment of several cards
+      if (c) made.push(c);
+    }
+    const opensWithLocation = sec.id === 'identity';
+    if (!made.length && !opensWithLocation) continue;   // no dead band, and no dead nav link
+
+    const head = el('h2', { class: 'sect', id: 'sec-' + sec.id },
+      el('span', { class: 'sect-label' }, sec.label),
+      sec.blurb ? el('span', { class: 'sect-blurb' }, sec.blurb) : null);
+    if (opensWithLocation) cards.prepend(head); else cards.append(head);
+    made.forEach((c) => cards.append(c));
+    bands.push({ id: sec.id, label: sec.label, gene: g.id });
   }
+
+  // A card marked data-secondary duplicates something already drawn above and folds shut.
+  // Done after appending because a module may return a fragment of several cards, and only
+  // some of them carry the mark. The canvas inside starts at zero width while folded; the
+  // locus module observes its CONTAINER with a ResizeObserver, so it paints on first open.
+  cards.querySelectorAll('.card[data-secondary]').forEach((c) => {
+    const why = c.getAttribute('data-secondary');
+    const title = (c.querySelector('h2') || {}).textContent || 'More';
+    const d = el('details', { class: 'card-fold' },
+      el('summary', {}, el('span', { class: 'fold-title' }, title),
+        why ? el('span', { class: 'fold-why' }, why) : null));
+    c.replaceWith(d);
+    c.querySelector('h2')?.remove();   // the summary is the heading now
+    d.append(c);
+  });
+
   const ord = g.ord || {};
   setView(el('div', {},
     el('h1', { class: 'mono' }, g.id),
@@ -236,6 +396,8 @@ route(/^\/gene\/(.+)$/, async (id) => {
       ord.p ? el('a', { href: `#/gene/${ord.p}`, class: 'mono' }, '← ' + ord.p) : null,
       (ord.p && ord.n) ? el('span', { class: 'muted' }, '   neighbours on the chromosome   ') : null,
       ord.n ? el('a', { href: `#/gene/${ord.n}`, class: 'mono' }, ord.n + ' →') : null) : null,
+    glance,
+    sectionNav(bands),
     cards));
   markNav();
 });
@@ -379,11 +541,42 @@ route(/^\/study\/(\d+)$/, async (idStr) => {
 
 /* ---------- boot ---------- */
 (async function boot() {
+  // The header carried ten flat tabs in MODULES order -- an accident of the import list, not
+  // a choice, and on a phone it wrapped to three rows (170px of sticky chrome before any
+  // content). It is now two kinds of thing:
+  //
+  //   always visible   ways IN to the data      Home / Browse / Map / Karyotype
+  //   grouped          per-topic overviews      Layers > Duplication / Synteny / ...
+  //   last             provenance               About
+  //
+  // The Layers order matches the gene page's bands, so the two do not disagree about which
+  // evidence comes first.
   const nav = document.querySelector('header.top nav');
-  MODULES.filter((m) => m.overview)
-    .forEach((m) => nav.append(el('a', { href: `#/module/${m.id}` }, m.label)));
   // Karyotype is a route, not a module (it has no per-gene card), so it is appended by hand.
   nav.append(el('a', { href: '#/karyotype' }, 'Karyotype'));
+
+  const LAYER_ORDER = ['duplication', 'synteny', 'expression', 'protein', 'phylostrat'];
+  const layers = LAYER_ORDER.map(byId).filter((m) => m && m.overview);
+  if (layers.length) {
+    const panel = el('div', { class: 'navmenu-panel' },
+      ...layers.map((m) => el('a', { href: `#/module/${m.id}` }, m.label)));
+    const menu = el('details', { class: 'navmenu' }, el('summary', {}, 'Layers'), panel);
+    // Close after a choice, and on Escape or a click elsewhere -- a <details> menu that
+    // stays open over the page is worse than the flat row it replaced.
+    panel.addEventListener('click', () => { menu.open = false; });
+    menu.addEventListener('keydown', (e) => { if (e.key === 'Escape') menu.open = false; });
+    document.addEventListener('click', (e) => { if (!menu.contains(e.target)) menu.open = false; });
+    nav.append(menu);
+  }
+
+  // Any module with an overview that is NOT in the list above still gets its own tab rather
+  // than silently disappearing from the site when someone adds one.
+  const placed = new Set([...LAYER_ORDER, 'about']);
+  MODULES.filter((m) => m.overview && !placed.has(m.id))
+    .forEach((m) => nav.append(el('a', { href: `#/module/${m.id}` }, m.label)));
+
+  const about = byId('about');
+  if (about && about.overview) nav.append(el('a', { href: '#/module/about' }, about.label));
   initSearch();
   start();
   markNav();
@@ -421,4 +614,16 @@ route(/^\/study\/(\d+)$/, async (idStr) => {
       document.body.prepend(bar);
     }
   } catch { /* footer stamp is cosmetic; never block boot on it */ }
+})();
+
+/* The gene page's section nav sticks directly under the site header, and header.top wraps to
+   two rows on a narrow screen -- a hard-coded offset would leave the nav hidden behind it.
+   Measure it instead, and keep it right through rotation and font-size changes. */
+(function trackHeaderHeight() {
+  const top = document.querySelector('header.top');
+  if (!top) return;
+  const set = () => document.documentElement.style.setProperty('--top-h', `${top.offsetHeight}px`);
+  set();
+  if ('ResizeObserver' in window) new ResizeObserver(set).observe(top);
+  else window.addEventListener('resize', set);
 })();

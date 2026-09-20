@@ -924,6 +924,221 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await sp.close();
 }
 
+// The gene page carries nineteen cards. Two things keep it navigable, and both can regress
+// silently: the running order (bands are ordered by WHAT THE EVIDENCE IS -- measured on this
+// assembly first, predicted/transferred last) and the section nav. Asserted here: the bands
+// appear in the declared order with `predicted` last, every nav link has a heading and every
+// heading has a nav link (a band that renders nothing must not leave a dead chip), the glance
+// strip names duplication/synteny/expression, and the scroll-spy marks the band you are in --
+// including after scrolling back to the top, which the first implementation got wrong because
+// it compared IntersectionObserver rects captured when each entry last fired.
+{
+  const np = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const nerrs = [];
+  np.on('pageerror', (e) => nerrs.push(e.message));
+  np.on('console', (m) => { if (m.type() === 'error') nerrs.push('console: ' + m.text()); });
+  await np.goto(base + '/#/gene/PtXaTreH.19G110500', { waitUntil: 'networkidle' });
+  await np.waitForTimeout(2200);
+
+  const EXPECTED = ['identity', 'duplication', 'synteny', 'expression', 'predicted'];
+  const shape = await np.evaluate(() => ({
+    heads: [...document.querySelectorAll('#view h2.sect')].map((h) => h.id.replace(/^sec-/, '')),
+    navs: [...document.querySelectorAll('.secnav-link')].map((a) => a.dataset.sec),
+    glance: [...document.querySelectorAll('.card.glance .kv dt')].map((d) => d.textContent),
+    // the ordering claim: every card of a band sits between its heading and the next one
+    firstPredictedCardAfterLastMeasured: (() => {
+      const nodes = [...document.querySelectorAll('#view h2.sect, #view .cards > .card')];
+      const iPred = nodes.findIndex((n) => n.id === 'sec-predicted');
+      const iExpr = nodes.findIndex((n) => n.id === 'sec-expression');
+      return iPred > iExpr && iPred > -1;
+    })(),
+  }));
+
+  const orderOk = EXPECTED.every((id, i) => shape.heads[i] === id);
+  const pairedOk = shape.heads.length === shape.navs.length
+    && shape.heads.every((h, i) => shape.navs[i] === h);
+  const glanceOk = ['Duplication', 'Synteny', 'Expression'].every((k) => shape.glance.includes(k));
+
+  // scroll-spy, including the return to the top
+  const marksAt = async (secId) => {
+    if (secId) await np.evaluate((i) => document.getElementById('sec-' + i).scrollIntoView(), secId);
+    else await np.evaluate(() => window.scrollTo(0, 0));
+    await np.waitForTimeout(420);
+    return np.evaluate(() => {
+      const on = document.querySelector('.secnav-link.on');
+      return on ? on.dataset.sec : null;
+    });
+  };
+  const spy = [];
+  for (const id of EXPECTED) spy.push([id, await marksAt(id)]);
+  const backTop = await marksAt(null);
+  const spyOk = spy.every(([want, got]) => want === got) && backTop === 'identity';
+
+  // the nav must clear the site header, which wraps to several rows on a phone -- so the
+  // offset is measured at runtime rather than hard-coded
+  await np.evaluate((i) => document.getElementById('sec-' + i).scrollIntoView(), 'synteny');
+  await np.waitForTimeout(300);
+  const clear = await np.evaluate(() => {
+    const n = document.querySelector('.secnav'), h = document.querySelector('header.top');
+    return n && h ? n.getBoundingClientRect().top >= h.getBoundingClientRect().bottom - 1 : false;
+  });
+
+  const ok = !nerrs.length && orderOk && pairedOk && glanceOk && spyOk && clear
+    && shape.firstPredictedCardAfterLastMeasured;
+  if (!ok) failures++;
+  console.log(`\n### genepage:bands-order-and-section-nav  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   bands ${shape.heads.join(' > ')}  (predicted last: ${shape.firstPredictedCardAfterLastMeasured})`);
+  console.log(`   nav paired with headings: ${pairedOk}; glance rows ${shape.glance.join('/')}`);
+  console.log(`   spy ${spy.map(([w, g]) => `${w}->${g}`).join(' ')}  back-to-top->${backTop}; nav clears header: ${clear}`);
+  nerrs.forEach((e) => console.log('   !! ' + e));
+  await np.close();
+}
+
+// A phone wraps header.top to three rows, so the section nav's sticky offset is measured
+// rather than assumed, and the nav itself becomes ONE swipeable row instead of wrapping --
+// wrapping put a third of the viewport under sticky chrome. The active chip must stay
+// visible inside that row, or the reader loses their place exactly when navigation matters.
+{
+  const mp = await browser.newPage({ viewport: { width: 390, height: 780 } });
+  const merrs = [];
+  mp.on('pageerror', (e) => merrs.push(e.message));
+  await mp.goto(base + '/#/gene/PtXaTreH.19G110500', { waitUntil: 'networkidle' });
+  await mp.waitForTimeout(2000);
+
+  const rows = [];
+  for (const id of ['identity', 'expression', 'predicted']) {
+    await mp.evaluate((i) => document.getElementById('sec-' + i).scrollIntoView(), id);
+    await mp.waitForTimeout(420);
+    rows.push(await mp.evaluate(() => {
+      const nav = document.querySelector('.secnav');
+      const on = nav && nav.querySelector('.secnav-link.on');
+      if (!on) return { sec: null, visible: false, oneRow: false };
+      const nr = nav.getBoundingClientRect(), or = on.getBoundingClientRect();
+      return {
+        sec: on.dataset.sec,
+        visible: or.left >= nr.left - 1 && or.right <= nr.right + 1,
+        oneRow: nr.height < 56,                       // two rows of chips would exceed this
+        clearsHeader: nr.top >= document.querySelector('header.top').getBoundingClientRect().bottom - 1,
+      };
+    }));
+  }
+  const noHScroll = await mp.evaluate(() =>
+    document.documentElement.scrollWidth <= window.innerWidth + 2);
+
+  const ok = !merrs.length && noHScroll
+    && rows.every((r) => r.visible && r.oneRow && r.clearsHeader)
+    && rows[2].sec === 'predicted';
+  if (!ok) failures++;
+  console.log(`\n### genepage:section-nav-on-a-phone  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${rows.map((r) => `${r.sec}:vis=${r.visible},1row=${r.oneRow}`).join('  ')}`);
+  console.log(`   no horizontal page scroll: ${noHScroll}`);
+  merrs.forEach((e) => console.log('   !! ' + e));
+  await mp.close();
+}
+
+// The header carried ten flat tabs in MODULES import order and wrapped to three rows on a
+// phone. It is now four ways-in, one grouped "Layers" tab, and About last. The thing that
+// must not regress is REACHABILITY: grouping is only acceptable if every destination is still
+// one click away and the group shows when the page you are on lives inside it.
+{
+  const hp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const herrs = [];
+  hp.on('pageerror', (e) => herrs.push(e.message));
+  hp.on('console', (m) => { if (m.type() === 'error') herrs.push('console: ' + m.text()); });
+  await hp.goto(base + '/#/', { waitUntil: 'networkidle' });
+  await hp.waitForTimeout(1300);
+
+  const h = await hp.evaluate(() => {
+    const nav = document.querySelector('header.top nav');
+    return {
+      visible: [...nav.children].map((c) => c.tagName === 'DETAILS'
+        ? c.querySelector('summary').textContent : c.textContent),
+      hrefs: [...nav.querySelectorAll('a')].map((a) => a.getAttribute('href')),
+      inMenu: [...document.querySelectorAll('.navmenu-panel a')].map((a) => a.textContent),
+      closedAtLoad: document.querySelector('.navmenu')?.open === false,
+    };
+  });
+
+  // every module that publishes an overview must be reachable from the header, grouped or not
+  const wantHrefs = ['#/', '#/browse', '#/map', '#/karyotype', '#/module/duplication',
+    '#/module/synteny', '#/module/expression', '#/module/protein', '#/module/phylostrat',
+    '#/module/about'];
+  const reachable = wantHrefs.every((w) => h.hrefs.includes(w));
+
+  // the group must mark itself when the current page is one of its children
+  await hp.click('.navmenu > summary');
+  await hp.waitForTimeout(220);
+  await hp.click('.navmenu-panel a[href="#/module/expression"]');
+  await hp.waitForTimeout(1200);
+  const after = await hp.evaluate(() => ({
+    hash: location.hash,
+    groupOn: document.querySelector('.navmenu')?.classList.contains('on'),
+    closed: document.querySelector('.navmenu')?.open === false,
+  }));
+
+  const ok = !herrs.length && reachable && h.closedAtLoad
+    && h.visible.length === 6 && h.visible[0] === 'Home'
+    && h.visible[h.visible.length - 1] === 'About'
+    && h.inMenu.length === 5 && h.inMenu[0] === 'Duplication'
+    && after.hash === '#/module/expression' && after.groupOn && after.closed;
+  if (!ok) failures++;
+  console.log(`\n### header:grouped-tabs-stay-reachable  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${h.visible.length} visible: ${h.visible.join(' | ')}`);
+  console.log(`   Layers holds: ${h.inMenu.join(', ')}; all ${wantHrefs.length} destinations reachable: ${reachable}`);
+  console.log(`   choosing one -> ${after.hash}, group marked: ${after.groupOn}, menu closed: ${after.closed}`);
+  herrs.forEach((e) => console.log('   !! ' + e));
+  await hp.close();
+}
+
+// The Locus card draws the SAME window from the SAME tile as the mirror card above it, so it
+// folds shut rather than running a second full-width strip of the same genes. It is folded,
+// not deleted, because it is the only view with exon structure AND the only panning control
+// on the page. What must hold: it starts closed, and the canvas inside -- which has zero
+// width while folded -- actually PAINTS when opened, at the right backing-store ratio, with
+// its 44px controls intact. A blank canvas on open would look like a broken card.
+{
+  const fp = await browser.newPage({ viewport: { width: 1180, height: 900 }, deviceScaleFactor: 1 });
+  const ferrs = [];
+  fp.on('pageerror', (e) => ferrs.push(e.message));
+  fp.on('console', (m) => { if (m.type() === 'error') ferrs.push('console: ' + m.text()); });
+  await fp.goto(base + '/#/gene/PtXaTreH.19G110500', { waitUntil: 'networkidle' });
+  await fp.waitForTimeout(2400);
+
+  const closed = await fp.evaluate(() => {
+    const d = [...document.querySelectorAll('details.card-fold')]
+      .find((x) => /Locus/.test(x.querySelector('.fold-title')?.textContent || ''));
+    return d ? { found: true, open: d.open, why: d.querySelector('.fold-why')?.textContent } : { found: false };
+  });
+  await fp.click('details.card-fold > summary');
+  await fp.waitForTimeout(1300);
+  const open = await fp.evaluate(() => {
+    const d = [...document.querySelectorAll('details.card-fold')]
+      .find((x) => /Locus/.test(x.querySelector('.fold-title')?.textContent || ''));
+    const cv = d && d.querySelector('.locus-canvas');
+    if (!cv) return { missing: true };
+    const box = cv.getBoundingClientRect();
+    const px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    const seen = new Set();
+    for (let i = 0; i < px.length; i += 4 * 97) seen.add(px[i] + ',' + px[i + 1] + ',' + px[i + 2]);
+    const btns = [...d.querySelectorAll('.locus-btn')].map((q) => q.getBoundingClientRect())
+      .map((q) => Math.min(q.width, q.height));
+    return { open: d.open, colours: seen.size, ratio: +(cv.width / box.width).toFixed(2),
+             nBtn: btns.length, minBtn: btns.length ? Math.round(Math.min(...btns)) : 0,
+             innerH2: d.querySelectorAll('h2').length };
+  });
+
+  const ok = !ferrs.length && closed.found && closed.open === false && !!closed.why
+    && !open.missing && open.open && open.colours > 3 && open.ratio === 1
+    && open.nBtn === 4 && open.minBtn >= 44 && open.innerH2 === 0;
+  if (!ok) failures++;
+  console.log(`\n### genepage:redundant-locus-card-folds  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   closed at load: ${closed.open === false}, says why: "${closed.why || ''}"`);
+  console.log(`   on open: colours=${open.colours} dprRatio=${open.ratio} buttons=${open.nBtn} `
+    + `minBtn=${open.minBtn}px duplicateHeading=${open.innerH2}`);
+  ferrs.forEach((e) => console.log('   !! ' + e));
+  await fp.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.
@@ -1041,8 +1256,21 @@ for (const [label, vw, vh, dpr] of [['locus-desktop', 1180, 900, 1], ['locus-pho
   lp.on('console', (m) => { if (m.type() === 'error') lerrs.push(m.text()); });
   await lp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
   await lp.waitForTimeout(1400);
+  // The Locus card folds shut by default (the mirror card above draws the same window), so
+  // open it the way a reader would before measuring. Scoped by the fold's own title rather
+  // than by "the first .locus-canvas on the page": that class is shared by the mirror,
+  // genome map and scrubber canvases, so a page-wide index silently measures another card
+  // the moment the running order changes -- which is exactly how this check broke.
+  await lp.evaluate(() => {
+    const d = [...document.querySelectorAll('details.card-fold')]
+      .find((x) => /Locus/.test(x.querySelector('.fold-title')?.textContent || ''));
+    if (d) d.open = true;
+  });
+  await lp.waitForTimeout(1100);
   const r = await lp.evaluate(() => {
-    const cv = document.querySelector('.locus-canvas');
+    const host = [...document.querySelectorAll('details.card-fold')]
+      .find((x) => /Locus/.test(x.querySelector('.fold-title')?.textContent || ''));
+    const cv = host && host.querySelector('.locus-canvas');
     if (!cv) return { missing: true };
     const box = cv.getBoundingClientRect();
     const px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
@@ -1052,7 +1280,7 @@ for (const [label, vw, vh, dpr] of [['locus-desktop', 1180, 900, 1], ['locus-pho
     // Expression scrubber card (added 2026-09-08), a legitimate second user of the same
     // touch-target-compliant class, not a regression. A page-wide count would conflate
     // the two cards' controls; per-card is what "the Locus card's 4 controls" ever meant.
-    const btns = [...cv.closest('.card').querySelectorAll('.locus-btn')]
+    const btns = [...host.querySelectorAll('.locus-btn')]
       .map((b) => b.getBoundingClientRect()).map((q) => Math.min(q.width, q.height));
     return {
       colours: seen.size, ratio: +(cv.width / box.width).toFixed(2),
@@ -1238,8 +1466,11 @@ await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
   const h = await mp.$('h2:has-text("This locus on")');
   await h.scrollIntoViewIfNeeded();
   await mp.waitForTimeout(500);
-  const canvases = await mp.$$('.locus-canvas');
-  const box = await canvases[1].boundingBox();  // [0] is the Locus card's own canvas
+  // Scoped to the mirror card by its heading. This used to index canvases[1] out of a
+  // page-wide '.locus-canvas' list, which broke the moment the gene page's running order
+  // changed -- '.locus-canvas' is a shared style class, not this card's identity.
+  const mcard = await mp.$('.card:has(h2:has-text("This locus on HAP2 too"))');
+  const box = await (await mcard.$('.locus-canvas')).boundingBox();
   await mp.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.8);
   await mp.waitForTimeout(700);
   const navigated = /#\/gene\/PtXaAlbH\./.test(mp.url());

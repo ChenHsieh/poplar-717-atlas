@@ -236,3 +236,109 @@ footer.bot { border-top: 1px solid var(--line); color: var(--ink-3); font-size: 
 @media (prefers-reduced-motion: reduce) {
   .locus-stage * { transition: none !important; animation: none !important; }
 }
+
+/* ---- gene page: overview strip, bands, and the in-page nav --------------------------
+   The page carries fourteen or more cards. `.glance` is the one-card answer to "what am I
+   looking at"; `h2.sect` splits the rest into bands ordered by what the evidence is; and
+   `.secnav` sticks under the site header so the bands stay reachable from anywhere on the
+   page. --top-h is measured at runtime because header.top wraps to two rows on a phone,
+   which a hard-coded offset would hide the nav behind. */
+.card.glance { border-color: var(--line-2); background: var(--panel-2); }
+.card.glance .kv { font-size: 13.5px; row-gap: 7px; }
+
+h2.sect {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  margin: 20px 0 -2px; padding-bottom: 7px; border-bottom: 1px solid var(--line);
+  scroll-margin-top: calc(var(--top-h, 47px) + 54px);
+}
+h2.sect:first-child { margin-top: 2px; }
+.sect-label {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2);
+}
+.sect-blurb {
+  font-size: 12px; font-weight: 400; color: var(--ink-3); letter-spacing: 0; flex: 1 1 260px;
+}
+
+.secnav {
+  position: sticky; top: var(--top-h, 47px); z-index: 15;
+  display: flex; gap: 4px; flex-wrap: wrap; align-items: center;
+  margin: 0 0 14px; padding: 7px 0;
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.secnav-link {
+  font-size: 12px; color: var(--ink-2); padding: 5px 10px; border-radius: 999px;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.secnav-link:hover { background: var(--panel-2); text-decoration: none; }
+.secnav-link.on {
+  color: var(--ink); background: var(--panel-2); border-color: var(--line-2); font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* On a phone header.top wraps to three rows (~170px measured). A section nav that also wraps
+   put a third of the viewport under sticky chrome, so below 640px it becomes one swipeable
+   row instead: same links, one row's height, and the active chip is scrolled into view so the
+   reader can always see where they are. */
+@media (max-width: 640px) {
+  .secnav {
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+    scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+  }
+  .secnav::-webkit-scrollbar { display: none; }
+  .secnav-link { scroll-snap-align: start; }
+  .sect-blurb { display: none; }   /* the band label carries it; the blurb costs a row here */
+}
+
+/* A folded secondary card: something already drawn above in another form, kept one click
+   away rather than given a second full-width strip. The card keeps its own border when
+   open, so the fold reads as the same object, not a new one. */
+.card-fold {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 9px;
+}
+.card-fold > summary {
+  cursor: pointer; padding: 12px 17px; display: flex; gap: 10px; align-items: baseline;
+  flex-wrap: wrap; list-style: none; border-radius: 9px;
+}
+.card-fold > summary::-webkit-details-marker { display: none; }
+.card-fold > summary::before {
+  content: '\25b8'; color: var(--ink-3); font-size: 11px; transition: transform .12s;
+}
+.card-fold[open] > summary::before { transform: rotate(90deg); }
+.card-fold > summary:hover { background: var(--panel-2); }
+.card-fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.fold-title { font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
+.fold-why { font-size: 12px; color: var(--ink-3); }
+/* the card inside loses its own chrome -- the fold is already the box */
+.card-fold > .card { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+@media (prefers-reduced-motion: reduce) { .card-fold > summary::before { transition: none; } }
+
+/* Grouped header tab. <details> rather than a hand-rolled menu so keyboard operation and
+   the expanded/collapsed state come from the platform. The summary matches the plain nav
+   links exactly (same size, colour and 24px tap target) so the group reads as one of them. */
+.navmenu { position: relative; }
+.navmenu > summary {
+  list-style: none; cursor: pointer; color: var(--ink-2); font-size: 13px;
+  display: inline-flex; align-items: center; gap: 5px; padding-block: 6px;
+}
+.navmenu > summary::-webkit-details-marker { display: none; }
+.navmenu > summary::after {
+  content: '\25be'; font-size: 10px; color: var(--ink-3);
+}
+.navmenu > summary:hover { color: var(--ink); }
+.navmenu > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.navmenu.on > summary { color: var(--ink); font-weight: 600; }
+.navmenu-panel {
+  position: absolute; top: calc(100% + 6px); left: -10px; z-index: 30; min-width: 168px;
+  display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px;
+  padding: 5px; box-shadow: 0 8px 24px rgba(0,0,0,.16);
+}
+.navmenu-panel a { padding: 7px 10px; border-radius: 5px; font-size: 13px; color: var(--ink); }
+.navmenu-panel a:hover { background: var(--panel-2); text-decoration: none; }
+.navmenu-panel a.on { background: var(--panel-2); font-weight: 600; }
+/* On a phone the header is already the tallest thing on screen; let the panel fall in the
+   flow rather than overlaying, so it can never be clipped by the sticky header's edge. */
+@media (max-width: 640px) {
+  .navmenu[open] { width: 100%; }
+  .navmenu-panel { position: static; box-shadow: none; margin-top: 6px; }
+}
