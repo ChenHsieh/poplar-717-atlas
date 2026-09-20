@@ -51,6 +51,34 @@ process.on('uncaughtException', (e) => {
   process.exit(1);
 });
 
+/** The view's rendered text, with every collapsed view panel revealed first.
+ *
+ *  Cards that merged into one with a view switch keep the inactive panel collapsed, and
+ *  innerText cannot see it. These are CONTENT assertions -- "does this page carry this fact"
+ *  -- and a collapsed panel is still reachable by a reader, because it is
+ *  hidden="until-found" and find-in-page opens it. One check
+ *  (genepage:duplication-views-merged) separately asserts the switch works and that the panel
+ *  really is until-found rather than display:none, so this is not taken on trust. Without it,
+ *  a check spanning BOTH views of one card could never pass at once -- gene-array-history
+ *  asserts the array tables AND the layers caption.
+ */
+/** Reveal every collapsed view panel. Any read that is SCOPED to an element rather than to
+ *  the whole view (`h3.parentElement.innerText`, a `.card` locator) must call this first if
+ *  its target can live inside a merged card -- viewText covers the whole-view reads only. */
+async function revealViewPanels(page) {
+  await page.evaluate(() => document.querySelectorAll('.viewpanel[hidden]')
+    .forEach((v) => v.removeAttribute('hidden')));
+}
+
+async function viewText(page) {
+  await revealViewPanels(page);
+  // NOT viewText(page) -- the regex that introduced this helper rewrote every
+  // `x.evaluate(() => document.getElementById('view').innerText)` in the file, including the
+  // one in this function's own body, which made it call itself forever. Cost: a 41-minute
+  // node process at 100% CPU producing no output at all, because it never reached a log line.
+  return page.evaluate(() => document.getElementById('view').innerText);
+}
+
 async function check(name, hash, { expect = [], theme = null, wait = 700 } = {}) {
   const p = await browser.newPage({
     viewport: { width: 1180, height: 900 },
@@ -65,7 +93,8 @@ async function check(name, hash, { expect = [], theme = null, wait = 700 } = {})
   await p.waitForTimeout(wait);
   await p.screenshot({ path: `${outdir}/${name}.png`, fullPage: true });
 
-  const text = await p.evaluate(() => document.getElementById('view').innerText);
+
+  const text = await viewText(p);
   // Case-insensitive: innerText returns RENDERED text, and `table.data th` is
   // text-transform:uppercase, so a header asserted as "% aligned" arrives as "% ALIGNED".
   // Styling should not decide whether a content assertion passes.
@@ -128,10 +157,10 @@ await check('module-duplication', '#/module/duplication',
   { expect: ['Duplication', 'not genome-wide', 'stratum-selected', 'Duplication class',
              'salicoid WGD', 'dispersed'] });
 await check('gene-paralog', '#/gene/PtXaTreH.01G330600',
-  { expect: ['Duplication', 'Paralog pairs'], wait: 900 });
+  { expect: ['Duplication', 'Paralog pairs'], wait: 900  });
 // A curated tandem-array member: array identity, size, age bin and member links.
 await check('gene-tandem-array', '#/gene/PtXaTreH.01G330700',
-  { expect: ['Tandem array', 'Array members', 'neighbours on the chromosome'], wait: 1400 });
+  { expect: ['Tandem array', 'Array members', 'neighbours on the chromosome'], wait: 1400  });
 // PAV (TODO 21): a DIAMOND-confirmed hemizygous gene, and a "not confirmed" one whose
 // contradicting hit is named -- so a wrong-branch bug (the confirmed/not-confirmed text
 // swapped) can't hide behind whichever branch happens to render.
@@ -152,7 +181,7 @@ await check('gene-lsg-qc-clean', '#/gene/PtXaTreH.01G001500',
   fp.on('pageerror', (e) => ferrs.push(e.message));
   await fp.goto(base + '/#/gene/PtXaTreH.12G056600', { waitUntil: 'networkidle' });
   await fp.waitForTimeout(900);
-  const ftext = await fp.evaluate(() => document.getElementById('view').innerText);
+  const ftext = await viewText(fp);
   const clean = !/qc_survivor|in_idesia_corrected_pool/i.test(ftext) && !ferrs.length;
   if (!clean) failures++;
   console.log(`\n### lsg-qc:no-forbidden-fields  ${clean ? 'OK' : 'FAIL'}`);
@@ -411,20 +440,25 @@ await check('home-dark', '#/', { expect: ['63,960', 'Start here'], theme: 'dark'
 // A gene whose only duplicates are its own tandem array: this produces ONE track, which an
 // earlier guard treated as "nothing to draw" and silently hid the commonest case on the site.
 await check('gene-duplayers-tandem', '#/gene/PtXaTreH.08G070600',
-  { expect: ['Duplication layers', 'tandem duplication', 'ds 0.', 'array’s median ds',
+  // 'three layers, kept apart' is the layers VIEW's own tag. The old expectation was the
+  // heading 'Duplication layers', which the merge replaced with the group heading
+  // 'Duplication' -- the view is now named by its tab and its tag, not by an <h2>.
+  { expect: ['three layers, kept apart', 'tandem duplication', 'ds 0.', 'array’s median ds',
              'this gene + 3 array members'], wait: 1800 });
 // A gene with partners on OTHER chromosomes plus a HAP2 allele: the multi-track case, and the
 // one where the allele must be labelled as not a duplication.
 await check('gene-duplayers-wgd', '#/gene/PtXaTreH.17G070400',
-  { expect: ['Duplication layers', 'gamma whole-genome triplication',
-             'the same locus on the other haplotype',
-             'the same gene on the other haplotype, not a duplication'], wait: 2200 });
+  // The allele no longer gets a ROW of its own (a full track and a link crossing the figure,
+  // to say a 1-to-1 thing). It is named in words beside the compare button instead.
+  { expect: ['three layers, kept apart', 'gamma whole-genome triplication',
+             'the same gene on the other haplotype is',
+             'not a duplication'], wait: 2200 });
 // The per-PAIR tandem dS is a NEW column and is not td.ks. Assert both the column and the
 // sentence that keeps them apart -- a future patch that piped the array median into this
 // column would still render plausibly.
 await check('gene-tandem-pairds', '#/gene/PtXaTreH.08G070600',
   { expect: ['pair ds', 'its class', 'max tpm', 'peak tissue',
-             'it is not the array median above'], wait: 1800 });
+             'it is not the array median above'], wait: 1800  });
 
 // Second-order duplication history: an array MEMBER retains a WGD partner where the focal
 // gene retains none. The whole risk of this feature is that it reads as the gene's own event,
@@ -438,7 +472,7 @@ await check('gene-array-history', '#/gene/PtXaTreH.04G044000',
              'of an array member',                      // the layers card's row label
              'second order',                            // the layers card's caption
              'not called'],                             // gene-level S/A call, unchanged
-    wait: 2400 });
+    wait: 2400  });
 
 // Dragging links and dS labels out of the way. The property that MUST hold is not that
 // something moved -- it is that a dragged link still joins the same two genes. An arc whose
@@ -453,7 +487,10 @@ await check('gene-array-history', '#/gene/PtXaTreH.04G044000',
   dp.on('console', (m) => { if (m.type() === 'error') derrs.push('console: ' + m.text()); });
   await dp.goto(base + '/#/gene/PtXaTreH.04G044000', { waitUntil: 'networkidle' });
   await dp.waitForTimeout(2400);
-  const card = dp.locator('.card').filter({ has: dp.locator('h2', { hasText: 'Duplication layers' }) }).first();
+  // Scoped to the layers view panel. Locating by the <h2> broke when the layers figure and
+  // the duplication tables merged into one card -- the panel, not the heading, is what this
+  // view IS, and it keeps its identity through presentational changes.
+  const card = dp.locator('.viewpanel[data-view="layers"]').first();
   const arcs = card.locator('path[role=button]');
   const pill = card.locator('g[role=button]').first();
   await pill.scrollIntoViewIfNeeded();
@@ -530,7 +567,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   ap.on('pageerror', (e) => aerrs.push(e.message));
   await ap.goto(base + '/#/gene/PtXaTreH.01G176200', { waitUntil: 'networkidle' });
   await ap.waitForTimeout(1600);
-  const txt = (await ap.evaluate(() => document.getElementById('view').innerText)).toLowerCase();
+  const txt = (await viewText(ap)).toLowerCase();
   const ok = !aerrs.length && txt.includes('route c re-adjudication')
     && !txt.includes('the two calls disagree for this gene');
   if (!ok) failures++;
@@ -566,7 +603,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   for (const [q, n] of want) {
     await bp.goto(base + '/#/browse?' + q, { waitUntil: 'networkidle' });
     await bp.waitForTimeout(1800);
-    const txt = await bp.evaluate(() => document.getElementById('view').innerText);
+    const txt = await viewText(bp);
     const m = txt.match(/([\d,]+)\s*\n?\s*of [\d,]+ genes match/i);
     got.push(m ? parseInt(m[1].replace(/,/g, ''), 10) : null);
   }
@@ -638,7 +675,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   tp.on('console', (m) => { if (m.type() === 'error') terrs.push('console: ' + m.text()); });
   await tp.goto(base + '/#/gene/PtXaTreH.08G070200', { waitUntil: 'networkidle' });
   await tp.waitForTimeout(2400);
-  const card = tp.locator('.card').filter({ has: tp.locator('h2', { hasText: 'Duplication layers' }) }).first();
+  const card = tp.locator('.viewpanel[data-view="layers"]').first();
   const txt = (await card.innerText()).toLowerCase();
   // every dS drawn on the card, in order
   const ds = (await card.innerText()).match(/dS \d+\.\d+/g) || [];
@@ -686,7 +723,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   for (const [href, want] of checks) {
     await qp.goto(base + '/' + href, { waitUntil: 'networkidle' });
     await qp.waitForTimeout(1500);
-    const t = await qp.evaluate(() => document.getElementById('view').innerText);
+    const t = await viewText(qp);
     const m = t.match(/([\d,]+)\s*\n?\s*of [\d,]+ genes match/i);
     got.push(m ? parseInt(m[1].replace(/,/g, ''), 10) : null);
   }
@@ -720,7 +757,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   const read = async (id) => {
     await pp.goto(base + '/#/pair/' + id, { waitUntil: 'networkidle' });
     await pp.waitForTimeout(2600);
-    return pp.evaluate(() => document.getElementById('view').innerText);
+    return viewText(pp);
   };
 
   const fromHap1 = await read('PtXaTreH.01G176300');
@@ -764,7 +801,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   kp.on('console', (m) => { if (m.type() === 'error') kerrs.push('console: ' + m.text()); });
   await kp.goto(base + '/#/karyotype', { waitUntil: 'networkidle' });
   await kp.waitForTimeout(3600);
-  const txt = await kp.evaluate(() => document.getElementById('view').innerText);
+  const txt = await viewText(kp);
   const cells = await kp.locator('#view a[href*="AEK"]').count();
 
   // take three cells, read the count each claims, follow it, compare
@@ -777,7 +814,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   for (const c of picked) {
     await kp.goto(base + '/' + c.href, { waitUntil: 'networkidle' });
     await kp.waitForTimeout(1500);
-    const t = await kp.evaluate(() => document.getElementById('view').innerText);
+    const t = await viewText(kp);
     const m = t.match(/([\d,]+)\s*\n?\s*of [\d,]+ genes match/i);
     landed.push(m ? parseInt(m[1].replace(/,/g, ''), 10) : null);
   }
@@ -854,7 +891,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   const read = async (id) => {
     await fp.goto(base + '/#/family/' + id, { waitUntil: 'networkidle' });
     await fp.waitForTimeout(3400);
-    const txt = await fp.evaluate(() => document.getElementById('view').innerText);
+    const txt = await viewText(fp);
     const rows = await fp.locator('#view tbody tr').count();
     const ids = await fp.locator('#view tbody tr td:first-child').allInnerTexts();
     return { txt, rows, ids: ids.map((s) => s.trim()).sort() };
@@ -897,7 +934,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   sp.on('console', (m) => { if (m.type() === 'error') serrs.push('console: ' + m.text()); });
   await sp.goto(base + '/#/status', { waitUntil: 'networkidle' });
   await sp.waitForTimeout(2400);
-  const txt = await sp.evaluate(() => document.getElementById('view').innerText);
+  const txt = await viewText(sp);
   const okLines = (txt.match(/\[ OK \]/g) || []).length;
   const failLines = (txt.match(/\[ FAIL \]/g) || []).length;
   const claimed = parseInt(((txt.match(/(\d+)\s*\n\s*gates run/) || [])[1] || '0'), 10);
@@ -1139,6 +1176,76 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await fp.close();
 }
 
+// The Duplication card and the Duplication layers figure named EXACTLY the same partners --
+// every gene the card listed, the figure drew, in position -- so the page ran a 645px picture
+// and a 1422px table of the same thing. They are now one card with a view switch.
+//
+// The failure this guards is specific: the layers figure sizes an SVG from its container, and
+// a panel that is display:none has zero width. So the layers view must be the one rendered
+// visible, and -- the nastier case -- the figure must still come back at full width after the
+// WINDOW IS RESIZED WHILE IT IS HIDDEN, which is when a measure-once implementation collapses.
+{
+  const vp = await browser.newPage({ viewport: { width: 1180, height: 1000 } });
+  const verrs = [];
+  vp.on('pageerror', (e) => verrs.push(e.message));
+  vp.on('console', (m) => { if (m.type() === 'error') verrs.push('console: ' + m.text()); });
+  await vp.goto(base + '/#/gene/PtXaTreH.19G110500', { waitUntil: 'networkidle' });
+  await vp.waitForTimeout(2600);
+
+  const read = () => vp.evaluate(() => {
+    const host = document.querySelector('.card.viewgroup');
+    if (!host) return { missing: true };
+    const svg = host.querySelector('.viewpanel[data-view="layers"] svg');
+    return {
+      title: (host.querySelector('h2')?.childNodes[0]?.textContent || '').trim(),
+      tag: host.querySelector('h2 .tag')?.textContent || '',
+      tabs: [...host.querySelectorAll('.viewtab')].map((t) => t.textContent),
+      onTab: [...host.querySelectorAll('.viewtab')].findIndex((t) => t.classList.contains('on')),
+      aria: [...host.querySelectorAll('.viewtab')].map((t) => t.getAttribute('aria-selected')).join(','),
+      shown: [...host.querySelectorAll('.viewpanel')]
+        .filter((v) => !v.hasAttribute('hidden')).map((v) => v.dataset.view),
+      // the collapsed panel must be findable, not display:none -- this is the whole point
+      collapsedAttr: [...host.querySelectorAll('.viewpanel')]
+        .filter((v) => v.hasAttribute('hidden')).map((v) => v.getAttribute('hidden')),
+      svgW: svg ? Math.round(svg.getBoundingClientRect().width) : null,
+      ds: (host.textContent.match(/dS\s*[\d.]+/g) || []).length,
+      headings: host.querySelectorAll('h2').length,
+    };
+  });
+
+  const first = await read();
+  // switch away, resize while hidden, switch back -- the collapse case
+  await vp.click('.viewtab:nth-child(2)');
+  await vp.waitForTimeout(500);
+  const second = await read();
+  await vp.setViewportSize({ width: 760, height: 1000 });
+  await vp.waitForTimeout(700);
+  await vp.click('.viewtab:nth-child(1)');
+  await vp.waitForTimeout(1200);
+  const back = await read();
+
+  const ok = !verrs.length && !first.missing
+    && first.title === 'Duplication' && first.headings === 1
+    && first.tabs.length === 2 && first.onTab === 0
+    && first.aria === 'true,false'
+    && first.shown.length === 1 && first.shown[0] === 'layers'
+    && first.svgW > 600 && first.ds > 0
+    // the tag must follow the view, so the card never credits the wrong source
+    && second.tag !== first.tag && second.shown[0] === 'details'
+    && first.collapsedAttr.every((a) => a === 'until-found')
+    // and the figure must survive being resized while hidden
+    && back.shown[0] === 'layers' && back.svgW > 400 && back.svgW < 760 && back.ds === first.ds;
+  if (!ok) failures++;
+  console.log(`\n### genepage:duplication-views-merged  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   "${first.title}" with tabs [${first.tabs.join(' | ')}], one heading: ${first.headings === 1}`);
+  console.log(`   layers shown first at ${first.svgW}px with ${first.ds} dS labels; tag "${first.tag}"`);
+  console.log(`   tab 2 -> shows ${second.shown[0]}, tag becomes "${second.tag}"`);
+  console.log(`   collapsed panel is hidden="${first.collapsedAttr.join(',')}" (findable, not display:none)`);
+  console.log(`   resized to 760 while hidden, back to layers -> svg ${back.svgW}px, ${back.ds} dS labels`);
+  verrs.forEach((e) => console.log('   !! ' + e));
+  await vp.close();
+}
+
 // The 652-sample duplicate heatmap is opt-in and its low-expression filter is OFF by default.
 // Driven: the toggle must REMOVE rows and must never remove the focal gene, and the default
 // view must show the quiet copies -- the whole point of defaulting it off.
@@ -1232,7 +1339,7 @@ await check('gene-promoter-tata-false', '#/gene/PtXaTreH.05G120200',
   const seeAllText = seeAll ? await seeAll.textContent() : '';
   await sp.goto(base + '/#/search/kinase', { waitUntil: 'networkidle' });
   await sp.waitForTimeout(1000);
-  const stext = await sp.evaluate(() => document.getElementById('view').innerText);
+  const stext = await viewText(sp);
   const rows = await sp.$$eval('table.compare tbody tr', (trs) => trs.length);
   const ok = /compare them all/.test(seeAllText) && stext.includes('matches')
     && rows > 20 && stext.includes('page 1 of') && !serrs.length;
@@ -1309,10 +1416,10 @@ for (const [label, vw, vh, dpr] of [['locus-desktop', 1180, 900, 1], ['locus-pho
   await cp.click('button:has-text("Show all 652 samples")');
   await cp.waitForTimeout(1500);
   const rows = await cp.$$eval('#view tbody tr', (ns) => ns.length);
-  const txt = await cp.evaluate(() => document.getElementById('view').innerText.toLowerCase());
+  const txt = await viewText(cp).then((t) => t.toLowerCase());
   await cp.click('button:has-text("By sample")');
   await cp.waitForTimeout(700);
-  const sampleView = await cp.evaluate(() => document.getElementById('view').innerText.toLowerCase());
+  const sampleView = await viewText(cp).then((t) => t.toLowerCase());
   const ok = rows > 150 && txt.includes('conditions across') && txt.includes('mean tpm')
     && sampleView.includes('every sample') && !cerrs.length;
   if (!ok) failures++;
@@ -1337,7 +1444,7 @@ for (const [label, vw, vh, dpr] of [['locus-desktop', 1180, 900, 1], ['locus-pho
   await gp.click('button:has-text("ComBat-corrected")');
   await gp.waitForTimeout(900);
   const cbFirstRow = await gp.$eval('#expr-profile tbody tr', (n) => n.innerText);
-  const cbText = await gp.evaluate(() => document.getElementById('view').innerText.toLowerCase());
+  const cbText = await viewText(gp).then((t) => t.toLowerCase());
   const eligibleOk = cbText.includes('cross-study') && rawFirstRow !== cbFirstRow && !gerrs.length;
   if (!eligibleOk) failures++;
   console.log(`
@@ -1401,7 +1508,7 @@ await check('map-hap2', '#/map/hap2',
   mp.on('console', (m) => { if (m.type() === 'error') merrs.push(m.text()); });
   await mp.goto(base + '/#/map/hap1/Chr19', { waitUntil: 'networkidle' });
   await mp.waitForTimeout(900);
-  const chrText = await mp.evaluate(() => document.getElementById('view').innerText);
+  const chrText = await viewText(mp);
   // "genes" and "Mb" are drawn INSIDE the canvas (like the locus card's own captions),
   // invisible to innerText -- only assert on real DOM text here.
   const hasChr = chrText.includes('Chr19') && chrText.includes('HAP1 (TreH)')
@@ -1503,7 +1610,7 @@ await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
   // Switch mode WITHOUT ever touching the <select> -- the exact scenario that failed.
   await sp.click('button:has-text("By contrast")');
   await sp.waitForTimeout(700);
-  const text = await sp.evaluate(() => document.getElementById('view').innerText);
+  const text = await viewText(sp);
   const ok = text.includes('log2((mean perturbation') && text.includes('Orange = higher') && !serrs2.length;
   if (!ok) failures++;
   console.log(`\n### scrubber:contrast-mode-no-manual-select  ${ok ? 'OK' : 'FAIL'}`);
@@ -1578,6 +1685,9 @@ await check('gene-karyotype-scaffold', '#/gene/PtXaTreH.T006000',
   kp.on('console', (m) => { if (m.type() === 'error') kerrs.push('console: ' + m.text()); });
   await kp.goto(base + '/#/gene/PtXaAlbH.01G147000', { waitUntil: 'networkidle' });
   await kp.waitForTimeout(1000);
+  // This section sits in the duplication card's collapsed view, and innerText cannot see a
+  // collapsed panel -- the read returned '' and the check failed while the page was correct.
+  await revealViewPanels(kp);
   const sec = await kp.evaluate(() => {
     const h = [...document.querySelectorAll('h3')].find((n) => n.textContent.startsWith('Ancestral karyotype'));
     return h ? h.parentElement.innerText : '';
@@ -1585,6 +1695,8 @@ await check('gene-karyotype-scaffold', '#/gene/PtXaTreH.T006000',
   const ok = !kerrs.length && sec.includes('PtXaAlbH.03G042800') && !/PtXaTreH\./.test(sec);
   if (!ok) failures++;
   console.log(`\n### karyotype:haplotypes-not-pooled  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   section ${sec.length} chars; names the HAP2 syntelog: ${sec.includes('PtXaAlbH.03G042800')}; `
+    + `mentions a HAP1 gene: ${/PtXaTreH\./.test(sec)}`);
   kerrs.forEach((e) => console.log('   !! ' + e));
   await kp.close();
 }
@@ -1606,7 +1718,7 @@ await check('browse-karyotype-hap2', '#/browse?aek=AEK1_gamma_copy_1&hap=hap2',
   await cp.waitForTimeout(1000);
   await cp.click('button:has-text("Show the signal profile")');
   await cp.waitForTimeout(900);
-  const text = (await cp.evaluate(() => document.getElementById('view').innerText)).toLowerCase();
+  const text = (await viewText(cp)).toLowerCase();
   const gone = (await cp.$('button:has-text("Show the signal profile")')) === null;
   const ok = !cerrs.length && gone
     && text.includes('active promoter')

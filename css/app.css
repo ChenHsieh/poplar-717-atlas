@@ -342,3 +342,26 @@ h2.sect:first-child { margin-top: 2px; }
   .navmenu[open] { width: 100%; }
   .navmenu-panel { position: static; box-shadow: none; margin-top: 6px; }
 }
+
+/* A merged card: two forms of the same answer behind a view switch (the duplication figure
+   and the duplication tables named exactly the same partners). Buttons rather than links --
+   this switches a view inside a card, it does not navigate. */
+.viewtabs {
+  display: inline-flex; gap: 2px; margin: 2px 0 12px; padding: 2px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+}
+.viewtab {
+  font: inherit; font-size: 12.5px; color: var(--ink-2); cursor: pointer;
+  background: transparent; border: 1px solid transparent; border-radius: 6px;
+  padding: 6px 12px; min-height: 32px; white-space: nowrap;
+}
+.viewtab:hover { color: var(--ink); }
+.viewtab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.viewtab.on {
+  background: var(--panel); color: var(--ink); font-weight: 600;
+  border-color: var(--line-2);
+}
+@media (max-width: 640px) {
+  .viewtabs { display: flex; width: 100%; }
+  .viewtab { flex: 1; padding: 6px 8px; }
+}

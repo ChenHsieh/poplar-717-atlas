@@ -140,7 +140,17 @@ route(/^\/$/, async () => {
         el('dt', {}, 'Search'),
         el('dd', { class: 'muted' }, 'The box above takes a gene ID, a keyword, an Arabidopsis locus or a Pfam accession.'),
         el('dt', {}, el('a', { href: '#/gene/PtXaTreH.05G120200' }, 'PtXaTreH.05G120200')),
-        el('dd', { class: 'muted' }, 'An example gene page — PS18 Populus, drought-responsive in bark.'))),
+        el('dd', { class: 'muted' }, 'An example gene page — PS18 Populus, drought-responsive in bark.'),
+        // Three examples, chosen because each shows a DIFFERENT shape of duplication rather
+        // than three views of the same one. Every claim below is read off the shipped record.
+        el('dt', {}, el('a', { href: '#/gene/PtXaTreH.08G070200' }, 'PtXaTreH.08G070200')),
+        el('dd', { class: 'muted' }, 'All four duplication types at one locus: four tandem MYB '
+          + 'copies, a salicoid partner and a gamma partner. The other haplotype carries two '
+          + 'tandem copies, not four.'),
+        el('dt', {}, el('a', { href: '#/gene/PtXaTreH.10G046700' }, 'PtXaTreH.10G046700')),
+        el('dd', { class: 'muted' }, 'A seven-copy nucleoredoxin array with no one-to-one '
+          + 'allele called on the other haplotype — the pattern a hemizygous locus leaves, '
+          + 'though an uncalled allele is not by itself proof of one.'))),
 
     el('div', { class: 'card' },
       el('h2', {}, 'Modules'),
@@ -261,6 +271,97 @@ function glanceCard(g) {
       + 'Nothing is computed for this strip.'));
 }
 
+/** Cards that answer the SAME question in different forms are merged into one card with a
+ *  view switch. The Duplication card and the Duplication layers figure named exactly the
+ *  same partners -- the figure draws every gene the card lists, in position -- so they ran
+ *  as two cards, 645px and 1422px, saying the same thing twice.
+ *
+ *  This is presentational only. Each module still builds its own complete card; the merge
+ *  moves their contents into panels and never touches what either one drew. That matters
+ *  because modules may not import one another, so neither could host the other's view.
+ *
+ *  The first view is rendered VISIBLE and the rest are display:none. That order is load
+ *  bearing: the layers figure measures its container to size an SVG, and a panel that is
+ *  hidden at draw time has zero width. Hidden panels here hold tables, which do not measure.
+ */
+function mergeViewGroups(cards) {
+  const groups = new Map();
+  cards.querySelectorAll('.card[data-view-group]').forEach((c) => {
+    const k = c.getAttribute('data-view-group');
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(c);
+  });
+
+  groups.forEach((members) => {
+    if (members.length < 2) return;            // nothing to merge; leave the card alone
+    const titleText = (members[0].querySelector('h2')?.childNodes[0]?.textContent || '').trim()
+      .replace(/\s+layers$/i, '');             // "Duplication layers" -> "Duplication"
+    const tagSpan = el('span', { class: 'tag' }, members[0].getAttribute('data-view-tag') || '');
+    const tabs = el('div', { class: 'viewtabs', role: 'tablist' });
+    const host = el('div', { class: 'card viewgroup' },
+      el('h2', {}, titleText, tagSpan), tabs);
+
+    members[0].replaceWith(host);
+
+    const panels = members.map((m, i) => {
+      m.querySelector('h2')?.remove();          // the group heading replaces it
+      // NOT display:none. This site is one people Ctrl+F for a gene id in, and find-in-page
+      // cannot see display:none -- merging the two duplication cards into tabs made every
+      // partner id in the tables view unfindable, which the render checks caught because
+      // innerText excludes it for exactly the same reason. `hidden="until-found"` keeps the
+      // panel collapsed but findable: the browser reveals it and fires beforematch, which
+      // switches the tab below. Browsers without support treat the attribute as plain
+      // `hidden`, i.e. what it did before, so this only ever adds.
+      const panel = el('div', {
+        class: 'viewpanel', role: 'tabpanel',
+        id: `vp-${m.getAttribute('data-view-group')}-${m.getAttribute('data-view-key')}`,
+      });
+      if (i) panel.setAttribute('hidden', 'until-found');
+      while (m.firstChild) panel.append(m.firstChild);
+      panel.dataset.view = m.getAttribute('data-view-key') || String(i);
+      if (i) m.remove();                        // members[0] was already replaced
+      host.append(panel);
+      return panel;
+    });
+
+    const btns = members.map((m, i) => {
+      const b = el('button', {
+        class: 'viewtab' + (i ? '' : ' on'), type: 'button', role: 'tab',
+        'aria-selected': i ? 'false' : 'true',
+        'aria-controls': panels[i].id,
+        onclick: () => show(i),
+      }, m.getAttribute('data-view-label') || `View ${i + 1}`);
+      tabs.append(b);
+      return b;
+    });
+
+    function show(i) {
+      panels.forEach((pn, j) => {
+        if (j === i) pn.removeAttribute('hidden');
+        else pn.setAttribute('hidden', 'until-found');
+      });
+      btns.forEach((b, j) => {
+        b.classList.toggle('on', j === i);
+        b.setAttribute('aria-selected', j === i ? 'true' : 'false');
+      });
+      tagSpan.textContent = members[i].getAttribute('data-view-tag') || '';
+    }
+
+    // Find-in-page revealed a collapsed panel: make its tab the selected one, or the card
+    // would show the found text while the tab strip still claims another view is current.
+    panels.forEach((pn, i) => pn.addEventListener('beforematch', () => show(i)));
+
+    // Left/Right move between tabs, which is what a tablist is expected to do.
+    tabs.addEventListener('keydown', (e) => {
+      const i = btns.findIndex((b) => b === document.activeElement);
+      if (i < 0) return;
+      const j = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : -1;
+      if (j < 0 || j >= btns.length) return;
+      e.preventDefault(); btns[j].focus(); show(j);
+    });
+  });
+}
+
 /** Sticky in-page nav. `bands` is the list that actually produced cards. */
 function sectionNav(bands) {
   if (bands.length < 2) return null;
@@ -372,6 +473,10 @@ route(/^\/gene\/(.+)$/, async (id) => {
     made.forEach((c) => cards.append(c));
     bands.push({ id: sec.id, label: sec.label, gene: g.id });
   }
+
+  // Two cards that answer the same question in different forms become one card with a view
+  // switch. Runs BEFORE the fold pass so a merged card can still be marked secondary later.
+  mergeViewGroups(cards);
 
   // A card marked data-secondary duplicates something already drawn above and folds shut.
   // Done after appending because a module may return a fragment of several cards, and only

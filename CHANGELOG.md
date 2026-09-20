@@ -9,6 +9,81 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## Duplication: one card, two views — and the other haplotype drawn properly
+
+The gene page ran a 645px figure called **Duplication layers** directly above a 1422px card
+called **Duplication**, and the two named *exactly* the same partners — four partner ids in the
+card, all four drawn by the figure, none in one and not the other. They are now one card headed
+**Duplication** with a view switch: **Layers** (the figure) and **Partners & evidence** (the
+class, the whole-genome duplication events, the route C re-adjudication, the anchor-pair table
+with dS and expression, the ancestral karyotype slot table where this gene's syntelogs sit, the
+array's history and members). The provenance tag beside the heading follows the active view, so
+the card never credits one view's source while showing the other's content.
+
+The merge is presentational: both modules still build their own complete card, and
+`mergeViewGroups()` moves the contents into panels. Modules may not import one another, so
+neither could host the other's view, and merging the code would have meant relocating 800 lines
+of SVG rendering into a 632-line module. Any two cards can now declare themselves two views of
+one answer by sharing a `data-view-group`.
+
+**Collapsed does not mean unfindable.** The first version put the inactive panel behind
+`display:none`, which browsers' find-in-page cannot search — on a site people Ctrl+F a gene id
+in, that made every partner id in the tables view unreachable. Panels now use
+`hidden="until-found"` with `beforematch` wired to switch the tab, so search reveals them.
+Browsers without support treat the attribute as plain `hidden`, i.e. the old behaviour, so this
+only ever adds.
+
+### The other haplotype: a whole row to say a one-to-one thing
+
+The allele had a track of its own — a full row and a long-dashed link crossing the figure, to
+say "this gene also exists over there". That row is gone and its dS is stated in words instead.
+Fuzzy MYB drops from four rows to three.
+
+In its place, **Compare the other haplotype** draws the second haplotype's *architecture* as a
+second block, which is the comparison actually worth making: the two haplotypes frequently carry
+different numbers of copies, and the card now says so — *"Tandem copies differ between the
+haplotypes: 4 on HAP1, 2 on HAP2. A count from one haplotype is not the gene's copy number."*
+
+**The counterpart is found by family, not by allele**, and that is the whole point.
+`PtXaTreH.08G070200` has **no** one-to-one allele, and neither does `PtXaAlbH.08G073700` — an
+allele-driven lookup reaches neither, and a tandem array that expanded on one haplotype is
+exactly the case that has no one-to-one partner. Family `F10956` contains all ten genes of the
+set, so the lookup falls back to it and picks the member on the other haplotype that is the same
+kind of thing: same chromosome first, then tandem, then the largest array.
+`loadFamilies()` moved to `core/data.js` for this, since two modules now need it.
+
+### Home page
+
+Three examples with three different shapes of duplication: the original PS18 gene,
+`PtXaTreH.08G070200` (all four duplication types at one locus, and a different copy number on
+the other haplotype), and `PtXaTreH.10G046700` (a seven-copy nucleoredoxin array with no
+one-to-one allele called — the pattern a hemizygous locus leaves, though an uncalled allele is
+not by itself proof of one).
+
+### What the checks got wrong, and one bug they hid
+
+Four `duplayers:*` checks located this view by its `<h2>`, which the merge replaced; they key off
+`.viewpanel[data-view="layers"]` now. That is the second release running in which a check turned
+out to be anchored to something presentational rather than to what the thing *is* —
+`.locus-canvas`, a style class shared by four modules, was the first.
+
+Eighteen text reads went through a new `viewText()` helper that reveals collapsed panels before
+reading, because `gene-array-history` asserts content from BOTH views of one card and no single
+active view can satisfy it. A separate check asserts the panel really is `until-found` rather
+than `display:none`, so revealing it for content assertions is not taken on trust. Scoped reads
+(`h3.parentElement.innerText`) need `revealViewPanels()` explicitly — `karyotype:haplotypes-not-pooled`
+was reading an empty string from a collapsed panel and failing while the page was correct, and
+it reported a bare FAIL with no numbers, so it now prints what it found.
+
+**The regex that introduced `viewText()` rewrote the helper's own body**, turning its last line
+into `return viewText(page)` — unbounded recursion. The symptom was a node process at 100% CPU
+for 41 minutes producing no output at all, because it never reached a log line. `node --check`
+passes happily on infinite recursion. A transformation that matches its own definition is the
+same failure as a `pgrep -f` waiter that matches its own command line, which also happened
+today.
+
+115 render checks pass.
+
 ## The gene page gets an order, a summary, and a way around it
 
 A gene page carries nineteen cards. Until now their running order was **the order the modules

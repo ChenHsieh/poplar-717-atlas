@@ -25,7 +25,7 @@
 //   allele link   allele.ks -- HAP1 vs HAP2 of the same clone. Drawn in a different style
 //                 because it is not a duplication at all; it is the same gene, twice phased.
 import { el } from '../core/dom.js';
-import { getGene, loadLocusTile } from '../core/data.js';
+import { getGene, loadLocusTile, loadFamilies } from '../core/data.js';
 import { palette } from '../core/palette.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -76,7 +76,7 @@ async function place(id) {
 
 /** Rows to draw: one per (layer, haplotype, chromosome) group, chronological.
  *  Returns { rows, notes } where notes records what was capped or could not be resolved. */
-async function buildRows(g) {
+async function buildRows(g, opts = {}) {
   const notes = [];
   const want = new Map();                       // id -> layer key, deduplicated
   const dsOf = new Map();                       // id -> dS on the link from the focal gene
@@ -97,7 +97,13 @@ async function buildRows(g) {
     want.set(p.id, p.e === 'A' ? 'A' : 'S');
     if (p.ks != null) dsOf.set(p.id, p.ks);
   }
-  if (g.allele && !want.has(g.allele.id)) {
+  // The allele deliberately does NOT get a row here. It is a 1-to-1 relationship, so the row
+  // it used to occupy carried a single gene and a long-dashed link across the whole figure --
+  // a full track, and one more link crossing every other one, to say "this gene also exists on
+  // the other haplotype". Its dS is stated in the caption instead, and the architecture of the
+  // other haplotype (which is the genuinely interesting comparison, because the two often
+  // carry DIFFERENT numbers of tandem copies) is a view of its own rather than one grey box.
+  if (opts.withAllele && g.allele && !want.has(g.allele.id)) {
     want.set(g.allele.id, 'H');
     if (g.allele.ks != null) dsOf.set(g.allele.id, g.allele.ks);
   }
@@ -685,7 +691,9 @@ function caption(built, g, suppressed, dropped) {
   if ((g.td || {}).ks != null) {
     bits.push(`The array’s MEDIAN dS is ${g.td.ks.toFixed(3)} — a property of the array, not of any link here.`);
   }
-  if (g.allele) bits.push('The long-dashed grey link is the same gene on the other haplotype, not a duplication.');
+  if (g.allele && built.rows.some((r) => r.key === 'H')) {
+    bits.push('The long-dashed grey link is the same gene on the other haplotype, not a duplication.');
+  }
   // The third side of the triangle. Gamma came first, so this gene's salicoid sister and its
   // gamma copy are a gamma pair in their own right; drawing only the focal gene's links showed
   // a star and hid the history that makes the locus worth looking at.
@@ -734,17 +742,69 @@ function caption(built, g, suppressed, dropped) {
   return el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' }, bits.join(' '));
 }
 
+/** The same gene's counterpart on the other haplotype, for the side-by-side comparison.
+ *
+ *  `g.allele` first -- a curated 1-to-1 call is the best answer when it exists. But the cases
+ *  worth comparing most often have NO allele: a tandem array that expanded on one haplotype
+ *  frequently has no 1-to-1 partner at all, which is exactly why its architecture differs.
+ *  So fall back to the homology family and pick the member on the other haplotype that is the
+ *  same KIND of thing: same chromosome first, then tandem, then the largest array. Fuzzy MYB
+ *  resolves this way -- PtXaTreH.08G070200 (allele null) to PtXaAlbH.08G073700 (allele null),
+ *  both family F10956 -- which no allele-driven lookup could reach.
+ */
+async function counterpartGene(g) {
+  if (g.allele && g.allele.id) {
+    const via = await getGene(g.allele.id);
+    if (via) return { gene: via, how: 'its allele' };
+  }
+  if (!g.fam) return null;
+  const fams = await loadFamilies().catch(() => null);
+  const members = fams && fams[g.fam];
+  if (!members) return null;
+  const otherHap = g.id.startsWith('PtXaTreH') ? 'PtXaAlbH' : 'PtXaTreH';
+  const cands = members.filter((id) => id.startsWith(otherHap)).slice(0, 12);
+  if (!cands.length) return null;
+
+  const recs = (await Promise.all(cands.map((id) => getGene(id).catch(() => null)))).filter(Boolean);
+  if (!recs.length) return null;
+  const score = (r) => {
+    const td = ((r.td || {}).mem || []).length;
+    return (r.chr === g.chr ? 100 : 0) + (td ? 10 : 0) + td;
+  };
+  recs.sort((a, b) => score(b) - score(a));
+  return { gene: recs[0], how: `the ${members.length}-member family ${g.fam}` };
+}
+
 function geneCard(g) {
   const hasAny = (g.td && (g.td.mem || []).length) || (g.wgd || []).length || g.allele;
   if (!hasAny) return null;
 
-  const card = el('div', { class: 'card' },
-    el('h2', {}, 'Duplication layers',
+  // Same subject as the Duplication card: every partner that card names is drawn here, in
+  // position. The gene page merges the two into one card with a view switch rather than
+  // running the picture and the tables as two separate cards -- see mergeViewGroups() in
+  // app.js. This module still owns its own card entirely; the merge is presentational.
+  const card = el('div', {
+    class: 'card',
+    'data-view-group': 'duplication',
+    'data-view-key': 'layers',
+    'data-view-label': 'Layers',
+    'data-view-tag': 'three layers, kept apart',
+  }, el('h2', {}, 'Duplication layers',
       el('span', { class: 'tag' }, 'three layers, kept apart')));
   const stage = el('div', { style: 'margin-top:10px' });
   const status = el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' },
     'Resolving partners…');
   card.append(stage, status);
+
+  // Both-haplotypes mode. The allele used to occupy a row of its own to say a 1-to-1 thing;
+  // the comparison actually worth drawing is the two haplotypes' ARCHITECTURES side by side,
+  // because they frequently differ -- Fuzzy MYB carries four tandem copies on HAP1 and two on
+  // HAP2, which no single-haplotype figure can show. Rendered as two stacked blocks (the shape
+  // of the manuscript figure) rather than one diagram with twice the links: the two haplotypes
+  // share no coordinate system, so a link between them would be crossing nothing meaningful.
+  const modeWrap = el('div', { style: 'margin:2px 0 4px' });
+  const stage2wrap = el('div', { hidden: true });
+  let bothBuilt = null;
 
   (async () => {
     const built = await buildRows(g);
@@ -791,6 +851,68 @@ function geneCard(g) {
     const ro = new ResizeObserver(render);
     ro.observe(stage);
     render();
+
+    // --- the second haplotype, on request -------------------------------------------------
+    {
+      const hapOf = (id) => (id.startsWith('PtXaTreH') ? 'HAP1' : 'HAP2');
+      const btn = el('button', {
+        class: 'locus-btn', type: 'button', 'aria-expanded': 'false',
+        style: 'padding:0 12px;font-size:12px',
+        onclick: async () => {
+          const on = stage2wrap.hidden;
+          btn.setAttribute('aria-expanded', String(on));
+          if (!on) { stage2wrap.hidden = true; btn.textContent = 'Compare the other haplotype'; return; }
+          stage2wrap.hidden = false;
+          btn.textContent = 'Hide the other haplotype';
+          if (bothBuilt) return;                       // already drawn
+          btn.disabled = true;
+          try {
+            const cp = await counterpartGene(g);
+            if (!cp) throw new Error('no counterpart on the other haplotype could be identified');
+            const other = cp.gene;
+            const b2 = await buildRows(other);
+            const n2 = b2.rows.reduce((n, r) => n + r.genes.length, 0);
+            const head2 = el('p', { class: 'muted', style: 'font-size:11.5px;margin:10px 0 2px' },
+              el('strong', {}, `${hapOf(other.id)} · ${other.id}`),
+              ` — found via ${cp.how}.`,
+              n2 < 2 ? ' No partner could be placed, so there is nothing to draw here.' : '');
+            const stage2 = el('div', {});
+            stage2wrap.replaceChildren(head2, stage2);
+            bothBuilt = { other, b2 };
+            if (n2 >= 2) {
+              let w2 = 0;
+              const render2 = () => {
+                const w = Math.round(stage2.getBoundingClientRect().width);
+                if (!w || w === w2) return;
+                w2 = w;
+                stage2.replaceChildren(drawDiagram(other, b2, w).svg);
+              };
+              new ResizeObserver(render2).observe(stage2);
+              render2();
+              // The asymmetry is the finding; state it rather than leaving it to be counted.
+              // Rows here are LOCI, not layers -- array members share the focal gene's row --
+              // so the copy count comes from the record, not from a row lookup.
+              const countTd = (rec) => 1 + (((rec.td || {}).mem) || []).length;
+              const a = countTd(g), b = countTd(other);
+              if (a !== b) {
+                stage2wrap.append(el('p', { class: 'muted', style: 'font-size:11.5px;margin:6px 0 0' },
+                  `Tandem copies differ between the haplotypes: ${a} on ${hapOf(g.id)}, `
+                  + `${b} on ${hapOf(other.id)}. A count from one haplotype is not the gene's copy number.`));
+              }
+            }
+          } catch (e) {
+            stage2wrap.replaceChildren(el('p', { class: 'muted', style: 'font-size:11.5px' },
+              `The other haplotype could not be drawn: ${e.message}`));
+          } finally { btn.disabled = false; }
+        },
+      }, 'Compare the other haplotype');
+      modeWrap.append(btn, el('span', { class: 'muted', style: 'font-size:11.5px;margin-left:9px' },
+        g.allele && g.allele.id
+          ? `the same gene on the other haplotype is ${g.allele.id}`
+            + (g.allele.ks != null ? `, dS ${g.allele.ks}` : '') + ' — not a duplication'
+          : 'this gene has no 1-to-1 allele; the counterpart is taken from its family'));
+      reset.after(modeWrap, stage2wrap);
+    }
   })().catch((e) => { status.textContent = `Duplication layers unavailable: ${e.message}`; });
 
   return card;

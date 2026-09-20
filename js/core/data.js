@@ -256,6 +256,18 @@ export async function loadCombatVector(gene) {
   return bucket[gene.id] || null;
 }
 
+/** Homology families, id -> [gene ids]. Lives here rather than in a module because two
+ *  modules now need it: #/family walks it, and the duplication figure uses it to find this
+ *  gene's counterpart on the OTHER haplotype -- which is not always its allele. A tandem
+ *  array can have no 1-to-1 allele at all while its family plainly spans both haplotypes
+ *  (PtXaTreH.08G070200 and PtXaAlbH.08G073700 are the worked case: allele null on both,
+ *  same family F10956). Cached: it is one file and both callers want all of it. */
+let _families = null;
+export async function loadFamilies() {
+  if (!_families) _families = fetchJSON('data/index/families.json');
+  return _families;
+}
+
 /* ---------- annotation, allele, search ---------- */
 export const loadTerms = () => fetchJSON('data/index/terms.json');
 export const loadGeneIndex = () => fetchJSON('data/index/genes.json');

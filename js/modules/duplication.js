@@ -337,7 +337,9 @@ function geneCard(g) {
   const inArray = !!((g.syn || {}).flags || {}).ar;
   if (!para && !inArray && !g.dup && !g.te && !g.wgd && !g.aek) return null;
 
-  const card = el('div', { class: 'card' },
+  const card = el('div', { class: 'card', 'data-view-group': 'duplication',
+    'data-view-key': 'details', 'data-view-label': 'Partners & evidence',
+    'data-view-tag': 'MS1 duplication set' },
     el('h2', {}, 'Duplication', el('span', { class: 'tag' }, 'MS1 duplication set')));
 
   if (g.dup) {
