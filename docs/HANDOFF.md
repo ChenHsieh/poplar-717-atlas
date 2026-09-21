@@ -107,14 +107,15 @@ Standing verdicts:
 | **Do NOT ingest** | `hemi_pav_crosstab.csv` (orthogroup PAV — ms1-dup explicitly forbids it), `tau_n202_*` (superseded panel), `master_duplication_table_v4.csv` (carries the eliminated `W_excluded` class) |
 | **Resolved 2026-09-06 (TODO 21)** | neither was actually missing. `hemizygous_pav_diamond.csv` (PAV) and `master_duplication_table_v9.csv` (duplication -- v6 was already superseded) were in the mirror under different names than this line searched for. Both wired in; see CHANGELOG.md 0.3.8. |
 | **Read-only** | `ms2-lsg/pipeline/out/*.tsv` and `GOI_CANONICAL.tsv`, by Chen's standing instruction |
-| **Never publish** | LSG candidate labels (`LSG1.14g`, `XO14gHAP2`…) while the chapter is unpublished, and curator identity or verbatim curation quotes. `build_layers.py:sanitise_note` enforces the second |
+| **Never publish** | LSG candidate labels (the `LSG<n>.<chr>g` names and the XO group names) while the chapter is unpublished, and curator identity or verbatim curation quotes. `build_layers.py:sanitise_note` enforces the second. `validate_data.py` enforces the first over the shards AND every tracked text file, because Pages serves the whole repo root (scripts/, docs/, sources/, CHANGELOG.md): until 2026-09-21 the names, two of them next to a gene ID, sat in files the site served while the shard-only check passed. Never write a label into this repo, not even in a check |
 
 ## Checks — run all three, they catch different things
 
 ```bash
-python3 scripts/validate_data.py                    # 42 data-integrity checks, no browser
+python3 scripts/validate_data.py                    # data-integrity gates, no browser
 python3 scripts/check_version.py                    # VERSION == manifest == CITATION.cff
-python3 -m http.server 8931 --bind 127.0.0.1 &
+python3 scripts/check_ms2_canon.py                  # atlas vs ms2-lsg's canonical tables (needs ~/dev/ms2-lsg)
+python3 scripts/serve_ranges.py 8931 . &            # NOT http.server: it ignores Range
 node scripts/check.mjs                              # rendered views + driven interactions
 node scripts/check.mjs https://chenhsieh.github.io/poplar-717-atlas shots-live   # against live
 ```
@@ -151,8 +152,9 @@ If a rebuild moves any of these, something changed upstream — find out what be
 |---|---|
 | gene models | 63,960 (HAP1 32,137 / HAP2 31,823) |
 | `private_no_ortholog` | 1,642 |
-| private ∩ PS ≥ 18 (browse query) | **923** — matches the step-7 report's 275 + 648 |
-| LSG pool, PS ≥ 18 | 1,725 (842 HAP1 + 883 HAP2) |
+| private ∩ PS ≥ 18 (browse query) | **902** (433 HAP1 + 469 HAP2) on the Idesia-corrected ranks; 923 (445 + 478) on the frozen ranks, which is the figure that matched the step-7 report's 275 + 648 |
+| LSG pool, PS ≥ 18, Idesia-corrected (canonical since 2026-09-09, ms2-lsg C2) | 1,611 = 776 HAP1 (433 PS18 + 343 PS19) + 835 HAP2 (497 PS18 + 338 PS19) |
+| LSG pool, frozen genEra call (the pool the chapter text reports; not called a "12-species panel" pool since MS2 audit A38 found that run searched nr only) | 1,725 = 842 HAP1 (392 + 450) + 883 HAP2 (454 + 429); carried per gene as `ps.frz` |
 | HAP1↔HAP2 allele pairs | 51,862 |
 | expression | 652 samples, 28 studies, 38 BioProjects |
 | P. trichocarpa reciprocal 1:1 | 46,141 |

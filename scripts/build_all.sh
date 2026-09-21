@@ -156,8 +156,15 @@ echo; echo "== numbers stated in prose =="; python3 scripts/check_prose_numbers.
 
 echo; echo "== version consistency =="; python3 scripts/check_version.py
 
-# The only check here that looks OUTWARD. Every other one compares the atlas against itself,
+# The two checks here that look OUTWARD. Every other one compares the atlas against itself,
 # which is why the withdrawn LSG pool shipped for four days with all of them green.
+#
+# ms2-lsg owns the LSG pool (both calls), the QC flags and the peptide evidence; this compares
+# every gene against its tables, pinned by commit and blob ID in sources/ms2_canon.pin.json.
+# It runs BEFORE check_facts.py on purpose: under `set -e` a stage after an expected failure
+# never runs, and check_facts.py currently fails by design on the PAV quotable figure.
+echo; echo "== agreement with ms2-lsg's canonical tables =="; python3 scripts/check_ms2_canon.py
+
 echo; echo "== agreement with ms1-dup's numbers of record =="; python3 scripts/check_facts.py
 
 echo
@@ -166,6 +173,6 @@ if [ ${#missing[@]} -gt 0 ]; then
   echo "that has the missing sources -- it finishes the job and rewrites the facet index."
 else
   echo "Build complete. Now run the render checks:"
-  echo "  python3 -m http.server 8931 --bind 127.0.0.1 &"
+  echo "  python3 scripts/serve_ranges.py 8931 . &     # NOT http.server: it ignores Range"
   echo "  node scripts/check.mjs"
 fi

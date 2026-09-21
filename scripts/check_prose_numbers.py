@@ -29,6 +29,61 @@ def check(name, ok, detail=""):
         fails.append(name)
 
 
+PROTEIN = os.path.join(ROOT, "js", "modules", "protein.js")
+DEEPEST = "PXD025636"
+
+
+def protein_claims():
+    """The Protein page's age-gradient sentence, per haplotype, recomputed from the shards.
+
+    Added 2026-09-21. That sentence said "0.12% of the lineage-specific pool", pooled over both
+    haplotypes: the published Tier 2 figure (2 of 1,611), one of whose hits the owning analysis
+    withdrew on 2026-09-09. The shards never carried the withdrawn hit -- only the sentence did,
+    and nothing compared the two. Same failure as the About page's numbers, on another page.
+    """
+    classes = [("ancient", lambda r: r is not None and r <= 2),
+               ("conserved", lambda r: r is not None and 3 <= r <= 12),
+               ("rosid", lambda r: r is not None and 13 <= r <= 15),
+               ("Salicaceae", lambda r: r is not None and 16 <= r <= 17)]
+    n, det = {}, {}
+    pool = {h: [0, 0] for h in ("hap1", "hap2")}            # [detected in DEEPEST, genes]
+    union = {(h, k): [0, 0] for h in ("hap1", "hap2") for k in (18, 19)}  # any dataset
+    for hap in ("hap1", "hap2"):
+        for dp, _, fs in os.walk(os.path.join(DATA, "genes", hap)):
+            for fn in fs:
+                if not fn.endswith(".json"):
+                    continue
+                for rec in json.load(open(os.path.join(dp, fn))).values():
+                    r = (rec.get("ps") or {}).get("rank")
+                    ms = (rec.get("prot") or {}).get("ms") or {}
+                    hit = DEEPEST in (ms.get("ds") or [])
+                    for name, f in classes:
+                        if f(r):
+                            n[(hap, name)] = n.get((hap, name), 0) + 1
+                            det[(hap, name)] = det.get((hap, name), 0) + hit
+                    if r is not None and r >= 18:
+                        pool[hap][0] += hit
+                        pool[hap][1] += 1
+                        union[(hap, r)][0] += (ms.get("n") or 0) > 0
+                        union[(hap, r)][1] += 1
+    src = open(PROTEIN).read()
+    pc = lambda h, c: f"{100 * det[(h, c)] / n[(h, c)]:.1f}%"
+    wants = [f"{pc('hap1', 'ancient')} of HAP1 and {pc('hap2', 'ancient')} of HAP2 ancient"]
+    for c in ("conserved", "rosid", "Salicaceae"):
+        wants.append(f"{pc('hap1', c)[:-1]}% and {pc('hap2', c)[:-1]}% of {c}")
+    wants.append(f"{pool['hap1'][0]} of {pool['hap1'][1]:,} HAP1 and "
+                 f"{pool['hap2'][0]} of {pool['hap2'][1]:,} HAP2 lineage-specific pool")
+    wants.append(f"{union[('hap1', 18)][0]} of {union[('hap1', 18)][1]} HAP1 and "
+                 f"{union[('hap2', 18)][0]} of {union[('hap2', 18)][1]} HAP2 PS18")
+    wants.append(f"{union[('hap1', 19)][0]} of {union[('hap1', 19)][1]} HAP1 and "
+                 f"{union[('hap2', 19)][0]} of {union[('hap2', 19)][1]} HAP2 PS19")
+    # Join the JS string concatenation ('...' + '...') so a claim can span a source line break.
+    flat = re.sub(r"'\s*\n\s*\+\s*'", "", src)
+    for w in wants:
+        ok = w in flat
+        check(f"protein.js states: {w}", ok, "" if ok else "not found -- recomputed from the shards")
+
+
 def main():
     n_hap = {"hap1": 0, "hap2": 0}
     pfam = {"hap1": 0, "hap2": 0}
@@ -77,6 +132,8 @@ def main():
     present = (fmt(pairs) in src) or (str(pairs) in src)
     check("about.js states the right count of syntelog PAIRS with Ks 0", present,
           f"recomputed {pairs:,} pairs" + ("" if present else " -- not found in the page"))
+
+    protein_claims()
 
     print()
     if fails:

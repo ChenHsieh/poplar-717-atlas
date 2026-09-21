@@ -102,8 +102,12 @@ route(/^\/$/, async () => {
   const e = man.expression || {};
   const a = man.annotation || {};
   const ps = man.phylostrat || {};
-  const lsg = Object.entries(s.ps_rank || {})
-    .filter(([k]) => +k >= 18).reduce((acc, [, v]) => acc + v, 0);
+  // Per haplotype, never one summed figure: the lab rule is that HAP1 and HAP2 are reported
+  // separately, and the pool is 776 vs 835. Read from the ladder, which validate_data.py holds
+  // equal to the shard ranks stratum by stratum.
+  const poolOf = (rows) => (rows || []).filter((r) => r.rank >= 18).reduce((acc, r) => acc + r.n, 0);
+  const lsgH1 = poolOf((ps.ladder || {}).hap1);
+  const lsgH2 = poolOf((ps.ladder || {}).hap2);
 
   // What each module ANSWERS, in a reader's terms -- not its filter count.
   const MODULE_BLURB = {
@@ -127,7 +131,8 @@ route(/^\/$/, async () => {
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(man.n_genes)), el('div', { class: 'l' }, 'gene models')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(a.n_allele)), el('div', { class: 'l' }, 'HAP1↔HAP2 allele pairs')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(e.n_samples)), el('div', { class: 'l' }, `RNA-seq samples, ${e.n_studies} studies`)),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(lsg)), el('div', { class: 'l' }, 'lineage-specific candidates (PS ≥ 18)')),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, `${fmt(lsgH1)} / ${fmt(lsgH2)}`),
+        el('div', { class: 'l' }, 'lineage-specific candidates, HAP1 / HAP2 (PS ≥ 18)')),
     ),
 
     questionsCard(),
@@ -139,8 +144,12 @@ route(/^\/$/, async () => {
         el('dd', { class: 'muted' }, 'Filter across every module at once, then export or save the selection.'),
         el('dt', {}, 'Search'),
         el('dd', { class: 'muted' }, 'The box above takes a gene ID, a keyword, an Arabidopsis locus or a Pfam accession.'),
+        // Was "PS18 Populus, drought-responsive in bark". Since the 2026-09-10 pool correction
+        // this gene is PS17 on the corrected panel and out of the pool, and "drought-responsive"
+        // rested on a descriptive n=3 ratio the Contrasts view itself says is not a test.
         el('dt', {}, el('a', { href: '#/gene/PtXaTreH.05G120200' }, 'PtXaTreH.05G120200')),
-        el('dd', { class: 'muted' }, 'An example gene page — PS18 Populus, drought-responsive in bark.'),
+        el('dd', { class: 'muted' }, 'An example gene page, and one the Idesia correction moved: '
+          + 'PS18 in the frozen genEra call, PS17 Saliceae on the corrected panel.'),
         // Three examples, chosen because each shows a DIFFERENT shape of duplication rather
         // than three views of the same one. Every claim below is read off the shipped record.
         el('dt', {}, el('a', { href: '#/gene/PtXaTreH.08G070200' }, 'PtXaTreH.08G070200')),
@@ -435,7 +444,7 @@ route(/^\/gene\/(.+)$/, async (id) => {
   const [g, man] = await Promise.all([getGene(id), loadManifest()]);
   if (!g) return setView(el('div', { class: 'empty' },
     el('h2', {}, 'No such gene'), el('p', { class: 'mono' }, id),
-    el('p', { class: 'muted' }, 'IDs look like PtXaTreH.05G120200 (HAP1) or PtXaAlbH.14G133000 (HAP2).')));
+    el('p', { class: 'muted' }, 'IDs look like PtXaTreH.01G000100 (HAP1) or PtXaAlbH.01G000100 (HAP2).')));
 
   const kb = ((g.end - g.start) / 1000).toFixed(2);
   const cards = el('div', { class: 'cards' },

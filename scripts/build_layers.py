@@ -37,10 +37,11 @@ Sources (all keyed on gene_id, all genome-wide unless noted):
 `pipeline/out/*.tsv` are READ-ONLY by standing instruction: read, never write.
 
 Two known data quirks, both asserted rather than assumed:
-  * PtXaAlbH.14G133000 appears twice in the pipeline/out tables because it carries two
-    canonical labels (LSG1.14g and XO14gHAP2), so those files have one row per (gene, label).
-    The duplicate rows are identical; this script verifies that before collapsing them and
-    fails if they ever diverge.
+  * One gene appears twice in the pipeline/out tables because it carries two canonical
+    candidate labels (ms2-lsg docs/GOTCHAS.md #12; the gene and its labels are not named here
+    because this file is served by GitHub Pages), so those files have one row per
+    (gene, label). The duplicate rows are identical; this script verifies that before
+    collapsing them and fails if they ever diverge.
   * ESMFold gene ids carry a ".1.p" transcript suffix the other tables do not.
 
 PATCHER -- runs after build_data.py, before build_facets.py.

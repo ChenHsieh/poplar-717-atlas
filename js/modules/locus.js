@@ -138,6 +138,9 @@ function geneModelCard(g) {
   }
 
   if (!kv.children.length) return null;
+  // The last sentence used to read "An 827-library expansion is in progress and will supersede
+  // this panel". The enlarged panel is 1,755 libraries on ms2-lsg PR #20, unmerged and held for
+  // Chen's review (2026-09-21), so neither the size nor "will supersede" was true.
   return el('div', { class: 'card' },
     el('h2', {}, 'Gene model, from RNA-seq',
       el('span', { class: 'tag' }, '94 public libraries')), kv,
@@ -145,8 +148,8 @@ function geneModelCard(g) {
       'Spliced-read evidence only \u2014 the strong readout. Read-pair spanning and gap '
       + 'occupancy alone are not used to call anything, because readthrough and unspliced '
       + 'pre-mRNA both produce them. Each haplotype was aligned to its own genome, so HAP1 and '
-      + 'HAP2 are not independent replicates. An 827-library expansion is in progress and will '
-      + 'supersede this panel.'));
+      + 'HAP2 are not independent replicates. A larger-panel rerun is under review upstream and '
+      + 'has not been adopted; until it is, this card stays on the 94-library panel.'));
 }
 
 function geneCard(g) {

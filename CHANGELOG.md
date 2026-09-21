@@ -9,6 +9,74 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.13.2 - 2026-09-21 - The LSG layers checked against ms2-lsg, gene by gene, and nine wrong sentences
+
+An audit of every lineage-specific-gene layer against the tables that own it (ms2-lsg main at
+`2cd2b59`). **The per-gene data was right**: all 63,960 genes' corrected and frozen ranks, both
+pools (776 HAP1 / 835 HAP2 corrected, 842 / 883 frozen, with the PS18/PS19 split of each), every
+QC flag on all 1,611 pool genes, and all 84 dataset x haplotype x class cells of the peptide
+evidence reproduce the owner's tables with zero mismatches. **The sentences around the data were
+not.** Nothing in `data/genes` changed.
+
+**Wrong on the page, now corrected**
+- **QC card, 10 pool genes (4 HAP1, 6 HAP2):** "the chapter's headline result changes if this one
+  gene is excluded". The field is `sens_stable`: whether the synteny call is the same in the
+  default and `--ultra-sensitive` DIAMOND runs (ms2-lsg repro audit E3), which the synteny card
+  on the same page already said. The wording came from the upstream sidecar and is flagged there.
+- **QC card, 389 pool genes (177 HAP1, 212 HAP2):** a gene clean on the funnel's three checks
+  read "No evidence-quality flag raised" and hid its other flags: 21 synteny-contested, 369 short
+  ORFs, 4 sensitivity-unstable. `clean` is the AND of tblastn, abSENSE and WGD-era Ks only, so
+  the card now says that, and lists the rest on every gene that carries them.
+- **Protein page:** "0.12% of the lineage-specific pool", pooled over haplotypes. That was the
+  published Tier 2 figure, 2 of 1,611; one of the two hits (PtXaTreH.14G041300) fails 1% FDR in
+  the expanded-database re-search this layer ships and was withdrawn upstream on 2026-09-09. The
+  shards never carried it. Now per haplotype: 1 of 776 HAP1 and 0 of 835 HAP2 in PXD025636, and
+  the five-dataset union per stratum, all recomputed by `check_prose_numbers.py`.
+- **Protein page and its provenance record:** the datasets whose samples contain no 717 protein
+  were named as PXD025418 and the two P. x canescens sets. P. x canescens is 717's own cross; the
+  other-species sets are PXD025636 (P. trichocarpa), PXD020099 (P. tremula x tremuloides) and
+  PXD025418 (P. tomentosa), as the owning analysis says.
+- **About:** "no rank for 50 genes" was the frozen call's count; the corrected call leaves 27 HAP1
+  and 18 HAP2 unplaced, and the coverage row beside it computed 63,960 through a no-op expression.
+  "77 leaf" baseline samples was the pre-2026-09-05 pooled count (now 55 leaf + 11 young + 11 old,
+  read from the manifest). Three limitation lines were stale: the DIAMOND PAV layer does ship
+  (without a quotable number, deliberately), duplication is held on v9 rather than "v6 not synced",
+  and a ComBat-seq view exists.
+- **Gene-model card:** "An 827-library expansion is in progress and will supersede this panel".
+  The enlarged panel is 1,755 libraries on an unmerged ms2-lsg PR held for Chen's review.
+
+**Framing, on Chen's instruction ("split + name both")**
+- Home and Phylostratigraphy report the pool per haplotype and per stratum instead of one pooled
+  1,611, and the ladder is two ladders on a shared log scale. The phylostratigraphy page names the
+  frozen pool the chapter text reports (842 HAP1 / 883 HAP2) beside the corrected one.
+- The frozen call is "the frozen genEra call", not "withdrawn" (the chapter still reports it) and
+  not a "12-species panel" call (MS2 consistency audit A38 found that run searched nr only; Chen
+  has not named it yet). A pool exit now says it left by a rank change rather than implying it was
+  never QC-checked: it has upstream QC values, and this atlas shows QC flags for the corrected
+  pool only.
+
+**Embargo.** GitHub Pages serves the whole repo root, not just the site. The unpublished candidate
+labels sat in this CHANGELOG, a build-script docstring, two docs, the validator's own embargo list
+and a provenance record the About page renders, and two of those paired a label with its gene ID.
+All scrubbed from the current tree (history is private). `validate_data.py` now matches the label
+SCHEME rather than listing the names, and scans every tracked text file, not only the shards.
+
+**Data (hence the version).** `manifest.proteomics.method` named the original 98,659-target
+database; every shipped search used 135,843 targets. `age_gradient_pct` was a hand-typed,
+haplotype-pooled copy of the pre-withdrawal Tier 2 figures; `patch_proteomics_v2.py` now computes
+it per haplotype from the shards and asserts the pool union against the owner's numbers. Recorded
+in `manifest.corrections`.
+
+**New check.** `scripts/check_ms2_canon.py` compares every gene against ms2-lsg's tables, read
+through git at a commit pinned with each table's blob ID (`sources/ms2_canon.pin.json`, no values),
+and refuses rather than skips if it cannot. It runs in `build_all.sh` before `check_facts.py`.
+`check.mjs` gains a `forbid` option and seven checks that fail if any corrected sentence returns.
+
+**Not changed, flagged for Chen.** The expression baseline is "WT and raw `ctrl == control`", which
+in study 1 includes 500 ppm CO2 and second-timepoint controls; the chapter's stress rule builds
+arms from `lib/contrasts.py` instead. The atlas's tau is that baseline's tau over its own tissue
+grouping, not the chapter's (Methods 2.4). Both are definitions to decide, not bugs to patch.
+
 ## Response by contrast, and a card that could be moved without breaking
 
 The Expression card stated one number for perturbation response — `resp.v`, a median |log2FC| —
@@ -1876,8 +1944,8 @@ status, sitting in a case-study, calibration or "structural explorations" folder
   personal exception. Notes are now reduced to their meaning — "manually rejected during
   curation", "flagged pseudogene-like", "curated verdict disagrees with the automatic gate" —
   which is what a visitor can use. Zero shards now carry a curator identity or raw quote.
-- Confirmed separately that LSG candidate labels (LSG1.14g, XO14gHAP2 …) appear nowhere in the
-  shipped data or UI, so no candidate identity is public. The `lsg` flag is only PS ≥ 18,
+- Confirmed separately that the unpublished LSG candidate labels (names withheld here since
+  2026-09-21) appear nowhere in the shipped data or UI, so no candidate identity is public. The `lsg` flag is only PS ≥ 18,
   derived from the public genEra rank.
 
 **Surfaced for Chen**
@@ -1929,8 +1997,9 @@ HAP1:HAP2 pangene relationship, disorder, and mass-spec evidence.
 **Guarded**
 - Duplicate source rows are collapsed only when the columns actually ingested agree. The
   proteomics tables repeat 5,024 genes that are both a `conserved` gene and an LSG's
-  `matched_control`, and `PtXaAlbH.14G133000` appears twice under two canonical labels
-  (LSG1.14g and XO14gHAP2). Measurements agree in every case; a disagreement is fatal.
+  `matched_control`, and one gene appears twice under two canonical candidate labels (gene
+  and labels withheld here since 2026-09-21). Measurements agree in every case; a
+  disagreement is fatal.
 - Coil fraction is flagged on every gene page as largely a pLDDT proxy, not evidence of
   disorder — the easiest misreading of the structure table.
 - Where the duplication class says "none detected" but paralogs are listed, the card explains
@@ -1943,9 +2012,10 @@ HAP1:HAP2 pangene relationship, disorder, and mass-spec evidence.
   treatment, genotype, growth condition, control/perturbation role, layout, reads, alignment
   rate and per-sample processing notes.
 - Expression gene card gains a **By condition** view: replicate means per experimental
-  condition, grouped by study, alongside the existing per-sample strip. For LSG4.5g in study
-  27 bark this reads as drought 78.4 vs control 43.0 in WT — the question a reader actually
-  has, which 652 individual dots do not answer.
+  condition, grouped by study, alongside the existing per-sample strip. For a
+  drought-responsive gene in study 27 bark this reads as the drought and control means side by
+  side in WT (the example gene and its values are withheld here since 2026-09-21): the
+  question a reader actually has, which 652 individual dots do not answer.
 - Duplication module (see below) and its checks.
 
 **Corrected**

@@ -89,6 +89,10 @@ h2 { font-size: 15px; margin: 0 0 10px; letter-spacing: -0.005em; }
 .sub { color: var(--ink-2); font-size: 13px; margin: 0 0 18px; }
 
 .cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+/* The two haplotypes side by side, never summed into one chart; stacked on a phone. */
+.hap-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.hap-pair > .card { min-width: 0; }
+@media (max-width: 640px) { .hap-pair { grid-template-columns: minmax(0, 1fr); } }
 /* A grid item defaults to min-width:auto, so the single widest card's min-content
    width stretches EVERY card and then the page. minmax(0,1fr) + min-width:0 is the
    fix; without it one wide table sets the page's minimum width. */

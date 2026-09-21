@@ -25,12 +25,12 @@
 
  "columns_dropped_before_shipping": {
   "dropped": ["canonical_label", "group"],
-  "why": "They carry the unpublished LSG candidate names for 10 genes (LSG1.14g .. LSG7.4g and the XO quartet). TODO 22's hold on candidate labels is unchanged by C2's adoption; the pool moving does not release the names. patch_pool_idesia.py asserts both are absent from this file before reading a row, the same construction patch_lsg_qc.py uses."
+  "why": "They carry the unpublished LSG candidate names for 10 genes (the names themselves are withheld here since 2026-09-21: this record is rendered on the public site). TODO 22's hold on candidate labels is unchanged by C2's adoption; the pool moving does not release the names. patch_pool_idesia.py asserts both are absent from this file before reading a row, the same construction patch_lsg_qc.py uses."
  },
 
  "columns": {
   "rank, phylostratum, tax_rep, age_class, is_lsg": "the CORRECTED call, with Idesia in the panel. Canonical.",
-  "frozen_rank, frozen_is_lsg": "the withdrawn 12-species call. Kept so a reader can see what changed and so numbers published against the frozen pool remain checkable -- they are correct statements about that pool and are not retracted.",
+  "frozen_rank, frozen_is_lsg": "the frozen genEra call. C2 withdrew it as the CANONICAL pool, but it is still the pool the chapter text reports (842/883, named as frozen, with 776/835 alongside as the robustness check; Chen, 2026-09-20). Kept so a reader can see what changed and so numbers published against the frozen pool remain checkable -- they are correct statements about that pool and are not retracted. (2026-09-21: an MS2 consistency audit, A38, found the frozen run searched nr only rather than a 12-species panel, so this line no longer calls it a panel call; the other lines of this record keep C2's wording until Chen rules.)",
   "left_pool_under_idesia": "was rank >= 18 on the frozen panel, is not now. 66 HAP1 + 48 HAP2.",
   "entered_pool_under_idesia": "would be the reverse. It is zero for every gene, by construction, and the patcher asserts that."
  },

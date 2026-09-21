@@ -9,7 +9,7 @@ the ID->shard convention is load-bearing for every gene page; a dangling express
 pointer would 404 only for the unlucky gene; an allele link to a nonexistent gene would be a
 dead end a reader hits before a maintainer does.
 """
-import gzip, json, os, re, struct, sys
+import gzip, json, os, re, struct, subprocess, sys
 from collections import Counter
 
 DATA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
@@ -536,12 +536,46 @@ def main():
 
     # The embargoed candidate names must not reach a shard under ANY key -- searched as text,
     # not by key name, so a rename cannot dodge it. Same construction as the qc check above.
-    EMBARGOED = ("canonical_label", "LSG1.14g", "LSG2.10g", "LSG3.6g", "LSG4.5g",
-                 "LSG5.3g", "LSG6.2g", "LSG7.4g", "XO_quartet", "XO2g", "XO14g")
+    #
+    # A PATTERN, not a list of the names. Until 2026-09-21 this file carried the literal list,
+    # and this file is itself published: GitHub Pages serves the whole repo root, scripts/
+    # included. So the check that kept the names out of the shards was one of the places they
+    # were public. The pattern matches the label SCHEME (LSG<n>.<chr>g, XO<chr>g[HAP<n>], the
+    # quartet group name) and is written so that it cannot match its own source text.
+    LABEL_RE = re.compile(r"\bLSG[0-9]+\.[0-9]+g\b|\bXO[0-9]+g(?:HAP[12])?\b|\bXO[_ ]quart[e]t\b")
     label_bad = [gid for gid, (_, _, rec) in genes.items()
-                 if any(f in json.dumps(rec) for f in EMBARGOED)]
+                 if LABEL_RE.search(json.dumps(rec)) or "canonical_label" in json.dumps(rec)]
     check("no embargoed LSG candidate label reaches any shard", not label_bad,
           f"{len(label_bad)} records, e.g. {label_bad[:3]}" if label_bad else "")
+
+    # ...and not any other published file either. The shard check above could not see the
+    # CHANGELOG, a build script's docstring or a provenance record that the About page renders,
+    # and all of those carried the names -- two of them paired with a gene ID -- while it passed.
+    # Every tracked text file is served by Pages, so every one is scanned.
+    root = os.path.dirname(DATA)
+    try:
+        tracked = subprocess.run(["git", "-C", root, "ls-files", "-z"], check=True,
+                                 capture_output=True).stdout.decode().split("\0")
+    except (OSError, subprocess.CalledProcessError):
+        tracked = [os.path.relpath(os.path.join(dp, f), root)
+                   for dp, dns, fs in os.walk(root) for f in fs
+                   if ".git" not in dp.split(os.sep)]
+    BINARY = (".gz", ".gzb", ".bin", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".woff",
+              ".woff2", ".svgz")
+    tree_bad, n_scanned = [], 0
+    for rel in tracked:
+        if not rel or rel.lower().endswith(BINARY):
+            continue
+        try:
+            text = open(os.path.join(root, rel), encoding="utf-8", errors="ignore").read()
+        except OSError:
+            continue
+        n_scanned += 1
+        # the path only, never the matched text: these verdicts are published on #/status
+        if LABEL_RE.search(text):
+            tree_bad.append(rel)
+    check("no embargoed LSG candidate label in any published file", not tree_bad,
+          f"{len(tree_bad)} files, e.g. {tree_bad[:3]}" if tree_bad else f"{n_scanned} text files")
 
     # ---- ancestral eudicot karyotype, route C (exploratory) --------------------------------
     # Counts are the owning analysis's published coverage, per haplotype and never summed, which

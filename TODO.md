@@ -471,3 +471,35 @@ only what still has no second layer after that gets folded into About.
       Then make the sweep a check: `scripts/check_stages.py`, run from `build_all.sh`, failing
       on any `patch_*.py` that is neither a stage nor explicitly excused. The lesson from 46 is
       that a missing layer validates perfectly, so the only place this can be caught is here.
+
+## v0.13.2: the LSG layers against the MS2 canon (2026-09-21, session "ms2 to gene atlas")
+
+- [x] **48: DONE, data 0.13.2. The data was right; nine sentences were not.** Audited every LSG
+      layer against ms2-lsg main `2cd2b59`: 0 per-gene mismatches in ranks, both pools, QC flags
+      and all 84 peptide cells. Corrected the QC card (`sens_stable` meaning; clean genes hiding
+      their other flags), the Protein page's pooled, pre-withdrawal 0.12%, its wrong list of
+      other-species datasets, four stale About sentences, the gene-model card's PR #20 claim, and
+      split the pool by haplotype and stratum with the frozen pool named (Chen: "split + name
+      both"). Scrubbed the candidate labels from every served file. New outward check
+      `scripts/check_ms2_canon.py`. See CHANGELOG 0.13.2.
+- [ ] **49: serve only the site from Pages (Chen chose this 2026-09-21; DRAFTED, needs his settings
+      switch).** Pages publishes the repo root, so `scripts/`, `docs/`, `TODO.md`, `CHANGELOG.md`
+      and every `sources/*.tsv.gz` are public, which is how the label exposure in 48 happened. The
+      draft workflow is on branch `pages-site-only`, not merged: it publishes `index.html`,
+      `.nojekyll`, `css/`, `js/`, `data/` and `sources/*.provenance.json` (the About page renders
+      those). It takes effect only when Settings -> Pages -> Source is switched to "GitHub
+      Actions", which is Chen's call.
+- [ ] **50: definitions to decide, not bugs (flagged 2026-09-21).**
+      (a) The expression baseline is `genotype == WT and ctrl == control` on the raw flag. In
+      study 1 that includes 500 ppm CO2 and second-timepoint ("recovered") controls, 44 of its 58
+      WT controls, and study 24's four field-condition controls. The chapter's rule
+      (`ms2-lsg pipeline/lib/contrasts.py`, GOTCHAS #15) builds contrast ARMS, not a baseline, so
+      it does not decide this directly; the chapter's own control-detection rerun (T7.4) is not
+      canon yet and its numbers must not be published. (b) The atlas's τ is that baseline's τ over
+      the MS1 v4 panel's `tissue_analysis` grouping (leaf split for study 1 only). The chapter's τ
+      (Methods 2.4, `s03`) uses all samples over `split_leaf_age` (studies 1, 27, 28, 30, 31). Same
+      word, different numbers: at minimum the expression card should say which τ it is.
+      (c) The pool-exit explanation on gene cards still carries C2's attribution to *Idesia*. MS2
+      audits A38 and K2 dispute it (the frozen run searched nr only; only part of the exits may
+      need *Idesia*). C2 stands until Chen rules; revisit the "Why" line then, and the "12-genome"
+      and "13-genome" panel wording in the manifest and the pool provenance record.

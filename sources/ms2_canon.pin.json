@@ -1,0 +1,14 @@
+{
+ "purpose": "Pins the ms2-lsg tables the atlas's lineage-specific-gene layers are built from, by commit AND by each table's git blob ID, WITHOUT carrying a single value. scripts/check_ms2_canon.py reads the exact bytes through git at this commit, refuses if a blob ID differs, and then compares every gene in the committed shards against them.",
+ "why_pinned_not_vendored": "This repo's root is published by GitHub Pages. Pinning keeps the values out of the public tree, and reading through git means a stale or feature-branch checkout cannot feed the check the wrong file: the ms2-lsg clone on this machine is routinely checked out on another session's branch.",
+ "why_blob_ids": "A commit pin alone churns on every unrelated commit to ms2-lsg main. A blob ID changes only when that table's bytes change, so a moved table fails loudly by name and nothing else does. The same commit and blob IDs anchor the chapter's data-freeze proposal (session 'canon check', 2026-09-21), so the atlas and the chapter share one anchor.",
+ "source_repo": "ChenHsieh/ms2-lsg",
+ "ms2_lsg_commit": "2cd2b59efbc4ecc978654411b9131723a9444aa9",
+ "tables": {
+  "pipeline/out/lsg_pool_idesia.tsv.gz": "7dccc0e7caa3cb67466388ad147a3e0a4f5153bf",
+  "pipeline/out/lsg_pool_qc.tsv": "216b41e8a210315a18fd23d577050833e5fd5231",
+  "pipeline/out/lsg_pool_synteny.tsv": "c2ba7b01725674e254f1ab504f1c663b4db0b890",
+  "analyses/proteomics_translation_evidence/results/aspen_detection_by_class.tsv": "e27e4591a9cb19eda35f357b6c527afac4540173"
+ },
+ "refresh": "move ms2_lsg_commit to the new main, replace each blob ID with `git rev-parse <commit>:<path>`, rerun the check, and read every FAIL before accepting the move"
+}

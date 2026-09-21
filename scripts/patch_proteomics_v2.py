@@ -41,6 +41,68 @@ PROV = os.path.join(ROOT, "sources", "proteomics_ms_v2.provenance.json")
 # what the owning analysis published, per class, pooled over haplotypes; re-asserted here
 PUBLISHED_UNION_POOL_DETECTED = 8   # LSG-pool genes with any hit across all five datasets
 
+# The same union, per haplotype and stratum, as the owning analysis states it (ms2-lsg
+# analyses/proteomics_translation_evidence/RUN_LOG.md, "The headline stands, and is now
+# multi-dataset"): (detected, genes in the stratum), Idesia-corrected ranks.
+PUBLISHED_UNION_POOL = {"hap1": {18: (2, 433), 19: (1, 343)},
+                        "hap2": {18: (5, 497), 19: (0, 338)}}
+
+# The deepest dataset. The per-class gradient in the manifest is read off it, per haplotype.
+GRADIENT_DATASET = "PXD025636"
+
+
+def gene_class(rank):
+    """Copied from make_proteomics_v2_source.py, which copies the owning analysis."""
+    if rank is None:
+        return "unassigned"
+    if rank <= 2:
+        return "PS1_2_ancient"
+    if rank <= 12:
+        return "PS3_12_conserved"
+    if rank <= 15:
+        return "PS13_15_rosids"
+    if rank <= 17:
+        return "PS16_17_salicaceae"
+    return "LSG_PS18_populus" if rank == 18 else "LSG_PS19_hybrid"
+
+
+def age_gradient(data_dir):
+    """Per-haplotype detection rate by age class in GRADIENT_DATASET, from the shards as shipped,
+    plus the five-dataset pool union per stratum.
+
+    Replaces a hand-typed, haplotype-pooled dict ({"LSG_pool": 0.12, ...}) that quoted the
+    PUBLISHED Tier 2 figures, including a pool hit the owning analysis withdrew on 2026-09-09
+    after the expanded-database re-search this layer actually ships. Computing it from the
+    shards means the manifest cannot disagree with the genes it summarises. Asserts the pool
+    union against the owner's published numbers.
+    """
+    n, det, union = Counter(), Counter(), Counter()
+    for hap in ("hap1", "hap2"):
+        for p in shard_paths(os.path.join(data_dir, "genes", hap)):
+            for rec in json.load(open(p)).values():
+                rank = (rec.get("ps") or {}).get("rank")
+                c = gene_class(rank)
+                ms = (rec.get("prot") or {}).get("ms") or {}
+                n[(hap, c)] += 1
+                det[(hap, c)] += GRADIENT_DATASET in (ms.get("ds") or [])
+                if rank is not None and rank >= 18:
+                    union[(hap, rank, "n")] += 1
+                    union[(hap, rank, "det")] += (ms.get("n") or 0) > 0
+    out = {"dataset": GRADIENT_DATASET,
+           "note": "percent of genes with a peptide in this dataset, per haplotype, never pooled",
+           "pool_union_all_datasets": {}}
+    for hap in ("hap1", "hap2"):
+        out[hap] = {c: round(100 * det[(hap, c)] / n[(hap, c)], 3)
+                    for c in sorted({k[1] for k in n if k[0] == hap}) if n[(hap, c)]}
+        out["pool_union_all_datasets"][hap] = {}
+        for rank, (want_det, want_n) in PUBLISHED_UNION_POOL[hap].items():
+            got = (union[(hap, rank, "det")], union[(hap, rank, "n")])
+            assert got == (want_det, want_n), (
+                f"{hap} PS{rank}: shards give {got[0]} of {got[1]} detected across the five "
+                f"datasets; the owning analysis published {want_det} of {want_n}")
+            out["pool_union_all_datasets"][hap][f"PS{rank}"] = {"detected": got[0], "genes": got[1]}
+    return out
+
 
 def iv(v):
     v = (v or "").strip()
@@ -118,8 +180,11 @@ def main():
     man = json.load(open(man_path))
     man["proteomics"] = {
         "version": 2,
+        # 135,843, not the original Tier 2's 98,659: all five datasets were searched under the
+        # expanded database (Tier 2 set + P. tremula Potra02), per the owning RUN_LOG.
         "method": "raw-spectra re-search against a database CONTAINING the 717 proteins "
-                  "(98,659 targets), Sage 0.14.7, 1% peptide AND spectrum FDR",
+                  "(135,843 targets: P. trichocarpa, HAP1, HAP2 and P. tremula Potra02), "
+                  "Sage 0.14.7, 1% peptide AND spectrum FDR",
         "datasets": {k: v["species"] for k, v in prov["datasets"].items()},
         "n_datasets": n_ds,
         "genes_with_a_hit": dict(detected),
@@ -143,9 +208,7 @@ def main():
                               "the searchable window. Read it before reading a zero: a "
                               "protein with none is invisible however abundant it is, and "
                               "that is a composition property on which young genes differ.",
-        "age_gradient_pct": {"PS1_2_ancient": 42.28, "PS3_12_conserved": 12.78,
-                             "PS13_15_rosids": 6.14, "PS16_17_salicaceae": 2.93,
-                             "LSG_pool": 0.12},
+        "age_gradient_pct": age_gradient(DATA),
     }
     with open(man_path, "w") as fh:
         json.dump(man, fh, indent=1, sort_keys=True)

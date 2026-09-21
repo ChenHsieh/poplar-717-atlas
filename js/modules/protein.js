@@ -481,20 +481,30 @@ async function overview(man) {
           + 'found however abundant it is, and that is a property of its lysine and arginine '
           + 'content and its length — composition, on which young genes differ from old ones. '
           + `Counting such a gene as "not detected" would inflate the negative. `
-          + `${fmt((man.proteomics || {}).undetectable_by_construction
-                    ? (man.proteomics.undetectable_by_construction.hap1
-                       + man.proteomics.undetectable_by_construction.hap2) : 0)} `
+          + `${fmt(((man.proteomics || {}).undetectable_by_construction || {}).hap1 || 0)} HAP1 and `
+          + `${fmt(((man.proteomics || {}).undetectable_by_construction || {}).hap2 || 0)} HAP2 `
           + 'genes are undetectable this way and say so on their own page.'),
+        // Numbers below are per haplotype, recomputed from the shards by
+        // scripts/check_prose_numbers.py, and equal to the owning analysis's
+        // aspen_detection_by_class.tsv. Until 2026-09-21 this line gave haplotype-pooled
+        // figures ending in "0.12% of the lineage-specific pool" (2 of 1,611): the published
+        // Tier 2 count before one of its two hits was withdrawn upstream on 2026-09-09. The
+        // shards never carried the withdrawn hit; only this sentence did.
         el('li', {}, el('strong', {}, 'Detection falls monotonically with gene age. '),
-          '42.3% of the most ancient genes are observed, 12.8% of conserved ones, 6.1% of '
-          + 'rosid-level, 2.9% of Salicaceae-level, and 0.12% of the lineage-specific pool. '
-          + 'That ordering is what you would expect if the measurement tracks real protein '
-          + 'abundance and conservation rather than noise, which is the reason to trust the '
-          + 'low end of it.'),
+          'In the deepest dataset (PXD025636), 41.8% of HAP1 and 41.9% of HAP2 ancient genes '
+          + '(PS1-2) are observed, 12.7% and 12.8% of conserved ones (PS3-12), 5.3% and 6.6% '
+          + 'of rosid-level ones (PS13-15), 1.3% and 4.6% of Salicaceae-level ones (PS16-17), '
+          + 'and 1 of 776 HAP1 and 0 of 835 HAP2 lineage-specific pool genes. Across all five '
+          + 'datasets, 2 of 433 HAP1 and 5 of 497 HAP2 PS18 genes and 1 of 343 HAP1 and 0 of '
+          + '338 HAP2 PS19 genes carry a peptide. That ordering is what you would expect if the '
+          + 'measurement tracks real protein abundance and conservation rather than noise, '
+          + 'which is the reason to trust the low end of it.'),
         el('li', {}, el('strong', {}, 'Three of the five samples contain no 717 protein. '),
-          'PXD025418 is P. tomentosa and PXD002544 and PXD058986 are P. x canescens. A '
-          + 'peptide matching a 717 gene in those says the gene family is translated somewhere '
-          + 'in Populus, not that this clone translates its own copy.'))),
+          'PXD025636 is P. trichocarpa, PXD020099 is P. tremula × tremuloides and PXD025418 '
+          + 'is P. tomentosa. A peptide matching a 717 gene in those says the gene family is '
+          + 'translated somewhere in Populus, not that this clone translates its own copy. '
+          + 'PXD002544 and PXD058986 are P. × canescens, the same P. tremula × P. alba cross '
+          + 'as 717.'))),
   );
 }
 

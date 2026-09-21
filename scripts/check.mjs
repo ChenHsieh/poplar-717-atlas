@@ -79,7 +79,7 @@ async function viewText(page) {
   return page.evaluate(() => document.getElementById('view').innerText);
 }
 
-async function check(name, hash, { expect = [], theme = null, wait = 700 } = {}) {
+async function check(name, hash, { expect = [], forbid = [], theme = null, wait = 700 } = {}) {
   const p = await browser.newPage({
     viewport: { width: 1180, height: 900 },
     colorScheme: theme === 'dark' ? 'dark' : 'light',
@@ -100,11 +100,15 @@ async function check(name, hash, { expect = [], theme = null, wait = 700 } = {})
   // Styling should not decide whether a content assertion passes.
   const hay = text.toLowerCase();
   const missing = expect.filter((e) => !hay.includes(e.toLowerCase()));
-  const ok = !errs.length && !missing.length;
+  // `forbid`: text that must NOT render. Added 2026-09-21 for sentences that were corrected, so
+  // the old wording cannot come back through a cached edit or a revert and still pass.
+  const present = forbid.filter((f) => hay.includes(f.toLowerCase()));
+  const ok = !errs.length && !missing.length && !present.length;
   if (!ok) failures++;
   console.log(`\n### ${name}  ${ok ? 'OK' : 'FAIL'}`);
   errs.forEach((e) => console.log('   !! ' + e));
   missing.forEach((m) => console.log(`   !! expected text not found: "${m}"`));
+  present.forEach((f) => console.log(`   !! forbidden text rendered: "${f}"`));
   if (ok) console.log(`   rendered ${text.length} chars`);
   await p.close();
 }
@@ -112,9 +116,10 @@ async function check(name, hash, { expect = [], theme = null, wait = 700 } = {})
 await check('home', '#/',
   // the NUMBER, not just the label: the home page showed the withdrawn 1,725 for three
   // versions while every other page said 1,611, and asserting the label caught nothing
+  // Per haplotype since 2026-09-21: the pooled 1,611 summed HAP1 and HAP2 into one number.
   { expect: ['63,960', 'Start here', 'Browse all genes', 'Modules', 'Before you cite anything',
-             'lineage-specific candidates', '1,611'] });
-await check('gene-lsg4', '#/gene/PtXaTreH.05G120200',
+             'lineage-specific candidates, HAP1 / HAP2', '776 / 835'] });
+await check('gene-ps18-to-ps17', '#/gene/PtXaTreH.05G120200',
   { expect: ['PtXaTreH.05G120200', 'Chr05', 'Synteny', 'Populus', 'Dispensable'] });
 await check('gene-private', '#/gene/PtXaTreH.01G006100',
   { expect: ['Private', 'P. alba'] });
@@ -137,7 +142,7 @@ await check('study-10-notes', '#/study/10',
   { expect: ['Study 10', 'Notes', 'below-typical alignment rate'], wait: 1000 });
 // This gene is the manually-verified leaf_young/leaf_old case (13.74 vs 4.52 TPM, was
 // pooled to a single 8.12 before the 2026-09-05 fix) -- assert the split is visible.
-await check('gene-expr-lsg4', '#/gene/PtXaTreH.05G120200',
+await check('gene-expr-ps18-to-ps17', '#/gene/PtXaTreH.05G120200',
   { expect: ['Expression', 'Median TPM', 'catkin', 'Show all 652 samples', 'leaf_young', 'leaf_old'], wait: 900 });
 await check('gene-annotated', '#/gene/PtXaTreH.01G000300',
   { expect: ['Function', 'Allele', 'Panel presence', 'AT1G55570'], wait: 1000 });
@@ -149,8 +154,13 @@ await check('gene-hap2-pfam-gap', '#/gene/PtXaAlbH.01G000200',
   { expect: ['Function', 'Domain coverage is thinner on HAP2', 'AT1G55570'], wait: 1000 });
 await check('browse', '#/browse',
   { expect: ['Browse', 'Filters', 'Synteny class', '63,960', 'Export TSV', 'Saved sets'], wait: 1400 });
+// One ladder per haplotype, the pool split by haplotype AND stratum, and the frozen pool the
+// chapter reports named beside the corrected one (Chen, 2026-09-21: "split + name both").
 await check('module-phylostrat', '#/module/phylostrat',
-  { expect: ['Genes per stratum', 'LSG pool', 'ambiguous', 'cellular organisms', 'log-scaled'] });
+  { expect: ['Genes per stratum', 'ambiguous', 'cellular organisms', 'log-scaled',
+             'HAP1 LSG pool: 433 PS18 · 343 PS19', 'HAP2 LSG pool: 497 PS18 · 338 PS19',
+             'frozen genEra pool, 842 HAP1 and 883 HAP2', 'unplaced by genEra: 27 HAP1 · 18 HAP2'],
+    forbid: ['both haplotypes', '12-species', 'counts run from 22,769'] });
 await check('gene-ambiguous-ps', '#/gene/PtXaTreH.06G037000',
   { expect: ['genEra flagged this gene as ambiguous'], wait: 900 });
 await check('module-duplication', '#/module/duplication',
@@ -174,7 +184,34 @@ await check('gene-pav-not-confirmed', '#/gene/PtXaTreH.T006000',
 await check('gene-lsg-qc-flagged', '#/gene/PtXaTreH.12G056600',
   { expect: ['Evidence quality', 'tblastn', 'retracts the young call', 'Flags, not filters'], wait: 900 });
 await check('gene-lsg-qc-clean', '#/gene/PtXaTreH.01G001500',
-  { expect: ['Evidence quality', 'No evidence-quality flag raised'], wait: 900 });
+  { expect: ['Evidence quality', 'Passes the QC funnel', 'abSENSE supports lineage-specific'],
+    forbid: ['No evidence-quality flag raised'], wait: 900 });
+// Clean on the funnel's three checks, but synteny-contested (twin route) and a short ORF. Until
+// 2026-09-21 a clean gene read "No evidence-quality flag raised" and hid both: 389 pool genes.
+await check('gene-lsg-qc-clean-but-flagged', '#/gene/PtXaTreH.08G114000',
+  { expect: ['Passes the QC funnel', 'disputes this gene', 'Short ORF (72 aa)'],
+    forbid: ['No evidence-quality flag raised'], wait: 900 });
+// sens_stable is DIAMOND default vs --ultra-sensitive stability (repro audit E3). The card used
+// to say the chapter's headline result depended on the gene. Also the gene-model card's
+// forward-looking line, which named a wrong library count and presumed an unmerged PR.
+await check('gene-lsg-qc-unstable', '#/gene/PtXaTreH.12G066000',
+  { expect: ['differs between the default and --ultra-sensitive DIAMOND runs',
+             'has not been adopted'],
+    forbid: ['headline result', '827-library'], wait: 900 });
+// A pool exit: named as leaving by a rank change, not as never QC-checked (it has upstream
+// QC values), and the frozen call named neutrally (MS2 audit A38).
+await check('gene-pool-exit', '#/gene/PtXaTreH.05G120200',
+  { expect: ['left the pool', 'not by failing a QC check', 'The frozen genEra call placed this gene at PS18'],
+    forbid: ['withdrawn 12-genome', 'never evaluated', 'Evidence quality'], wait: 900 });
+await check('module-protein-gradient', '#/module/protein',
+  { expect: ['1 of 776 HAP1 and 0 of 835 HAP2 lineage-specific pool',
+             'PXD025636 is P. trichocarpa, PXD020099 is P. tremula × tremuloides',
+             'same P. tremula × P. alba cross as 717'],
+    forbid: ['0.12% of the lineage-specific pool', 'PXD058986 are P. x canescens. A'] });
+await check('module-about-numbers', '#/module/about',
+  { expect: ['no rank for 27 HAP1 and 18 HAP2', '55 leaf (plus 11 young-leaf and 11 old-leaf)',
+             'ComBat-seq', 'held on v9', 'for browsing, not quoting'],
+    forbid: ['no rank for 50 genes', '77 leaf', 'is not in the mirror', 'v6 master'] });
 {
   const fp = await browser.newPage();
   const ferrs = [];

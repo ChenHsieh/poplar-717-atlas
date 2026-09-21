@@ -21,6 +21,9 @@ function sourceTable(sources) {
 function overview(man) {
   const a = man.annotation || {};
   const e = man.expression || {};
+  const br = (man.phylostrat || {}).by_rank || {};
+  const unplaced = { hap1: (br.hap1 || {}).NA || 0, hap2: (br.hap2 || {}).NA || 0 };
+  const tw = e.tissue_wt_control_n || {};
   return el('div', {},
     el('h1', {}, 'About & provenance'),
     el('p', { class: 'sub' },
@@ -57,8 +60,11 @@ function overview(man) {
           el('th', { class: 'num' }, 'Share'), el('th', {}, 'What absence means'))),
         el('tbody', {}, ...[
           ['Synteny class', man.n_genes, 'Every gene is classified.'],
-          ['Phylostratum', man.n_genes - ((man.phylostrat || {}).by_rank ? 0 : 0),
-            'genEra returned no rank for 50 genes; they are excluded from the pool, not defaulted.'],
+          // Was `n_genes - (by_rank ? 0 : 0)`, which is always n_genes, beside a hand-typed "50"
+          // that was the FROZEN panel's count. Both now come from the corrected panel's by_rank.
+          ['Phylostratum', man.n_genes - unplaced.hap1 - unplaced.hap2,
+            `genEra returned no rank for ${fmt(unplaced.hap1)} HAP1 and ${fmt(unplaced.hap2)} HAP2 `
+            + 'genes on the Idesia-corrected panel; they are excluded from the pool, not defaulted.'],
           ['Expression baseline', (man.expression || {}).n_genes_with_baseline || null,
             'A gene with an all-zero baseline has no tissue profile and no \u03c4.'],
           ['Ka/Ks vs P. trichocarpa', (man.kaks || {}).n_genes,
@@ -96,32 +102,42 @@ function overview(man) {
         el('li', {}, el('strong', {}, 'ω is undefined for 716 syntelog pairs '),
           'whose Ks is 0. The aligner reports 99.0 there; the atlas shows "identical at '
           + 'synonymous sites" instead, never a selection claim.'),
-        el('li', {}, el('strong', {}, 'Expression is raw TPM, not batch-corrected. '),
-          'Use it for tissue specificity and per-gene magnitude. Cross-study comparison needs '
-          + 'batch handling that this build does not apply.'),
+        el('li', {}, el('strong', {}, 'Expression is raw TPM by default. '),
+          'Use it for tissue specificity and per-gene magnitude. A ComBat-seq batch-corrected '
+          + `profile is a separate, opt-in view on the gene page, for the `
+          + `${fmt((man.expression || {}).combat_eligible_genes)} genes that passed the upstream `
+          + 'low-count filter; the tissue baselines and τ are always computed on raw TPM.'),
         el('li', {}, el('strong', {}, 'Curation notes are summarised, not quoted. '),
           'Tandem-array genes carry a curation flag — hand-rejected, pseudogene-like, or '
           + 'disagreeing with the automatic gate. The curator\'s identity and verbatim wording '
           + 'are deliberately not published.'),
-        el('li', {}, el('strong', {}, 'Two layers were audited out, not shipped. '),
-          'A presence/absence-variation layer was dropped because the available table is the '
-          + 'orthogroup-based PAV call the source repo explicitly tells readers not to use; its '
-          + 'canonical DIAMOND-based replacement is not in the mirror. An independent tau was '
-          + 'dropped because it is computed on the n=202 expression panel, which the same repo '
-          + 'records as superseded on 2026-08-24.'),
+        el('li', {}, el('strong', {}, 'An independent τ was audited out, not shipped. '),
+          'It is computed on the n=202 expression panel, which the source repo records as '
+          + 'superseded on 2026-08-24.'),
+        // No PAV number here on purpose: the shards serve ms1-dup's diamond_pav call, which that
+        // repo marks not-for-quoting, and its quotable post-QC figure is not in this build.
+        // Stating either would contradict the page's own data or quote the wrong column.
+        el('li', {}, el('strong', {}, 'Presence/absence counts are for browsing, not quoting. '),
+          'The layer serves ms1-dup’s DIAMOND-based hemizygosity call; the orthogroup-based '
+          + 'call that repo tells readers not to use was never shipped. ms1-dup’s quotable '
+          + 'figure is now a stricter post-QC call that this build does not carry.'),
         el('li', {}, el('strong', {}, 'Three layers are derived here, not imported. '),
           'Exon/intron counts and TE distance are computed from the v5.1 GFF3 and repeatmasked '
           + 'annotation that ship with the genome, and genomic order from the atlas\'s own '
           + 'coordinates — because the tables offering them sat in case-study, calibration and '
           + '"structural exploration" folders with no canonical status.'),
         el('li', {}, el('strong', {}, 'Duplication calls come from a mirrored repo. '),
-          'The per-gene duplication class is the most current table present in the ms1-dup '
-          + 'mirror; that repo names a v6 master as canonical which is not synced here. The '
-          + 'tandem component is taken from its curated union set, which it says supersedes '
-          + 'the v8 tandem tables. Codes follow its documented legend.'),
+          'The per-gene duplication class is ms1-dup’s master duplication table v9. That '
+          + 'repo has since published v10, and the atlas is deliberately held on v9 while v10 '
+          + 'is reviewed. The tandem component is taken from its curated union set. Codes '
+          + 'follow its documented legend.'),
+        // Read from the manifest: the hand-typed "77 leaf" was the pooled count from before the
+        // 2026-09-05 leaf regrouping (manifest.corrections), and nothing checked it.
         el('li', {}, el('strong', {}, 'Thin tissue baselines. '),
-          'Median TPM per tissue rests on 77 leaf and 59 xylem WT-control samples but only 5 bud, '
-          + '4 catkin, 2 stem and 1 callus. Every bar carries its n.'))),
+          `Median TPM per tissue rests on ${fmt(tw.leaf)} leaf (plus ${fmt(tw.leaf_young)} `
+          + `young-leaf and ${fmt(tw.leaf_old)} old-leaf) and ${fmt(tw.xylem)} xylem WT-control `
+          + `samples but only ${fmt(tw.bud)} bud, ${fmt(tw.catkin)} catkin, ${fmt(tw.stem)} stem `
+          + `and ${fmt(tw.callus)} callus. Every bar carries its n.`))),
 
     el('div', { class: 'card' },
       el('h2', {}, 'Sources', el('span', { class: 'tag' }, 'checksummed at build')),

@@ -75,6 +75,22 @@
    "detail": "docs/DATA_AUDIT.md, CHANGELOG.md",
    "what": "expression tissue baseline + tau regrouped by tissue_analysis, not tissue",
    "why": "tissue pooled leaf_young + leaf_old (46 samples, all study 1) into one 'leaf' bucket; the WT-control subset of that pool was 11 + 11 of 77"
+  },
+  {
+   "before": {
+    "age_gradient_pct": {
+     "LSG_pool": 0.12,
+     "PS13_15_rosids": 6.14,
+     "PS16_17_salicaceae": 2.93,
+     "PS1_2_ancient": 42.28,
+     "PS3_12_conserved": 12.78
+    },
+    "method": "raw-spectra re-search against a database CONTAINING the 717 proteins (98,659 targets), Sage 0.14.7, 1% peptide AND spectrum FDR"
+   },
+   "date": "2026-09-21",
+   "detail": "CHANGELOG.md 0.13.2, sources/proteomics_ms_v2.provenance.json corrections_2026_09_21",
+   "what": "proteomics.method and proteomics.age_gradient_pct corrected; no gene record changed",
+   "why": "method named the original Tier 2 database (98,659 targets) but every shipped search used the expanded 135,843-target database; age_gradient_pct was a hand-typed, haplotype-pooled copy of the published Tier 2 figures (LSG pool 0.12%, i.e. 2 of 1,611) that still counted PtXaTreH.14G041300, withdrawn upstream on 2026-09-09. Now computed from the shards per haplotype by patch_proteomics_v2.py:age_gradient() and gated against the owner's union counts."
   }
  ],
  "cre": {
@@ -145,7 +161,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.13.1",
+ "data_version": "0.13.2",
  "duplicate_coexpr": {
   "basis": "Pearson r on log2(ComBat-corrected TPM + 1) over 652 samples -- the same matrix the neighbour co-expression (nb) uses, because a 652-sample correlation spans 28 studies and is therefore a cross-study comparison.",
   "coverage": "A pair needs BOTH partners in the ComBat matrix (59,599 of 63,960 genes), so 7,707 of 32,333 duplicate pairs have no value. Absence means 'not comparable', not 'uncorrelated'.",
@@ -887,11 +903,48 @@
  },
  "proteomics": {
   "age_gradient_pct": {
-   "LSG_pool": 0.12,
-   "PS13_15_rosids": 6.14,
-   "PS16_17_salicaceae": 2.93,
-   "PS1_2_ancient": 42.28,
-   "PS3_12_conserved": 12.78
+   "dataset": "PXD025636",
+   "hap1": {
+    "LSG_PS18_populus": 0.0,
+    "LSG_PS19_hybrid": 0.292,
+    "PS13_15_rosids": 5.263,
+    "PS16_17_salicaceae": 1.299,
+    "PS1_2_ancient": 41.775,
+    "PS3_12_conserved": 12.736,
+    "unassigned": 7.407
+   },
+   "hap2": {
+    "LSG_PS18_populus": 0.0,
+    "LSG_PS19_hybrid": 0.0,
+    "PS13_15_rosids": 6.604,
+    "PS16_17_salicaceae": 4.575,
+    "PS1_2_ancient": 41.911,
+    "PS3_12_conserved": 12.789,
+    "unassigned": 11.111
+   },
+   "note": "percent of genes with a peptide in this dataset, per haplotype, never pooled",
+   "pool_union_all_datasets": {
+    "hap1": {
+     "PS18": {
+      "detected": 2,
+      "genes": 433
+     },
+     "PS19": {
+      "detected": 1,
+      "genes": 343
+     }
+    },
+    "hap2": {
+     "PS18": {
+      "detected": 5,
+      "genes": 497
+     },
+     "PS19": {
+      "detected": 0,
+      "genes": 338
+     }
+    }
+   }
   },
   "cross_species_caveat": "Three of the five datasets are other Populus species, whose samples contain no 717 protein. A hit there says the gene FAMILY is translated somewhere in Populus, not that 717's copy is.",
   "datasets": {
@@ -908,7 +961,7 @@
    "hap2": 13244
   },
   "lsg_pool_genes_with_a_hit": 8,
-  "method": "raw-spectra re-search against a database CONTAINING the 717 proteins (98,659 targets), Sage 0.14.7, 1% peptide AND spectrum FDR",
+  "method": "raw-spectra re-search against a database CONTAINING the 717 proteins (135,843 targets: P. trichocarpa, HAP1, HAP2 and P. tremula Potra02), Sage 0.14.7, 1% peptide AND spectrum FDR",
   "n_datasets": 5,
   "peptide_detail": {
    "gene_dataset_pairs_with_no_717_specific_peptide": 54264,
