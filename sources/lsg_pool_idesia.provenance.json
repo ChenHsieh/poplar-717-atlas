@@ -1,5 +1,6 @@
 {
  "purpose": "The corrected LSG pool. Replaces the frozen 12-species genEra panel's 842 HAP1 / 883 HAP2 with 776 / 835, and carries BOTH ranks per gene so the atlas can show the correction rather than silently swap one number for another.",
+ "status_2026_09_21": "SUPERSEDED AS THE POOL. Chen ruled on 2026-09-21 that the LSG pool is the frozen genEra call, 842 HAP1 + 883 HAP2, and does not change; every check on it, this rerun included, is a per-gene flag (MS2_2026 CLAUDE.md, commit 1e698f2). This table is now the source of the per-gene rerun call (ps.rr, where its rank differs) and of the flag qc.rr (a pool gene that falls below rank 18 here: 66 HAP1 + 48 HAP2). The pool itself comes from sources/lsg_pool_frozen.tsv.gz. The rerun was also the first run to search the full comparison panel (the frozen call searched NCBI nr only), so a rank change here is not always due to Idesia. The text below is kept as written on 2026-09-10.",
  "tier": "public",
  "why_public": "Derived from published genome assemblies and genEra, a public method. docs/EMBARGO.md's 'Not affected' list names phylostratigraphy and the genEra layer as publishable. The atlas already publishes the frozen ranks; this corrects them.",
  "adoption": {
@@ -29,7 +30,7 @@
  },
 
  "columns": {
-  "rank, phylostratum, tax_rep, age_class, is_lsg": "the CORRECTED call, with Idesia in the panel. Canonical.",
+  "rank, phylostratum, tax_rep, age_class, is_lsg": "the rerun's call, with Idesia added and the full comparison panel searched. Canonical as the pool until 2026-09-21; since then shown per gene as ps.rr and used as the qc.rr flag.",
   "frozen_rank, frozen_is_lsg": "the frozen genEra call. C2 withdrew it as the CANONICAL pool, but it is still the pool the chapter text reports (842/883, named as frozen, with 776/835 alongside as the robustness check; Chen, 2026-09-20). Kept so a reader can see what changed and so numbers published against the frozen pool remain checkable -- they are correct statements about that pool and are not retracted. (2026-09-21: an MS2 consistency audit, A38, found the frozen run searched nr only rather than a 12-species panel, so this line no longer calls it a panel call; the other lines of this record keep C2's wording until Chen rules.)",
   "left_pool_under_idesia": "was rank >= 18 on the frozen panel, is not now. 66 HAP1 + 48 HAP2.",
   "entered_pool_under_idesia": "would be the reverse. It is zero for every gene, by construction, and the patcher asserts that."

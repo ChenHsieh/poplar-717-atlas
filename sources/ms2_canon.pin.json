@@ -5,6 +5,7 @@
  "source_repo": "ChenHsieh/ms2-lsg",
  "ms2_lsg_commit": "2cd2b59efbc4ecc978654411b9131723a9444aa9",
  "tables": {
+  "pipeline/out/lsg_pool.tsv": "4f8b7cac3007220158d52c1057249bc901705e31",
   "pipeline/out/lsg_pool_idesia.tsv.gz": "7dccc0e7caa3cb67466388ad147a3e0a4f5153bf",
   "pipeline/out/lsg_pool_qc.tsv": "216b41e8a210315a18fd23d577050833e5fd5231",
   "pipeline/out/lsg_pool_synteny.tsv": "c2ba7b01725674e254f1ab504f1c663b4db0b890",

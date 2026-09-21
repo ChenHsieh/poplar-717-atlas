@@ -1,6 +1,6 @@
 {
- "data_version": "0.14.0",
- "n_checks": 83,
+ "data_version": "0.15.0",
+ "n_checks": 87,
  "n_failed": 0,
  "checks": [
   {
@@ -74,7 +74,12 @@
    "detail": ""
   },
   {
-   "name": "no forbidden LSG QC field reaches any shard",
+   "name": "every qc.rr flag agrees with the rerun rank on the same gene",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "every qc.post is exactly 'passes all four checks'",
    "ok": true,
    "detail": ""
   },
@@ -121,12 +126,22 @@
   {
    "name": "manifest lsg_qc.pool_genes matches the shard count",
    "ok": true,
-   "detail": "manifest 1611 vs 1611 genes carrying qc"
+   "detail": "manifest 1725 vs 1725 genes carrying qc"
   },
   {
-   "name": "manifest lsg_pool total matches the shard pool",
+   "name": "manifest lsg_pool matches the shard pool, per haplotype",
    "ok": true,
-   "detail": "manifest 1611 vs 1611 genes at PS >= 18 ({'hap1': 776, 'hap2': 835})"
+   "detail": "manifest 842/883 vs shards {'hap1': 842, 'hap2': 883}"
+  },
+  {
+   "name": "the pool is the frozen genEra call, 842 HAP1 + 883 HAP2",
+   "ok": true,
+   "detail": "{'hap1': 842, 'hap2': 883}"
+  },
+  {
+   "name": "every pool gene carries its qc flags",
+   "ok": true,
+   "detail": "1725 qc records for 1725 pool genes"
   },
   {
    "name": "phylostrat ladder counts match the shard ranks, every stratum",
@@ -259,9 +274,14 @@
    "detail": "16405 ancestral-gene tables"
   },
   {
-   "name": "ps.frz appears only where the corrected and withdrawn ranks differ",
+   "name": "ps.rr appears only where the rerun's rank differs from the frozen call",
    "ok": true,
-   "detail": "766 genes changed rank"
+   "detail": "766 genes differ in the rerun"
+  },
+  {
+   "name": "no ps.frz left over from the 2026-09-10 arrangement",
+   "ok": true,
+   "detail": ""
   },
   {
    "name": "every gene has a cre record",

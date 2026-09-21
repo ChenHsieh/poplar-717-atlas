@@ -146,12 +146,12 @@ route(/^\/$/, async () => {
         el('dd', { class: 'muted' }, 'Filter across every module at once, then export or save the selection.'),
         el('dt', {}, 'Search'),
         el('dd', { class: 'muted' }, 'The box above takes a gene ID, a keyword, an Arabidopsis locus or a Pfam accession.'),
-        // Was "PS18 Populus, drought-responsive in bark". Since the 2026-09-10 pool correction
-        // this gene is PS17 on the corrected panel and out of the pool, and "drought-responsive"
-        // rested on a descriptive n=3 ratio the Contrasts view itself says is not a test.
+        // Was "PS18 Populus, drought-responsive in bark": "drought-responsive" rested on a
+        // descriptive n=3 ratio the Contrasts view itself says is not a test. The pool is the
+        // frozen call (Chen, 2026-09-21), in which this gene is PS18; its flags are listed on it.
         el('dt', {}, el('a', { href: '#/gene/PtXaTreH.05G120200' }, 'PtXaTreH.05G120200')),
-        el('dd', { class: 'muted' }, 'An example gene page, and one the Idesia correction moved: '
-          + 'PS18 in the frozen genEra call, PS17 Saliceae on the corrected panel.'),
+        el('dd', { class: 'muted' }, 'An example gene page: a PS18 pool gene that carries four '
+          + 'evidence flags, one of them from the rerun that added Idesia.'),
         // Three examples, chosen because each shows a DIFFERENT shape of duplication rather
         // than three views of the same one. Every claim below is read off the shipped record.
         el('dt', {}, el('a', { href: '#/gene/PtXaTreH.08G070200' }, 'PtXaTreH.08G070200')),

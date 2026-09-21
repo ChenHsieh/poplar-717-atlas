@@ -152,9 +152,10 @@ If a rebuild moves any of these, something changed upstream — find out what be
 |---|---|
 | gene models | 63,960 (HAP1 32,137 / HAP2 31,823) |
 | `private_no_ortholog` | 1,642 |
-| private ∩ PS ≥ 18 (browse query) | **902** (433 HAP1 + 469 HAP2) on the Idesia-corrected ranks; 923 (445 + 478) on the frozen ranks, which is the figure that matched the step-7 report's 275 + 648 |
-| LSG pool, PS ≥ 18, Idesia-corrected (canonical since 2026-09-09, ms2-lsg C2) | 1,611 = 776 HAP1 (433 PS18 + 343 PS19) + 835 HAP2 (497 PS18 + 338 PS19) |
-| LSG pool, frozen genEra call (the pool the chapter text reports; not called a "12-species panel" pool since MS2 audit A38 found that run searched nr only) | 1,725 = 842 HAP1 (392 + 450) + 883 HAP2 (454 + 429); carried per gene as `ps.frz` |
+| private ∩ PS ≥ 18 (browse query) | **923** (445 HAP1 + 478 HAP2), on the frozen call; matches the step-7 report's 275 + 648 |
+| LSG pool = rank ≥ 18 in the frozen genEra call (Chen, 2026-09-21: it does not change) | 1,725 = 842 HAP1 (392 PS18 + 450 PS19) + 883 HAP2 (454 + 429) |
+| pool genes at rank ≥ 18 in the rerun that added Idesia (a pass count, not a pool; `ps.rr`, `qc.rr`) | 776 HAP1 + 835 HAP2; 66 + 48 fall below |
+| pool genes in the chapter's post-QC set (`qc.post`, passes all four checks) | 589 HAP1 + 625 HAP2 |
 | HAP1↔HAP2 allele pairs | 51,862 |
 | expression | 652 samples, 28 studies, 38 BioProjects |
 | P. trichocarpa reciprocal 1:1 | 46,141 |

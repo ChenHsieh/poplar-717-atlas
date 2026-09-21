@@ -240,15 +240,27 @@ def main():
     check("every PAV 'not confirmed' target names a real gene", not bad_target,
           f"{len(bad_target)} dangling, e.g. {bad_target[:3]}" if bad_target else "")
 
-    # TODO 23: LSG evidence-quality flags. The forbidden fields encode an undecided pool
-    # correction (see sources/lsg_qc_flags.provenance.json) and must never reach a shard,
-    # under ANY key name -- checked by serialising each qc record and searching the text,
-    # not by checking a fixed key list that a future edit could rename around.
-    FORBIDDEN = ("qc_survivor", "in_idesia_corrected_pool")
-    qc_bad = [gid for gid, (_, _, rec) in genes.items()
-              if rec.get("qc") and any(f in json.dumps(rec["qc"]) for f in FORBIDDEN)]
-    check("no forbidden LSG QC field reaches any shard", not qc_bad,
-          f"{len(qc_bad)} records, e.g. {qc_bad[:3]}" if qc_bad else "")
+    # LSG evidence flags (Chen's ruling, 2026-09-21: the pool is the frozen 842/883 and every
+    # check is a per-gene flag). Until that day the rerun flag and the post-QC set were FORBIDDEN
+    # here, because they encoded a pool change nobody had ruled on. Now they are wanted, so the
+    # check is the opposite one: both are present, and each says exactly what it claims.
+    #   qc.rr   == the gene is in the pool and falls below rank 18 in the rerun (ps.rr)
+    #   qc.post == passes all four checks: not rr, not tblastn, not abSENSE reject, not WGD-era
+    rr_bad, post_bad = [], []
+    for gid, (_, _, rec) in genes.items():
+        q = rec.get("qc")
+        if not q:
+            continue
+        rr = (rec.get("ps") or {}).get("rr")
+        if q.get("rr") != bool(rr and not rr.get("lsg")):
+            rr_bad.append(gid)
+        if q.get("post") != (not q.get("rr") and not q.get("ret") and not q.get("abs")
+                             and not q.get("wgd")):
+            post_bad.append(gid)
+    check("every qc.rr flag agrees with the rerun rank on the same gene", not rr_bad,
+          f"{len(rr_bad)} records, e.g. {rr_bad[:3]}" if rr_bad else "")
+    check("every qc.post is exactly 'passes all four checks'", not post_bad,
+          f"{len(post_bad)} records, e.g. {post_bad[:3]}" if post_bad else "")
 
     # Genome map (section 2.4): the overview's 100kb bins and the per-chromosome index
     # are two INDEPENDENTLY built views of the same gene set. They must agree on gene
@@ -316,20 +328,22 @@ def main():
     check("manifest lsg_qc.pool_genes matches the shard count", want_qc == n_qc,
           f"manifest {want_qc} vs {n_qc} genes carrying qc")
 
-    # ---- the Idesia-corrected pool (TODO 26) ----------------------------------------------
-    # Three checks, and the second is the one that matters. The atlas shipped a withdrawn pool
-    # for four days because nothing compared the manifest's AGGREGATES against the per-gene
-    # records they summarise -- the same shape as TODO 24's stale facet index. Aggregates get
-    # recomputed here from the shards, never trusted.
+    # ---- the LSG pool: the frozen genEra call (Chen, 2026-09-21) ---------------------------
+    # The atlas once shipped a pool its source had changed, for four days, because nothing
+    # compared the manifest's AGGREGATES against the per-gene records they summarise. So every
+    # aggregate is recomputed here from the shards, per haplotype, never trusted.
     pool_by_hap = Counter()
     for gid, (hap, _, rec) in genes.items():
         if ((rec.get("ps") or {}).get("rank") or -1) >= 18:
             pool_by_hap[hap] += 1
-    want_pool = ((man.get("lsg_pool") or {}).get("canonical") or {}).get("total")
-    check("manifest lsg_pool total matches the shard pool",
-          want_pool == sum(pool_by_hap.values()),
-          f"manifest {want_pool} vs {sum(pool_by_hap.values())} genes at PS >= 18 "
-          f"({dict(pool_by_hap)})")
+    lp = (man.get("lsg_pool") or {}).get("pool") or {}
+    check("manifest lsg_pool matches the shard pool, per haplotype",
+          (lp.get("hap1"), lp.get("hap2")) == (pool_by_hap["hap1"], pool_by_hap["hap2"]),
+          f"manifest {lp.get('hap1')}/{lp.get('hap2')} vs shards {dict(pool_by_hap)}")
+    check("the pool is the frozen genEra call, 842 HAP1 + 883 HAP2",
+          (pool_by_hap["hap1"], pool_by_hap["hap2"]) == (842, 883), f"{dict(pool_by_hap)}")
+    check("every pool gene carries its qc flags", n_qc == sum(pool_by_hap.values()),
+          f"{n_qc} qc records for {sum(pool_by_hap.values())} pool genes")
 
     ladder = (man.get("phylostrat") or {}).get("ladder") or {}
     lad_bad = []
@@ -629,13 +643,17 @@ def main():
           f"{len(kar_slot_bad)} problems, e.g. {kar_slot_bad[:3]}" if kar_slot_bad
           else f"{len(kar_tables)} ancestral-gene tables")
 
-    # ps.frz is the withdrawn call, and exists only where the two panels disagree.
-    frz = [gid for gid, (_, _, rec) in genes.items() if (rec.get("ps") or {}).get("frz")]
-    frz_same = [gid for gid in frz
-                if (genes[gid][2]["ps"]["frz"] or {}).get("rank") == genes[gid][2]["ps"]["rank"]]
-    check("ps.frz appears only where the corrected and withdrawn ranks differ", not frz_same,
-          f"{len(frz_same)} genes carry a frz identical to their rank" if frz_same
-          else f"{len(frz)} genes changed rank")
+    # ps.rr is the rerun that added Idesia, kept only where its rank differs from the frozen call
+    # (ps.rank). ps.frz was the reverse arrangement, used 2026-09-10 to 09-21, and must be gone.
+    rr_genes = [gid for gid, (_, _, rec) in genes.items() if (rec.get("ps") or {}).get("rr")]
+    rr_same = [gid for gid in rr_genes
+               if genes[gid][2]["ps"]["rr"].get("rank") == genes[gid][2]["ps"].get("rank")]
+    frz_left = [gid for gid, (_, _, rec) in genes.items() if "frz" in (rec.get("ps") or {})]
+    check("ps.rr appears only where the rerun's rank differs from the frozen call", not rr_same,
+          f"{len(rr_same)} genes carry an rr identical to their rank" if rr_same
+          else f"{len(rr_genes)} genes differ in the rerun")
+    check("no ps.frz left over from the 2026-09-10 arrangement", not frz_left,
+          f"{len(frz_left)} records, e.g. {frz_left[:3]}" if frz_left else "")
 
     # CRE / promoter layer: every gene must carry it, family counts must sum to the
     # stored total, and TATA position (when set) must lie inside the promoter window.

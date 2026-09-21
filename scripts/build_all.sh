@@ -46,8 +46,8 @@ STAGES=(
   "repo|patch_duplicate_partners.py|array members + duplicate co-expression (after build_layers, which writes td and arrays.json)"
   "repo|patch_td_pair_ks.py|per-PAIR tandem dS (after patch_duplicate_partners, which writes the td.mem it keys on)"
   "repo|patch_wgd_combined_call.py|route C combined Ks+topology WGD call, BESIDE the canonical letters (after patch_dup_v9_and_pav, which writes the dup.s/dup.a it is compared against)"
-  "repo|patch_pool_idesia.py|Idesia-corrected LSG pool (after build_phylostrat; MUST precede patch_lsg_qc)"
-  "repo|patch_lsg_qc.py|LSG evidence-quality flags (after patch_pool_idesia -- it drops rows for genes the corrected pool no longer holds)"
+  "repo|patch_pool_frozen.py|LSG pool = the frozen genEra call, with the Idesia rerun kept beside it (after build_phylostrat; MUST precede patch_lsg_qc)"
+  "repo|patch_lsg_qc.py|LSG evidence flags on every pool gene, the Idesia rerun included (after patch_pool_frozen, which sets the pool it flags)"
   "repo|patch_proteomics_v2.py|proteomics re-search, genome-wide (after build_layers, which writes the Tier-1 shape this replaces)"
   "repo|patch_kaks.py|Ka/Ks vs P. trichocarpa"
   "repo|build_cre.py|promoter/CRE layer"
@@ -76,6 +76,9 @@ STAGES=(
 # reads the OneDrive tree, so it runs on the Mac; its patch stage, patch_karyotype.py, is above.
 # make_copy_search_source.py is the same kind again (tblastn against the v5.0 genomes, Sapelo2
 # only); its stage is patch_copies.py. Run it when a locus is added to its LOCI list.
+# make_pool_frozen_source.py too: it writes sources/lsg_pool_frozen.tsv.gz from ms2-lsg's frozen
+# pool table, read through git at the commit in sources/ms2_canon.pin.json, so it needs an ms2-lsg
+# clone (any machine). Its stage is patch_pool_frozen.py.
 #
 # DELIBERATELY NOT A STAGE: patch_leaf_tissue_analysis.py. It is a one-time correction to
 # already-shipped data; build_expression.py is fixed at source, so a real rebuild already

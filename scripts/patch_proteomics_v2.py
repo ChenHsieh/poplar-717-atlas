@@ -51,6 +51,15 @@ PUBLISHED_UNION_POOL = {"hap1": {18: (2, 433), 19: (1, 343)},
 GRADIENT_DATASET = "PXD025636"
 
 
+def rerun_rank(rec):
+    """The gene's rank in the genEra rerun that added Idesia, which is the ranking the owning
+    analysis's published tables use. Since 2026-09-21 `ps.rank` is the frozen call (Chen's
+    ruling: the pool is the frozen 842/883) and the rerun's rank sits under `ps.rr` wherever it
+    differs, so the owner's numbers are reproduced from here, never from `ps.rank`."""
+    ps = rec.get("ps") or {}
+    return (ps.get("rr") or ps).get("rank")
+
+
 def gene_class(rank):
     """Copied from make_proteomics_v2_source.py, which copies the owning analysis."""
     if rank is None:
@@ -80,7 +89,7 @@ def age_gradient(data_dir):
     for hap in ("hap1", "hap2"):
         for p in shard_paths(os.path.join(data_dir, "genes", hap)):
             for rec in json.load(open(p)).values():
-                rank = (rec.get("ps") or {}).get("rank")
+                rank = rerun_rank(rec)
                 c = gene_class(rank)
                 ms = (rec.get("prot") or {}).get("ms") or {}
                 n[(hap, c)] += 1
@@ -89,7 +98,7 @@ def age_gradient(data_dir):
                     union[(hap, rank, "n")] += 1
                     union[(hap, rank, "det")] += (ms.get("n") or 0) > 0
     out = {"dataset": GRADIENT_DATASET,
-           "note": "percent of genes with a peptide in this dataset, per haplotype, never pooled",
+           "note": "percent of genes with a peptide in this dataset, per haplotype, never pooled; strata are those of the genEra rerun that added Idesia, as the owning analysis reports them",
            "pool_union_all_datasets": {}}
     for hap in ("hap1", "hap2"):
         out[hap] = {c: round(100 * det[(hap, c)] / n[(hap, c)], 3)
@@ -159,7 +168,7 @@ def main():
                 patched += 1
                 if m["n"]:
                     detected[hap] += 1
-                    if ((rec.get("ps") or {}).get("rank") or -1) >= 18:
+                    if (rerun_rank(rec) or -1) >= 18:   # the owner counts rerun strata
                         pool_detected += 1
                 if m.get("abl") == 0:
                     undetectable[hap] += 1

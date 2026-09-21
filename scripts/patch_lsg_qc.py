@@ -1,31 +1,30 @@
 #!/usr/bin/env python3
-"""TODO 23: fold the ms2-lsg agent's per-gene LSG evidence-quality flags into the shard.
+"""Per-gene evidence flags on EVERY gene of the LSG pool, the rerun that added Idesia included.
 
-Source already delivered and Chen-approved for shipping: sources/lsg_qc_flags.tsv.gz
-(1,725 rows, the LSG pool only) + its provenance sidecar. This script only builds the
-per-gene card data from that already-settled file -- read-only against it.
+RULING (Chen, 2026-09-21; MS2_2026 CLAUDE.md commit 1e698f2). The pool is the frozen genEra call,
+842 HAP1 + 883 HAP2, and every check on it is a flag: "for most of the analysis they are applied
+and we plot the post QC for stronger signal but when looking for available candidates they are
+used to flag because the pool is already small". A gene page is a candidate view, so it shows
+every flag and drops nothing.
 
-UPDATED 2026-09-10 (TODO 26/27). Two things changed under this script's feet:
+WHAT CHANGED 2026-09-21. This script used to DROP the 114 genes that fall below rank 18 in the
+Idesia rerun, because the atlas then treated that rerun as the pool. Those genes are pool genes
+again, and the rerun is one of their flags. Two fields are added:
+  rr    the gene falls below rank 18 in the rerun that added Idesia and searched the full
+        comparison panel (66 HAP1 + 48 HAP2). Read from sources/lsg_pool_idesia.tsv.gz, and
+        asserted to agree with the ps.rr that patch_pool_frozen.py wrote.
+  post  the gene is in the chapter's post-QC set, i.e. passes all four checks: not rr, not a
+        tblastn retraction, not an abSENSE rejection, not WGD-era Ks. 589 HAP1 + 625 HAP2. This
+        is ms2-lsg's `qc_survivor` column; check_ms2_canon.py compares it gene by gene.
+`clean` is gone: it meant the three checks without the rerun, it never meant "no flag", and the
+card that printed it hid 389 genes' other flags behind "No evidence-quality flag raised".
 
-  * The pool moved. `sources/lsg_qc_flags.tsv.gz` has 1,725 rows because it was cut against
-    the frozen 12-species panel, which upstream WITHDREW on 2026-09-09 in favour of the
-    Idesia-corrected 776/835. 114 of its rows are now for genes outside the pool. The
-    source's own scope rule settles what to do with them -- "a non-pool gene has no
-    young-age claim to qualify" -- so they are DROPPED, not carried and not silently kept.
-    Nothing is lost by dropping them: patch_pool_idesia.py records the withdrawn call on
-    every moved gene under `ps.frz`, so the gene page still shows that it used to be a pool
-    gene and what it was called.
-  * The abSENSE flags this file ships were calibrated for the first time (item 27), and the
-    result is not reassuring. The numbers now travel with the flags, in manifest.lsg_qc.
-
-Three constraints from the sidecar, load-bearing, checked here rather than just trusted:
-  1. Flags, not filters. This script never changes which genes are in the pool -- it only
-     adds a `qc` key to shards that are ALREADY in the pool (g.ps.rank >= 18), asserted.
-  2. `qc_survivor` and `in_idesia_corrected_pool` are not in the source file at all --
-     asserted absent from its header, so this script cannot ship them even by accident.
-  3. abSENSE fields are copied as-is (hdf flag, verdict string), never re-derived into a
-     yes/no "is this gene old" claim -- that reinterpretation is exactly what the sidecar
-     warns against, so the JS card must render the flag names, not a paraphrase of them.
+Constraints, checked here rather than trusted:
+  1. Flags, not filters. The pool is set by patch_pool_frozen.py; this adds `qc` to exactly the
+     genes it put in the pool, and asserts every source row lands on one.
+  2. abSENSE fields are copied as-is (hdf flag, verdict string), never re-derived into a yes/no
+     "is this gene old" claim; the card renders the flag names, and the calibration travels in
+     manifest.lsg_qc.
 """
 import csv
 import gzip
@@ -37,8 +36,14 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
 SRC = os.path.join(ROOT, "sources", "lsg_qc_flags.tsv.gz")
+RERUN = os.path.join(ROOT, "sources", "lsg_pool_idesia.tsv.gz")
 
-FORBIDDEN_COLUMNS = {"qc_survivor", "in_idesia_corrected_pool"}
+# The atlas DERIVES the rerun flag and the post-QC set from its own two sources and checks both
+# against ms2-lsg (check_ms2_canon.py). A second copy arriving in the flag source could disagree
+# with the derivation silently, so the source must not carry them.
+FORBIDDEN_COLUMNS = {"qc_survivor", "in_idesia_corrected_pool", "canonical_label", "group"}
+WANT = {"pool": {"HAP1": 842, "HAP2": 883}, "rr": {"HAP1": 66, "HAP2": 48},
+        "post": {"HAP1": 589, "HAP2": 625}}
 
 
 def tf(v):
@@ -47,22 +52,26 @@ def tf(v):
 
 def main():
     with gzip.open(SRC, "rt") as fh:
-        text = fh.read()
-    rows = list(csv.DictReader(io.StringIO(text), delimiter="\t"))
-    header = set(rows[0])
-    forbidden_present = FORBIDDEN_COLUMNS & header
+        rows = list(csv.DictReader(io.StringIO(fh.read()), delimiter="\t"))
+    forbidden_present = FORBIDDEN_COLUMNS & set(rows[0])
     assert not forbidden_present, f"forbidden column(s) present in the source file: {forbidden_present}"
-    print(f"source: {len(rows)} rows, header clean of {FORBIDDEN_COLUMNS}")
+    with gzip.open(RERUN, "rt") as fh:
+        rerun = {r["gene_id"]: r for r in csv.DictReader(io.StringIO(fh.read()), delimiter="\t")}
+    print(f"source: {len(rows)} rows, header clean of {sorted(FORBIDDEN_COLUMNS)}")
 
-    qc = {}
+    qc, hap_of = {}, {}
     for r in rows:
-        qc[r["gene_id"]] = {
+        g = r["gene_id"]
+        falls = tf(rerun[g]["frozen_is_lsg"]) and not tf(rerun[g]["is_lsg"])
+        three = tf(r["qc_clean"])   # NOT tblastn AND NOT abSENSE reject AND NOT WGD-era, per s45
+        qc[g] = {
+            "rr": falls,
             "ret": tf(r["tblastn_retract"]),
             "abs": tf(r["absense_reject"]),
             "hdf": r["absense_hdf_flag"],
             "verdict": r["absense_verdict"],
             "wgd": tf(r["wgd_flagged"]),
-            "clean": tf(r["qc_clean"]),
+            "post": three and not falls,
             "syn_og": r["synteny_og_contested"] == "1",
             "syn_twin": r["synteny_twin_contested"] == "1",
             "syn_any": r["synteny_contested_any"] == "1",
@@ -70,97 +79,68 @@ def main():
             "short": r["protein_len_lt100"] == "1",
             "stable": tf(r["sens_stable"]),
         }
+        # the three-check roll-up must be what s45 says it is, or `post` means something else
+        assert three == (not qc[g]["ret"] and not qc[g]["abs"] and not qc[g]["wgd"]), g
+        hap_of[g] = r["hap"]
 
-    genes_dir = os.path.join(DATA, "genes")
-    patched, dropped, stale, missing = 0, 0, [], []
-    shipped = set()   # the genes that actually carry a qc record when this finishes
+    patched, orphan, mismatch = set(), [], []
     for hap in ("hap1", "hap2"):
-        for dp, _, fs in os.walk(os.path.join(genes_dir, hap)):
+        for dp, _, fs in os.walk(os.path.join(DATA, "genes", hap)):
             for fn in fs:
                 if not fn.endswith(".json"):
                     continue
                 p = os.path.join(dp, fn)
                 shard = json.load(open(p))
-                changed = False
                 for gid, rec in shard.items():
                     ps = rec.get("ps") or {}
-                    in_pool = (ps.get("rank") or -1) >= 18
+                    in_pool = bool(ps.get("lsg"))
                     if gid not in qc:
-                        # a gene that ENTERED the pool would land here with no flags; the
-                        # corrected panel adds none, and patch_pool_idesia.py asserts that.
-                        if rec.pop("qc", None) is not None:
-                            changed = True
-                            dropped += 1
+                        rec.pop("qc", None)
+                        if in_pool:
+                            orphan.append(gid)          # a pool gene with no flag row
                         continue
                     if not in_pool:
-                        # source row for a gene the corrected panel took out of the pool
-                        stale.append(gid)
-                        if rec.pop("qc", None) is not None:
-                            changed = True
-                            dropped += 1
+                        orphan.append(gid)              # a flag row for a non-pool gene
                         continue
+                    rr = ps.get("rr")
+                    if qc[gid]["rr"] != bool(rr and not rr.get("lsg")):
+                        mismatch.append(gid)
                     rec["qc"] = qc[gid]
-                    shipped.add(gid)
-                    changed = True
-                    patched += 1
-                if changed:
-                    with open(p, "w") as fh:
-                        json.dump(shard, fh, separators=(",", ":"), sort_keys=True)
+                    patched.add(gid)
+                with open(p, "w") as fh:
+                    json.dump(shard, fh, separators=(",", ":"), sort_keys=True)
+    assert not orphan, (f"{len(orphan)} genes where the flag source and the pool disagree, e.g. "
+                        f"{orphan[:5]}. Run patch_pool_frozen.py first; the pool is set there.")
+    assert not mismatch, f"{len(mismatch)} genes where the rerun flag disagrees with ps.rr: {mismatch[:5]}"
+    assert patched == set(qc), f"{len(set(qc) - patched)} source rows never reached a shard"
 
-    print(f"patched {patched} of {len(qc)} source rows with a qc record")
-    print(f"  {len(stale)} source rows are for genes the corrected panel took out of the "
-          "pool -- this file is cut against the withdrawn 842/883 -- and are not shipped "
-          f"({dropped} qc records actually removed from shards this run; 0 on a re-run)")
-    # every source row must be accounted for: either patched, or dropped because the
-    # corrected panel took its gene out of the pool. Anything left over is a gene the
-    # source names and no shard contains, which is a different and worse problem.
-    if patched + len(stale) != len(qc):
-        unfound = set(qc)
-        for hap in ("hap1", "hap2"):
-            for dp, _, fs in os.walk(os.path.join(genes_dir, hap)):
-                for fn in fs:
-                    if fn.endswith(".json"):
-                        unfound -= set(json.load(open(os.path.join(dp, fn))))
-        assert not unfound, f"{len(unfound)} qc genes never matched a shard: {list(unfound)[:5]}"
-        raise AssertionError(
-            f"{len(qc)} source rows, but {patched} patched + {len(stale)} out-of-pool does "
-            "not account for them all, and every gene does exist in a shard")
+    by = lambda key: {h: sum(1 for g in qc if hap_of[g] == h and qc[g][key]) for h in ("HAP1", "HAP2")}
+    got = {"pool": {h: sum(1 for g in qc if hap_of[g] == h) for h in ("HAP1", "HAP2")},
+           "rr": by("rr"), "post": by("post")}
+    assert got == WANT, f"counts {got}, expected {WANT}"
+    print(f"flags on all {len(patched)} pool genes; per haplotype {got}")
 
     man_path = os.path.join(DATA, "meta", "manifest.json")
     man = json.load(open(man_path))
-    # counted over what SHIPPED, not over the source file. The source is cut against the
-    # withdrawn pool, so counting it would publish flag totals for 114 genes whose cards
-    # do not exist -- the exact shape of defect TODO 24 was about.
-    ship = [qc[g] for g in shipped]
     man["lsg_qc"] = {
-        "pool_genes": len(ship),
-        "source_rows": len(qc),
-        "rows_dropped_out_of_corrected_pool": len(stale),
-        "flags": {
-            "tblastn_retract": sum(1 for v in ship if v["ret"]),
-            "absense_reject": sum(1 for v in ship if v["abs"]),
-            "wgd_flagged": sum(1 for v in ship if v["wgd"]),
-            "synteny_contested_any": sum(1 for v in ship if v["syn_any"]),
-            "qc_clean": sum(1 for v in ship if v["clean"]),
+        "pool_genes": len(patched),
+        "per_haplotype": {
+            "pool": got["pool"],
+            "falls_below_18_in_the_idesia_rerun": got["rr"],
+            "tblastn_retract": by("ret"),
+            "absense_reject": by("abs"),
+            "wgd_flagged": by("wgd"),
+            "synteny_contested_any": by("syn_any"),
+            "short_orf": by("short"),
+            "diamond_sensitivity_unstable": {h: sum(1 for g in qc if hap_of[g] == h and not qc[g]["stable"])
+                                             for h in ("HAP1", "HAP2")},
+            "in_the_chapter_post_qc_set": got["post"],
         },
-        "flags_on_the_withdrawn_pool": {
-            "note": "the same five counts over all 1,725 source rows, i.e. against the "
-                    "frozen pool these flags were cut for. Kept so numbers already published "
-                    "against that pool stay checkable.",
-            "tblastn_retract": sum(1 for v in qc.values() if v["ret"]),
-            "absense_reject": sum(1 for v in qc.values() if v["abs"]),
-            "wgd_flagged": sum(1 for v in qc.values() if v["wgd"]),
-            "synteny_contested_any": sum(1 for v in qc.values() if v["syn_any"]),
-            "qc_clean": sum(1 for v in qc.values() if v["clean"]),
-        },
-        "note": "flags, not filters -- nothing here removes, renumbers or filters a gene, "
-                "and the atlas must not use these fields to shrink the pool count. The pool "
-                "size is set by data/meta manifest.lsg_pool, never by these flags.",
-        "source_pool": "This file was cut against the WITHDRAWN frozen pool (1,725 rows). "
-                       "Rows for genes the Idesia-corrected panel took out of the pool are "
-                       "dropped here, per the source's own scope rule that a non-pool gene "
-                       "has no young-age claim to qualify. The withdrawn call stays visible "
-                       "on those genes under ps.frz.",
+        "note": "Flags, not filters. Every one of the 1,725 pool genes carries its flags; nothing "
+                "here removes, renumbers or filters a gene. The chapter's post-QC set (passes all "
+                "four checks: the Idesia rerun, tblastn, abSENSE, WGD-era Ks) is used for its group "
+                "comparisons; on a gene page it is one line under the flags. Counts are pass or "
+                "flag counts, never a pool.",
         "absense_calibration": {
             "headline": "abSENSE flags are worst calibrated at exactly the boundary that "
                         "defines this pool, and biased in the direction that over-calls a "
@@ -191,10 +171,10 @@ def main():
                                             "prediction is pure out-of-sample extrapolation. "
                                             "0.59-0.61 is what the model achieves at that "
                                             "boundary on the easy cases.",
-            "not_retracted": "Nothing in the QC layer is withdrawn by this, and the pool "
-                             "correction does not rest on abSENSE at all -- 776/835 comes "
-                             "from genEra ranks with Idesia added. What is qualified is the "
-                             "per-gene HDF flag and any statement resting on it.",
+            "not_retracted": "Nothing in the QC layer is withdrawn by this, and neither the "
+                             "pool nor the Idesia-rerun flag rests on abSENSE: both come from "
+                             "genEra ranks. What is qualified is the per-gene HDF flag and any "
+                             "statement resting on it.",
         },
     }
     # NOTE: no data_version bump here. VERSION is the single source of truth and
@@ -203,7 +183,7 @@ def main():
     # line it printed was never true. Bump VERSION instead.
     with open(man_path, "w") as fh:
         json.dump(man, fh, indent=1, sort_keys=True)
-    print(f"flags: {man['lsg_qc']['flags']}")
+    print(f"manifest lsg_qc: {man['lsg_qc']['per_haplotype']}")
     return 0
 
 

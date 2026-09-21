@@ -82,8 +82,9 @@ def main():
     print(f"\nhome page 'lineage-specific candidates (PS >= 18)': renders {home_shipped}, "
           f"shards say {home_true}"
           + ("" if home_shipped == home_true else "   <<< the home page contradicts every other page"))
-    pool = (man.get("lsg_pool") or {}).get("canonical", {}).get("total")
-    print(f"manifest lsg_pool.canonical.total: {pool}")
+    lp = (man.get("lsg_pool") or {}).get("pool", {})
+    print(f"manifest lsg_pool.pool (the frozen genEra call): HAP1 {lp.get('hap1')} / HAP2 "
+          f"{lp.get('hap2')}")
 
     if stale:
         print(f"\n{len(stale)} STALE aggregate(s): {stale}")

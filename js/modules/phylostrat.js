@@ -7,13 +7,20 @@ const LSG_MIN = 18;
 
 const ABSENSE_VERDICT = {'a_retract_young_call': 'abSENSE retracts the young call', 'b_supports_lineage_specific': 'abSENSE supports lineage-specific', 'b_weak_low_sensitivity': 'abSENSE supports it, weakly (low sensitivity)', 'ancestral_sequence_present_unannotated': 'an ancestral sequence appears present but unannotated', 'ambiguous': 'abSENSE result is ambiguous', 'not_testable': 'not testable with abSENSE'};
 
-// `clean` is the QC funnel's survivor call, and it is the AND of exactly three checks: no
-// tblastn retraction, no abSENSE rejection, no WGD-era Ks. It says nothing about the synteny
-// contest, the short-ORF class or DIAMOND-sensitivity stability, so those are listed on every
-// gene that carries them, clean or not. Until 2026-09-21 a clean gene read "No evidence-quality
-// flag raised" and hid them: 389 pool genes (177 HAP1, 212 HAP2), 21 of them synteny-contested.
-function qcSummary(qc) {
+// Every pool gene carries all its flags (Chen, 2026-09-21: the pool is the frozen 842/883 and
+// every check is a per-gene flag; a gene page is a candidate view, so it drops nothing).
+// `post` is the chapter's post-QC set, used for its group comparisons: the gene passes all four
+// checks (the Idesia rerun, tblastn, abSENSE, WGD-era Ks). It is one line UNDER the flags, and
+// is never called "clean" -- a gene can be in that set and still carry a synteny contest, a
+// short ORF or a sensitivity flag, and until 2026-09-21 a "clean" line hid those on 389 genes.
+function qcSummary(qc, ps) {
   const flags = [];
+  if (qc.rr) {
+    const rr = (ps && ps.rr) || {};
+    flags.push(el('div', {}, el('span', { class: 'badge' }, 'Idesia rerun'),
+      ' falls below rank 18 in the rerun that added Idesia and searched the full comparison '
+      + `panel${rr.rank != null ? ` (PS${rr.rank} there)` : ''}.`));
+  }
   if (qc.ret) {
     flags.push(el('div', {}, el('span', { class: 'badge' }, 'tblastn'),
       ' a Salix hit contradicts the young call outright.'));
@@ -38,13 +45,12 @@ function qcSummary(qc) {
     flags.push(el('div', {}, el('span', { class: 'badge' }, 'WGD-era Ks'),
       ' minimum Ks falls in the salicoid-WGD era — may be an ohnolog, not a novelty.'));
   }
-  const other = [];
   if (qc.syn_any) {
-    other.push(el('div', {},
+    flags.push(el('div', {},
       'A 12-genome OrthoFinder rerun disputes this gene\'s orthogroup slot.'));
   }
   if (qc.short) {
-    other.push(el('div', {}, `Short ORF (${qc.plen} aa) — a known annotation-artifact class.`));
+    flags.push(el('div', {}, `Short ORF (${qc.plen} aa) — a known annotation-artifact class.`));
   }
   // `stable` is the source's sens_stable column: whether this gene's synteny call is the same
   // in the default and the --ultra-sensitive DIAMOND runs of the 12-genome GENESPACE rerun
@@ -52,22 +58,18 @@ function qcSummary(qc) {
   // field. Until 2026-09-21 this line said the chapter's headline result depended on the gene,
   // which the column never measured.
   if (qc.stable === false) {
-    other.push(el('div', {}, el('span', { class: 'badge' }, 'sensitivity'),
+    flags.push(el('div', {}, el('span', { class: 'badge' }, 'sensitivity'),
       ' the synteny call differs between the default and --ultra-sensitive DIAMOND runs.'));
   }
   return el('div', {},
-    qc.clean
-      // clean means ret and wgd are both false, so flags holds only the abSENSE line here --
-      // kept, because its calibration note matters most on exactly the calls it supports.
-      ? el('div', {},
-          el('div', { class: 'muted' }, 'Passes the QC funnel’s three checks: no tblastn '
-            + 'retraction, no abSENSE rejection, no WGD-era Ks.'),
-          ...flags)
-      : el('div', {}, ...flags),
-    other.length ? el('div', { style: 'margin-top:4px' }, ...other) : null,
+    el('div', {}, ...flags),
+    el('div', { style: 'margin-top:6px' },
+      el('span', { class: 'muted' }, 'In the chapter\u2019s post-QC set (passes all four checks): '),
+      el('strong', {}, qc.post ? 'yes' : 'no')),
     el('div', { class: 'muted', style: 'font-size:11px;margin-top:4px' },
       'Flags, not filters — nothing here removes or renumbers a gene, and the pool size is '
-      + 'never set by these fields; every claim about this gene should cite the flag alongside it.'));
+      + 'never set by these fields; every claim about this gene should cite the flag alongside it. '
+      + 'The four checks are the Idesia rerun, tblastn against Salix, abSENSE and WGD-era Ks.'));
 }
 
 function geneCard(g) {
@@ -90,42 +92,35 @@ function geneCard(g) {
       ? el('strong', {}, `yes — PS${p.rank}`)
       : el('span', { class: 'muted' }, `no (pool is PS ≥ ${LSG_MIN})`));
   }
-  if (p.frz && p.frz.rank != null) {
-    const left = p.frz.lsg && !(p.rank >= LSG_MIN);
-    add('Changed in Sept 2026',
+  // The rerun that added Idesia, where its rank differs from the frozen call shown above. For a
+  // pool gene that falls below rank 18 there, that is a FLAG (listed under Evidence quality);
+  // every other rank change is information only (Chen, 2026-09-21). The rerun was also the first
+  // run to search the full comparison panel -- the frozen call searched NCBI nr only -- so a
+  // change here is not always due to Idesia, and this card does not say it is.
+  if (p.rr && p.rr.rank !== undefined) {
+    const out = p.lsg && !p.rr.lsg;
+    add('Idesia rerun',
       el('div', {},
-        // Named "the frozen genEra call", not "withdrawn": the chapter text still reports that
-        // pool (Chen, 2026-09-20), so its numbers are correct statements about it. Not called a
-        // "12-species panel" call either: a 2026-09-21 consistency audit (MS2 A38) found the
-        // frozen run searched nr only, and Chen has not yet named it. Neutral until he does.
-        el('div', {}, `The frozen genEra call placed this gene at PS${p.frz.rank}`,
-          p.frz.name ? ` (${p.frz.name})` : '', '. On the Idesia-corrected panel it is ',
-          el('strong', {}, `PS${p.rank}`), p.name ? ` (${p.name})` : '', '.'),
-        // A pool exit left by a RANK change. Upstream QC values exist for it (the funnel ran on
-        // the frozen pool), but they are not why it left, and this atlas ships QC flags for the
-        // corrected pool only -- so say that, rather than implying it was never checked.
-        left
+        el('div', {}, 'The rerun that added Idesia and searched the full comparison panel places '
+          + 'this gene at ', el('strong', {}, p.rr.rank != null ? `PS${p.rr.rank}` : 'no rank'),
+          p.rr.name ? ` (${p.rr.name})` : '', '.'),
+        out
           ? el('div', { style: 'margin-top:3px' },
-              el('span', { class: 'badge' }, 'left the pool'),
-              ' this gene was a lineage-specific candidate in the frozen call and is not one on '
-              + 'the corrected panel. It left by a rank change, not by failing a QC check; this '
-              + 'atlas shows QC flags only for genes in the corrected pool.')
+              'That is below rank 18, so it is a flag on this pool gene (see Evidence quality). '
+              + 'The gene stays in the pool: the pool is the frozen call.')
           : null,
-        (p.frz.rank === 19 && p.rank === 18)
+        (p.rank === 19 && p.rr.rank === 18)
           ? el('div', { style: 'margin-top:3px' },
-              'It moved from the hybrid-only stratum to the Populus-wide one, and stayed in the '
-              + 'pool. 179 genes made exactly this move; none moved the other way.')
+              'Hybrid-only in the frozen call, Populus-wide in the rerun. 179 pool genes do this; '
+              + 'none moves the other way.')
           : null,
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:3px' },
-          'Why: Idesia polycarpa is the only Salicaceae genome available from outside Saliceae, '
-          + 'and it was missing from the original panel — a gap sitting exactly where a '
-          + 'Populus-specific call gets made, since a gene kept in Idesia but lost in Salix reads '
-          + 'as Populus-specific. Adding it moved 766 genes and took 114 out of the pool, and it '
-          + 'put none in. Movement in one direction only is what you expect from adding real '
-          + 'homology signal rather than from noise.')));
+          'Idesia polycarpa is the only Salicaceae genome available from outside Saliceae. That '
+          + 'rerun was also the first to search the full comparison panel (the frozen call '
+          + 'searched NCBI nr only), so a rank change there is not always due to Idesia.')));
   }
   if (g.qc) {
-    kv.append(el('dt', {}, 'Evidence quality'), el('dd', {}, qcSummary(g.qc)));
+    kv.append(el('dt', {}, 'Evidence quality'), el('dd', {}, qcSummary(g.qc, p)));
   }
   if (p.fnd) {
     const s = p.fnd.fam;
@@ -197,12 +192,11 @@ async function overview(man) {
   const max = Math.max(...h1.map((r) => r.n), ...h2.map((r) => r.n));
   const naH1 = (ps.by_rank.hap1 || {}).NA || 0;
   const naH2 = (ps.by_rank.hap2 || {}).NA || 0;
-  // The frozen pool is what the chapter text reports (Chen, 2026-09-20: 842/883 in the text,
-  // named as frozen, with 776/835 alongside as the robustness check). ms2-lsg
-  // docs/CORRECTIONS.md C2 made the corrected pool canonical, so it leads here; the frozen one
-  // is named rather than hidden, so a reader arriving from the chapter finds its numbers.
-  // "Frozen genEra pool", not "12-species panel": see the note in geneCard.
-  const frz = (man.lsg_pool || {}).withdrawn || {};
+  // The pool is the frozen genEra call and does not change (Chen, 2026-09-21). The rerun that
+  // added Idesia and the chapter's post-QC set are PASS COUNTS of checks on it, read from the
+  // manifest, never presented as pools.
+  const rr = ((man.lsg_pool || {}).rerun || {}).at_rank_18_or_above || {};
+  const post = ((man.lsg_qc || {}).per_haplotype || {}).in_the_chapter_post_qc_set || {};
   const poolStat = (hap, rows) => el('div', { class: 'stat' },
     el('div', { class: 'n' }, fmt(pool[hap])),
     el('div', { class: 'l' }, `${hap} LSG pool: ${fmt(at(rows, 18))} PS18 · ${fmt(at(rows, 19))} PS19`));
@@ -212,12 +206,13 @@ async function overview(man) {
     el('p', { class: 'sub' },
       'genEra assigns each gene to the oldest phylostratum in which a homolog is detectable, '
       + 'over 19 strata from cellular organisms to this hybrid. The chapter’s '
-      + 'lineage-specific gene pool is PS ≥ 18; PS17 Saliceae is flanking context, not pool. '
-      + `Counts here are on the Idesia-corrected panel: ${fmt(pool.HAP1)} HAP1 and `
-      + `${fmt(pool.HAP2)} HAP2 genes. The chapter text reports the frozen genEra pool, `
-      + `${fmt(frz.hap1)} HAP1 and ${fmt(frz.hap2)} HAP2, with the corrected pool beside it as a `
-      + 'robustness check; every gene whose stratum differs between the two calls says so on its '
-      + 'own page.'),
+      + 'lineage-specific gene pool is PS ≥ 18 in the frozen genEra call: '
+      + `${fmt(pool.HAP1)} HAP1 and ${fmt(pool.HAP2)} HAP2 genes, and it does not change. PS17 `
+      + 'Saliceae is flanking context, not pool. Every check on the pool is a flag on the gene, '
+      + `shown on its page: ${fmt(rr.hap1)} HAP1 and ${fmt(rr.hap2)} HAP2 pool genes stay at `
+      + 'rank 18 or above in the rerun that added Idesia and searched the full comparison panel, '
+      + `and ${fmt(post.HAP1)} HAP1 and ${fmt(post.HAP2)} HAP2 pass all four checks the chapter `
+      + 'uses for its post-QC set. Those are pass counts, not pools.'),
     el('div', { class: 'stat-row' },
       poolStat('HAP1', h1),
       poolStat('HAP2', h2),
@@ -242,7 +237,7 @@ async function overview(man) {
           + 'still get a rank, so the flag is the only thing separating a confident call from a '
           + 'coin flip — every affected gene page says so.'),
         el('li', {}, el('strong', {}, `${fmt(naH1)} HAP1 and ${fmt(naH2)} HAP2 genes are unplaced. `),
-          'No rank at all on the corrected panel. They are excluded from the pool and from these '
+          'No rank at all in the frozen call. They are excluded from the pool and from these '
           + 'counts rather than defaulted in either direction.'),
         el('li', {}, el('strong', {}, 'A young stratum is not proof of a young gene. '),
           'Phylostratigraphy under-detects fast-evolving homologs, so PS ≥ 18 is a candidate '

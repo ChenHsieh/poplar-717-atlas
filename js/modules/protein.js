@@ -486,15 +486,18 @@ async function overview(man) {
           + 'genes are undetectable this way and say so on their own page.'),
         // Numbers below are per haplotype, recomputed from the shards by
         // scripts/check_prose_numbers.py, and equal to the owning analysis's
-        // aspen_detection_by_class.tsv. Until 2026-09-21 this line gave haplotype-pooled
+        // aspen_detection_by_class.tsv, which ranks genes by the Idesia rerun (ps.rr where it
+        // differs from the frozen call); a recompute on frozen ranks is asked of that analysis. Until 2026-09-21 this line gave haplotype-pooled
         // figures ending in "0.12% of the lineage-specific pool" (2 of 1,611): the published
         // Tier 2 count before one of its two hits was withdrawn upstream on 2026-09-09. The
         // shards never carried the withdrawn hit; only this sentence did.
         el('li', {}, el('strong', {}, 'Detection falls monotonically with gene age. '),
-          'In the deepest dataset (PXD025636), 41.8% of HAP1 and 41.9% of HAP2 ancient genes '
+          'Strata here are those of the genEra rerun that added Idesia, the ranking the owning '
+          + 'analysis reports (the pool itself is the frozen call). In the deepest dataset '
+          + '(PXD025636), 41.8% of HAP1 and 41.9% of HAP2 ancient genes '
           + '(PS1-2) are observed, 12.7% and 12.8% of conserved ones (PS3-12), 5.3% and 6.6% '
           + 'of rosid-level ones (PS13-15), 1.3% and 4.6% of Salicaceae-level ones (PS16-17), '
-          + 'and 1 of 776 HAP1 and 0 of 835 HAP2 lineage-specific pool genes. Across all five '
+          + 'and 1 of 776 HAP1 and 0 of 835 HAP2 genes at rank 18 or above. Across all five '
           + 'datasets, 2 of 433 HAP1 and 5 of 497 HAP2 PS18 genes and 1 of 343 HAP1 and 0 of '
           + '338 HAP2 PS19 genes carry a peptide. That ordering is what you would expect if the '
           + 'measurement tracks real protein abundance and conservation rather than noise, '

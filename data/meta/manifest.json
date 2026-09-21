@@ -47,6 +47,44 @@
   "the_standing_limit": "ATAC and H3K4me3 establish THAT a locus has a promoter, never WHERE transcription starts. Only a 5'-end method does that, and none exists for any Populus.",
   "why_expression_gates_it": "The chromatin is leaf only. A gene silent in leaf correctly carries no promoter mark there, so an absent mark says nothing about the gene unless you know it was expressed. The source analysis's first run failed its own gate for exactly this reason."
  },
+ "copies": {
+  "genes": {
+   "PtXaAlbH.10G043900": "nrx1",
+   "PtXaTreH.10G046700": "nrx1",
+   "PtXaTreH.10G046800": "nrx1",
+   "PtXaTreH.10G046900": "nrx1",
+   "PtXaTreH.10G047000": "nrx1",
+   "PtXaTreH.10G047100": "nrx1",
+   "PtXaTreH.10G047200": "nrx1",
+   "PtXaTreH.10G047600": "nrx1"
+  },
+  "loci": {
+   "nrx1": {
+    "desc": "nucleoredoxin",
+    "hap": "hap1",
+    "name": "NRX1",
+    "reference": "PtXaTreH.10G047000",
+    "summary": {
+     "hap1": {
+      "annotated": 7,
+      "max_cov_pct": 95.0,
+      "pieces": 8,
+      "unannotated": 1
+     },
+     "hap2": {
+      "annotated": 1,
+      "max_cov_pct": 47.5,
+      "pieces": 3,
+      "unannotated": 1
+     }
+    }
+   }
+  },
+  "method": "tblastn (BLAST+ 2.14.1) of every array protein against each whole haplotype genome; see scripts/make_copy_search_source.py",
+  "note": "Copies found in the genome SEQUENCE, so a panel can show pieces the annotation does not call. Only the loci listed here have been searched; a gene without a panel has not been searched, which is not the same as having no copies.",
+  "source": "sources/copy_search.json",
+  "source_sha256": "a585338949104a65b97c8e7c50fdbc7067f57a71999a4881f71ab112a9c06523"
+ },
  "corrections": [
   {
    "after_tissue_wt_control_n": {
@@ -161,7 +199,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.14.0",
+ "data_version": "0.15.0",
  "duplicate_coexpr": {
   "basis": "Pearson r on log2(ComBat-corrected TPM + 1) over 652 samples -- the same matrix the neighbour co-expression (nb) uses, because a 652-sample correlation spans 28 studies and is therefore a cross-study comparison.",
   "coverage": "A pair needs BOTH partners in the ComBat matrix (59,599 of 63,960 genes), so 7,707 of 32,333 duplicate pairs have no value. Absence means 'not comparable', not 'uncorrelated'.",
@@ -262,7 +300,7 @@
   }
  },
  "facets": {
-  "bytes": 2932396,
+  "bytes": 2932464,
   "cols": [
    "hap",
    "chr",
@@ -562,32 +600,39 @@
   "proteomics_note": "Three independent PXD datasets, reported separately. Detection rates differ ~4x (3,989 / 18,739 / 21,449 genes), so a gene absent from one is not undetected."
  },
  "lsg_pool": {
-  "adopted": "Chen, 2026-09-09; ms2-lsg docs/CORRECTIONS.md C2",
-  "canonical": {
-   "hap1": 776,
-   "hap2": 835,
-   "panel": "13 genomes, Idesia polycarpa added",
-   "total": 1611
-  },
-  "entered_pool": 0,
-  "genes_with_a_changed_rank": 766,
-  "genes_with_a_changed_tax_rep": 0,
-  "left_pool": 114,
-  "not_licensed": "The corrected pool is not evidence that the surviving calls are modelled-safe. abSENSE corrects detection FAILURE (sensitivity); a missing genome is taxon SAMPLING (coverage). 86% of the genes Idesia removed were `no_prediction` in the frozen abSENSE run.",
-  "note": "PS18 and PS19 are never pooled. 179 genes moved PS19 -> PS18 and stayed in the pool; none moved the other way. Numbers published against the frozen pool are correct statements about that pool and are not retracted -- they must name it.",
-  "ps18_ps19": {
-   "HAP1_PS18": 433,
-   "HAP1_PS19": 343,
-   "HAP2_PS18": 497,
-   "HAP2_PS19": 338
-  },
-  "tax_rep_note": "tax_rep is the fraction of the panel's genomes represented in the gene's stratum, so it moves for genes whose RANK did not: the denominator went from 12 genomes to 13. Not a re-call, a re-scaling.",
-  "withdrawn": {
+  "never": "PS18 and PS19 are never pooled without their split.",
+  "pool": {
+   "call": "the frozen genEra call (an NCBI nr search; its configured comparison panel was never searched)",
    "hap1": 842,
    "hap2": 883,
-   "panel": "12 genomes, frozen genEra panel",
+   "ps18_ps19": {
+    "HAP1_PS18": 392,
+    "HAP1_PS19": 450,
+    "HAP2_PS18": 454,
+    "HAP2_PS19": 429
+   },
    "total": 1725
-  }
+  },
+  "rerun": {
+   "at_rank_18_or_above": {
+    "hap1": 776,
+    "hap2": 835
+   },
+   "genes_with_a_different_rank": 766,
+   "note": "These are pass counts of one check, not a pool. A rank change here is not always due to Idesia, because the frozen call never searched the panel at all.",
+   "pool_genes_below_rank_18": {
+    "hap1": 66,
+    "hap2": 48
+   },
+   "ps18_ps19": {
+    "HAP1_PS18": 433,
+    "HAP1_PS19": 343,
+    "HAP2_PS18": 497,
+    "HAP2_PS19": 338
+   },
+   "what": "the genEra rerun that added Idesia polycarpa and was the first to search the full comparison panel"
+  },
+  "ruling": "Chen, 2026-09-21: the pool is the frozen 842/883 and does not change; every check on it, the rerun that added Idesia included, is a per-gene flag. MS2_2026 CLAUDE.md, commit 1e698f2."
  },
  "lsg_qc": {
   "absense_calibration": {
@@ -613,29 +658,49 @@
    },
    "headline": "abSENSE flags are worst calibrated at exactly the boundary that defines this pool, and biased in the direction that over-calls a young gene. Quote the flag with this number, never alone.",
    "measured": "2026-09-09, abSENSE --predall over 868,127 predicted-vs-observed bitscore pairs (ms2-lsg analyses/absense_hdf, jobs 48015768_1/_2)",
-   "not_retracted": "Nothing in the QC layer is withdrawn by this, and the pool correction does not rest on abSENSE at all -- 776/835 comes from genEra ranks with Idesia added. What is qualified is the per-gene HDF flag and any statement resting on it.",
+   "not_retracted": "Nothing in the QC layer is withdrawn by this, and neither the pool nor the Idesia-rerun flag rests on abSENSE: both come from genEra ranks. What is qualified is the per-gene HDF flag and any statement resting on it.",
    "this_is_the_optimistic_bound": "It is measured in-sample, and on the wrong genes: a Salix pair only exists for a gene that HAS a Salix homolog, which by definition is not an LSG. For a real PS18 gene the Salix prediction is pure out-of-sample extrapolation. 0.59-0.61 is what the model achieves at that boundary on the easy cases."
   },
-  "flags": {
-   "absense_reject": 190,
-   "qc_clean": 1214,
-   "synteny_contested_any": 70,
-   "tblastn_retract": 200,
-   "wgd_flagged": 36
+  "note": "Flags, not filters. Every one of the 1,725 pool genes carries its flags; nothing here removes, renumbers or filters a gene. The chapter's post-QC set (passes all four checks: the Idesia rerun, tblastn, abSENSE, WGD-era Ks) is used for its group comparisons; on a gene page it is one line under the flags. Counts are pass or flag counts, never a pool.",
+  "per_haplotype": {
+   "absense_reject": {
+    "HAP1": 135,
+    "HAP2": 146
+   },
+   "diamond_sensitivity_unstable": {
+    "HAP1": 4,
+    "HAP2": 6
+   },
+   "falls_below_18_in_the_idesia_rerun": {
+    "HAP1": 66,
+    "HAP2": 48
+   },
+   "in_the_chapter_post_qc_set": {
+    "HAP1": 589,
+    "HAP2": 625
+   },
+   "pool": {
+    "HAP1": 842,
+    "HAP2": 883
+   },
+   "short_orf": {
+    "HAP1": 242,
+    "HAP2": 275
+   },
+   "synteny_contested_any": {
+    "HAP1": 53,
+    "HAP2": 53
+   },
+   "tblastn_retract": {
+    "HAP1": 116,
+    "HAP2": 112
+   },
+   "wgd_flagged": {
+    "HAP1": 22,
+    "HAP2": 23
+   }
   },
-  "flags_on_the_withdrawn_pool": {
-   "absense_reject": 281,
-   "note": "the same five counts over all 1,725 source rows, i.e. against the frozen pool these flags were cut for. Kept so numbers already published against that pool stay checkable.",
-   "qc_clean": 1227,
-   "synteny_contested_any": 106,
-   "tblastn_retract": 228,
-   "wgd_flagged": 45
-  },
-  "note": "flags, not filters -- nothing here removes, renumbers or filters a gene, and the atlas must not use these fields to shrink the pool count. The pool size is set by data/meta manifest.lsg_pool, never by these flags.",
-  "pool_genes": 1611,
-  "rows_dropped_out_of_corrected_pool": 114,
-  "source_pool": "This file was cut against the WITHDRAWN frozen pool (1,725 rows). Rows for genes the Idesia-corrected panel took out of the pool are dropped here, per the source's own scope rule that a non-pool gene has no young-age claim to qualify. The withdrawn call stays visible on those genes under ps.frz.",
-  "source_rows": 1725
+  "pool_genes": 1725
  },
  "modules": [
   "core",
@@ -656,54 +721,54 @@
  "phylostrat": {
   "by_rank": {
    "hap1": {
-    "1": 22770,
-    "10": 763,
-    "11": 862,
-    "12": 273,
-    "13": 126,
-    "14": 31,
-    "15": 71,
-    "16": 216,
-    "17": 92,
-    "18": 433,
-    "19": 343,
+    "1": 22769,
+    "10": 789,
+    "11": 856,
+    "12": 279,
+    "13": 110,
+    "14": 33,
+    "15": 73,
+    "16": 105,
+    "17": 154,
+    "18": 392,
+    "19": 450,
     "2": 2422,
     "3": 507,
     "4": 519,
     "5": 381,
-    "6": 1415,
-    "7": 164,
-    "8": 105,
-    "9": 617,
-    "NA": 27
+    "6": 1268,
+    "7": 209,
+    "8": 134,
+    "9": 655,
+    "NA": 32
    },
    "hap2": {
     "1": 22538,
-    "10": 727,
-    "11": 856,
-    "12": 271,
-    "13": 131,
-    "14": 26,
-    "15": 55,
-    "16": 208,
-    "17": 98,
-    "18": 497,
-    "19": 338,
+    "10": 746,
+    "11": 859,
+    "12": 276,
+    "13": 113,
+    "14": 30,
+    "15": 61,
+    "16": 100,
+    "17": 171,
+    "18": 454,
+    "19": 429,
     "2": 2386,
     "3": 503,
     "4": 523,
     "5": 355,
-    "6": 1395,
-    "7": 164,
-    "8": 103,
-    "9": 631,
+    "6": 1257,
+    "7": 201,
+    "8": 127,
+    "9": 676,
     "NA": 18
    }
   },
   "ladder": {
    "hap1": [
     {
-     "n": 22770,
+     "n": 22769,
      "name": "cellular organisms",
      "rank": 1
     },
@@ -728,72 +793,72 @@
      "rank": 5
     },
     {
-     "n": 1415,
+     "n": 1268,
      "name": "Embryophyta",
      "rank": 6
     },
     {
-     "n": 164,
+     "n": 209,
      "name": "Tracheophyta",
      "rank": 7
     },
     {
-     "n": 105,
+     "n": 134,
      "name": "Euphyllophyta",
      "rank": 8
     },
     {
-     "n": 617,
+     "n": 655,
      "name": "Spermatophyta",
      "rank": 9
     },
     {
-     "n": 763,
+     "n": 789,
      "name": "Magnoliopsida",
      "rank": 10
     },
     {
-     "n": 862,
+     "n": 856,
      "name": "Mesangiospermae",
      "rank": 11
     },
     {
-     "n": 273,
+     "n": 279,
      "name": "Pentapetalae",
      "rank": 12
     },
     {
-     "n": 126,
+     "n": 110,
      "name": "rosids",
      "rank": 13
     },
     {
-     "n": 31,
+     "n": 33,
      "name": "fabids",
      "rank": 14
     },
     {
-     "n": 71,
+     "n": 73,
      "name": "Malpighiales",
      "rank": 15
     },
     {
-     "n": 216,
+     "n": 105,
      "name": "Salicaceae",
      "rank": 16
     },
     {
-     "n": 92,
+     "n": 154,
      "name": "Saliceae",
      "rank": 17
     },
     {
-     "n": 433,
+     "n": 392,
      "name": "Populus",
      "rank": 18
     },
     {
-     "n": 343,
+     "n": 450,
      "name": "Populus tremula x Populus alba",
      "rank": 19
     }
@@ -825,72 +890,72 @@
      "rank": 5
     },
     {
-     "n": 1395,
+     "n": 1257,
      "name": "Embryophyta",
      "rank": 6
     },
     {
-     "n": 164,
+     "n": 201,
      "name": "Tracheophyta",
      "rank": 7
     },
     {
-     "n": 103,
+     "n": 127,
      "name": "Euphyllophyta",
      "rank": 8
     },
     {
-     "n": 631,
+     "n": 676,
      "name": "Spermatophyta",
      "rank": 9
     },
     {
-     "n": 727,
+     "n": 746,
      "name": "Magnoliopsida",
      "rank": 10
     },
     {
-     "n": 856,
+     "n": 859,
      "name": "Mesangiospermae",
      "rank": 11
     },
     {
-     "n": 271,
+     "n": 276,
      "name": "Pentapetalae",
      "rank": 12
     },
     {
-     "n": 131,
+     "n": 113,
      "name": "rosids",
      "rank": 13
     },
     {
-     "n": 26,
+     "n": 30,
      "name": "fabids",
      "rank": 14
     },
     {
-     "n": 55,
+     "n": 61,
      "name": "Malpighiales",
      "rank": 15
     },
     {
-     "n": 208,
+     "n": 100,
      "name": "Salicaceae",
      "rank": 16
     },
     {
-     "n": 98,
+     "n": 171,
      "name": "Saliceae",
      "rank": 17
     },
     {
-     "n": 497,
+     "n": 454,
      "name": "Populus",
      "rank": 18
     },
     {
-     "n": 338,
+     "n": 429,
      "name": "Populus tremula x Populus alba",
      "rank": 19
     }
@@ -899,7 +964,7 @@
   "lsg_rank_min": 18,
   "n_ambiguous": 44,
   "n_founder": 63954,
-  "note": "LSG pool = rank >= 18 (PS18 Populus + PS19 hybrid-only), per the chapter definition. PS17 Saliceae is flanking context and is not in the pool. Ranks are the Idesia-corrected 13-genome panel adopted 2026-09-09; the withdrawn 12-genome call is kept per gene under ps.frz wherever the two disagree."
+  "note": "LSG pool = rank >= 18 in the frozen genEra call (PS18 Populus + PS19 hybrid-only): 842 HAP1 + 883 HAP2, and it does not change (Chen, 2026-09-21). Ranks here are that call. The rerun that added Idesia and searched the full comparison panel is kept per gene under ps.rr wherever its rank differs, and is a flag on pool genes, not the pool."
  },
  "proteomics": {
   "age_gradient_pct": {
@@ -922,7 +987,7 @@
     "PS3_12_conserved": 12.789,
     "unassigned": 11.111
    },
-   "note": "percent of genes with a peptide in this dataset, per haplotype, never pooled",
+   "note": "percent of genes with a peptide in this dataset, per haplotype, never pooled; strata are those of the genEra rerun that added Idesia, as the owning analysis reports them",
    "pool_union_all_datasets": {
     "hap1": {
      "PS18": {
@@ -1389,26 +1454,26 @@
   },
   "changed": 12878,
   "ps_rank": {
-   "1": 45308,
-   "10": 1490,
-   "11": 1718,
-   "12": 544,
-   "13": 257,
-   "14": 57,
-   "15": 126,
-   "16": 424,
-   "17": 190,
-   "18": 930,
-   "19": 681,
+   "1": 45307,
+   "10": 1535,
+   "11": 1715,
+   "12": 555,
+   "13": 223,
+   "14": 63,
+   "15": 134,
+   "16": 205,
+   "17": 325,
+   "18": 846,
+   "19": 879,
    "2": 4808,
    "3": 1010,
    "4": 1042,
    "5": 736,
-   "6": 2810,
-   "7": 328,
-   "8": 208,
-   "9": 1248,
-   "None": 45
+   "6": 2525,
+   "7": 410,
+   "8": 261,
+   "9": 1331,
+   "None": 50
   },
   "synteny_class": {
    "core_syntenic": 47328,
@@ -1438,43 +1503,5 @@
    "out_of_salicoid": 173
   },
   "rule": "topology where grape and segment Ks independently agree; v8 otherwise; split-evidence pairs set aside as `review`."
- },
- "copies": {
-  "genes": {
-   "PtXaAlbH.10G043900": "nrx1",
-   "PtXaTreH.10G046700": "nrx1",
-   "PtXaTreH.10G046800": "nrx1",
-   "PtXaTreH.10G046900": "nrx1",
-   "PtXaTreH.10G047000": "nrx1",
-   "PtXaTreH.10G047100": "nrx1",
-   "PtXaTreH.10G047200": "nrx1",
-   "PtXaTreH.10G047600": "nrx1"
-  },
-  "loci": {
-   "nrx1": {
-    "name": "NRX1",
-    "desc": "nucleoredoxin",
-    "hap": "hap1",
-    "reference": "PtXaTreH.10G047000",
-    "summary": {
-     "hap1": {
-      "annotated": 7,
-      "unannotated": 1,
-      "pieces": 8,
-      "max_cov_pct": 95.0
-     },
-     "hap2": {
-      "annotated": 1,
-      "unannotated": 1,
-      "pieces": 3,
-      "max_cov_pct": 47.5
-     }
-    }
-   }
-  },
-  "source": "sources/copy_search.json",
-  "source_sha256": "a585338949104a65b97c8e7c50fdbc7067f57a71999a4881f71ab112a9c06523",
-  "method": "tblastn (BLAST+ 2.14.1) of every array protein against each whole haplotype genome; see scripts/make_copy_search_source.py",
-  "note": "Copies found in the genome SEQUENCE, so a panel can show pieces the annotation does not call. Only the loci listed here have been searched; a gene without a panel has not been searched, which is not the same as having no copies."
  }
 }

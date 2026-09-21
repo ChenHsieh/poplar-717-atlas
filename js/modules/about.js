@@ -60,11 +60,11 @@ function overview(man) {
           el('th', { class: 'num' }, 'Share'), el('th', {}, 'What absence means'))),
         el('tbody', {}, ...[
           ['Synteny class', man.n_genes, 'Every gene is classified.'],
-          // Was `n_genes - (by_rank ? 0 : 0)`, which is always n_genes, beside a hand-typed "50"
-          // that was the FROZEN panel's count. Both now come from the corrected panel's by_rank.
+          // Was `n_genes - (by_rank ? 0 : 0)`, which is always n_genes, beside a hand-typed "50".
+          // Both now come from by_rank, which is the frozen genEra call (Chen, 2026-09-21).
           ['Phylostratum', man.n_genes - unplaced.hap1 - unplaced.hap2,
             `genEra returned no rank for ${fmt(unplaced.hap1)} HAP1 and ${fmt(unplaced.hap2)} HAP2 `
-            + 'genes on the Idesia-corrected panel; they are excluded from the pool, not defaulted.'],
+            + 'genes in the frozen call; they are excluded from the pool, not defaulted.'],
           ['Expression baseline', (man.expression || {}).n_genes_with_baseline || null,
             'A gene with an all-zero baseline has no tissue profile and no \u03c4.'],
           ['Ka/Ks vs P. trichocarpa', (man.kaks || {}).n_genes,

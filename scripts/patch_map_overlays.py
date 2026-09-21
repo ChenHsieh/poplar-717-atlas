@@ -12,11 +12,11 @@ the shards and compares them to the shipped file, bin for bin. If the reconstruc
 build_locus.py's own arithmetic is wrong, that shows up here and nothing is written.
 
 One mismatch IS expected and is allowed, for a stated reason: `lsg` counts genes with
-ps.lsg, and the LSG pool was corrected on 2026-09-10 (842/883 -> 776/835) by a patcher that
-runs on Sapelo2, while overview.json was last written by the OneDrive stage BEFORE that. So
-the map has been colouring "LSG-pool fraction" by the withdrawn pool. A mismatch confined to
-`lsg` is that staleness and gets fixed here. A mismatch in n, td or tau cannot be explained
-that way and means the reconstruction is wrong -- so those refuse.
+ps.lsg, and the pool patcher (patch_pool_frozen.py) can change ps.lsg after overview.json was
+written. It did twice: 2026-09-10 swapped in the Idesia rerun's pool (776/835), and 2026-09-21
+restored the frozen genEra call (842/883) on Chen's ruling. A mismatch confined to `lsg` is that
+pool change reaching the map, and gets rewritten here from the shards. A mismatch in n, td or tau
+cannot be explained that way and means the reconstruction is wrong -- so those refuse.
 """
 import json, os, sys
 from collections import defaultdict
@@ -103,8 +103,8 @@ def main():
         raise SystemExit(f"REFUSING: {dict(diff)} is more per-bin drift than bin-edge "
                          "coordinates and rounding can explain.")
     if diff.get("lsg"):
-        print(f"  {diff['lsg']} bins had a stale LSG count -- the map was colouring the pool "
-              "withdrawn on 2026-09-10. Corrected here.")
+        print(f"  {diff['lsg']} bins' LSG count differs from the shards (the pool in ps.lsg "
+              "changed since overview.json was written); rewritten from the shards.")
 
     # ---- write: first four positions unchanged in meaning, three appended --------------
     for hap, chroms in ov["hap"].items():

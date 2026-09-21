@@ -83,7 +83,7 @@ def load_tables():
            "Fetch it (safe: this reads a commit, not HEAD).")
 
 
-def rank(v):
+def rank_of(v):
     return None if v in ("", "nan", "NA", None) else int(float(v))
 
 
@@ -123,73 +123,88 @@ def main():
     man = json.load(open(os.path.join(DATA, "meta", "manifest.json")))
     print(f"atlas shards: {len(genes):,} genes\n")
 
-    # ---- 1. phylostratigraphy: both panels, every gene -----------------------------------
-    print("[1] ps.* against pipeline/out/lsg_pool_idesia.tsv.gz")
+    # ---- 1. phylostratigraphy: the frozen call, and the rerun kept beside it -------------
+    # Chen, 2026-09-21: the pool is the frozen genEra call (842/883) and does not change; the
+    # rerun that added Idesia is a flag. So ps.* must be lsg_pool.tsv, and ps.rr the rerun.
+    print("[1] ps.* against lsg_pool.tsv (frozen call) and lsg_pool_idesia.tsv.gz (rerun)")
+    frozen = {}
+    for r in T["pipeline/out/lsg_pool.tsv"]:
+        frozen[r["gene_id"]] = r          # one gene sits on two label rows; identical otherwise
     pool = {r["gene_id"]: r for r in T["pipeline/out/lsg_pool_idesia.tsv.gz"]}
-    check("same 63,960 genes", set(pool) == set(genes) and len(pool) == 63960,
+    check("same 63,960 genes in both tables and the atlas",
+          set(pool) == set(genes) == set(frozen) and len(pool) == 63960,
           f"canon-only {len(set(pool) - set(genes))}, atlas-only {len(set(genes) - set(pool))}")
     bad = collections.defaultdict(list)
     for gid, r in pool.items():
+        f = frozen[gid]
         ps = (genes.get(gid, (None, {}))[1].get("ps")) or {}
-        want, fz = rank(r["rank"]), rank(r["frozen_rank"])
-        if ps.get("rank") != want:
-            bad["rank"].append(gid)
-        if bool(ps.get("lsg")) != yes(r["is_lsg"]):
-            bad["lsg"].append(gid)
-        frz = ps.get("frz")
-        if fz != want:
-            if not frz or frz.get("rank") != fz or bool(frz.get("lsg")) != yes(r["frozen_is_lsg"]):
-                bad["frozen call"].append(gid)
-        elif frz:
-            bad["frozen call where the panels agree"].append(gid)
-        if r["phylostratum"] not in ("", "nan") and ps.get("name") != r["phylostratum"]:
+        rank, rr_rank = rank_of(f["rank"]), rank_of(r["rank"])
+        if ps.get("rank") != rank or rank != rank_of(r["frozen_rank"]):
+            bad["frozen rank"].append(gid)
+        if bool(ps.get("lsg")) != yes(f["is_lsg"]):
+            bad["pool membership (frozen)"].append(gid)
+        if f["phylostratum"] not in ("", "nan") and ps.get("name") != f["phylostratum"]:
             bad["stratum name"].append(gid)
-        if r["tax_rep"] not in ("", "nan") and ps.get("tr") is not None \
-                and abs(float(r["tax_rep"]) - ps["tr"]) > 0.051:
+        if rank is not None and f["tax_rep"] not in ("", "nan") and \
+                (ps.get("tr") is None or abs(float(f["tax_rep"]) - ps["tr"]) > 0.051):
             bad["tax_rep"].append(gid)
-    for k in ("rank", "lsg", "frozen call", "frozen call where the panels agree",
-              "stratum name", "tax_rep"):
+        rr = ps.get("rr")
+        if rr_rank != rank:
+            if not rr or rr.get("rank") != rr_rank or bool(rr.get("lsg")) != yes(r["is_lsg"]):
+                bad["rerun call"].append(gid)
+        elif rr:
+            bad["rerun call where the two agree"].append(gid)
+        if "frz" in ps:
+            bad["leftover ps.frz"].append(gid)
+    for k in ("frozen rank", "pool membership (frozen)", "stratum name", "tax_rep", "rerun call",
+              "rerun call where the two agree", "leftover ps.frz"):
         check(f"per-gene {k}", not bad[k], f"{len(bad[k])}, e.g. {bad[k][:3]}" if bad[k] else "")
 
     want = collections.Counter()
-    for r in pool.values():
+    for gid, r in pool.items():
+        h = r["hap"]
+        if yes(frozen[gid]["is_lsg"]):
+            want[(h, "pool", rank_of(frozen[gid]["rank"]))] += 1
+            if not yes(r["is_lsg"]):
+                want[(h, "rerun_out")] += 1
         if yes(r["is_lsg"]):
-            want[(r["hap"], "corrected", rank(r["rank"]))] += 1
-        if yes(r["frozen_is_lsg"]):
-            want[(r["hap"], "frozen", rank(r["frozen_rank"]))] += 1
+            want[(h, "rerun", 0)] += 1
     lp = man.get("lsg_pool") or {}
     for h in ("HAP1", "HAP2"):
-        c18, c19 = want[(h, "corrected", 18)], want[(h, "corrected", 19)]
-        f18, f19 = want[(h, "frozen", 18)], want[(h, "frozen", 19)]
-        print(f"      {h}: corrected {c18 + c19:,} ({c18} PS18 + {c19} PS19), "
-              f"frozen {f18 + f19:,} ({f18} + {f19})")
-        check(f"manifest lsg_pool.canonical {h}", (lp.get("canonical") or {}).get(h.lower()) == c18 + c19)
-        check(f"manifest lsg_pool.withdrawn (frozen) {h}", (lp.get("withdrawn") or {}).get(h.lower()) == f18 + f19)
-        check(f"manifest lsg_pool.ps18_ps19 {h}",
-              ((lp.get("ps18_ps19") or {}).get(f"{h}_PS18"), (lp.get("ps18_ps19") or {}).get(f"{h}_PS19")) == (c18, c19))
+        p18, p19 = want[(h, "pool", 18)], want[(h, "pool", 19)]
+        print(f"      {h}: pool {p18 + p19:,} ({p18} PS18 + {p19} PS19); at rank >= 18 in the rerun "
+              f"{want[(h, 'rerun', 0)]}; pool genes below 18 there {want[(h, 'rerun_out')]}")
+        check(f"manifest lsg_pool.pool {h}", (lp.get("pool") or {}).get(h.lower()) == p18 + p19)
+        check(f"manifest lsg_pool.pool PS18/PS19 {h}",
+              ((lp.get("pool") or {}).get("ps18_ps19", {}).get(f"{h}_PS18"),
+               (lp.get("pool") or {}).get("ps18_ps19", {}).get(f"{h}_PS19")) == (p18, p19))
+        rr_m = (lp.get("rerun") or {})
+        check(f"manifest lsg_pool.rerun counts {h}",
+              ((rr_m.get("at_rank_18_or_above") or {}).get(h.lower()),
+               (rr_m.get("pool_genes_below_rank_18") or {}).get(h.lower()))
+              == (want[(h, "rerun", 0)], want[(h, "rerun_out")]))
 
-    # ---- 2. QC flags ----------------------------------------------------------------------
+    # ---- 2. QC flags: every pool gene, every flag ------------------------------------------
     print("\n[2] qc.* against pipeline/out/lsg_pool_qc.tsv + lsg_pool_synteny.tsv")
     qc = {r["gene_id"]: r for r in T["pipeline/out/lsg_pool_qc.tsv"]}
     syn = {r["gene_id"]: r for r in T["pipeline/out/lsg_pool_synteny.tsv"]}
-    corr = {g for g, r in pool.items() if yes(r["is_lsg"])}
-    left = {g for g, r in pool.items() if yes(r["frozen_is_lsg"]) and not yes(r["is_lsg"])}
+    pool_genes = {g for g, f in frozen.items() if yes(f["is_lsg"])}
     has_qc = {g for g, (_, rec) in genes.items() if rec.get("qc")}
-    check("canon: in_idesia_corrected_pool is the corrected pool",
-          {g for g, r in qc.items() if yes(r["in_idesia_corrected_pool"])} == corr)
-    check("a qc record on every corrected-pool gene", corr <= has_qc, f"{len(corr - has_qc)} missing")
-    check("no qc record outside the corrected pool (a pool-exit gene was never QC-evaluated)",
-          has_qc <= corr, f"{len(has_qc - corr)} extra, {len((has_qc - corr) & left)} of them pool exits")
-    fields = {"ret": ("tblastn_retract", yes), "abs": ("hdf_reject", yes),
-              "wgd": ("wgd_flagged", yes), "clean": ("qc_survivor", yes),
+    check("canon: the flag table covers exactly the frozen pool", set(qc) == pool_genes,
+          f"{len(set(qc) ^ pool_genes)} genes differ")
+    check("a qc record on every pool gene, and on nothing else", has_qc == pool_genes,
+          f"missing {len(pool_genes - has_qc)}, extra {len(has_qc - pool_genes)}")
+    fields = {"rr": ("in_idesia_corrected_pool", lambda v: not yes(v)),
+              "ret": ("tblastn_retract", yes), "abs": ("hdf_reject", yes),
+              "wgd": ("wgd_flagged", yes), "post": ("qc_survivor", yes),
               "hdf": ("HDF_flag", str), "verdict": ("verdict", str)}
     sfields = {"syn_any": "contested_any", "syn_og": "og_contested", "syn_twin": "twin_contested"}
     qbad = collections.defaultdict(list)
-    for g in corr & has_qc:
+    for g in pool_genes & has_qc:
         q = genes[g][1]["qc"]
         for k, (col, cast) in fields.items():
             w = cast(qc[g][col])
-            a = bool(q.get(k)) if cast is yes else q.get(k)
+            a = q.get(k) if cast is str else bool(q.get(k))
             if w != a:
                 qbad[k].append(g)
         for k, col in sfields.items():
@@ -199,12 +214,15 @@ def main():
             qbad["stable (sens_stable)"].append(g)
     for k in list(fields) + list(sfields) + ["stable (sens_stable)"]:
         check(f"per-gene qc {k}", not qbad[k], f"{len(qbad[k])}, e.g. {qbad[k][:3]}" if qbad[k] else "")
+    post = collections.Counter(r["hap"] for r in qc.values() if yes(r["qc_survivor"]))
+    check(f"post-QC set per haplotype = {dict(post)} (589 / 625)", (post["HAP1"], post["HAP2"]) == (589, 625))
 
     # ---- 3. peptide evidence, per dataset x haplotype x age class ---------------------------
     print("\n[3] prot.ms against aspen_detection_by_class.tsv")
     n, det = collections.Counter(), collections.Counter()
     for gid, (hap, rec) in genes.items():
-        c = gene_class((rec.get("ps") or {}).get("rank"))
+        ps = rec.get("ps") or {}
+        c = gene_class((ps.get("rr") or ps).get("rank"))   # the owner reports rerun strata
         ds = ((rec.get("prot") or {}).get("ms") or {}).get("ds") or []
         n[(hap, c)] += 1
         for d in ds:

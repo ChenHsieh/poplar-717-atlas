@@ -502,7 +502,20 @@ only what still has no second layer after that gets folded into About.
       the MS1 v4 panel's `tissue_analysis` grouping (leaf split for study 1 only). The chapter's τ
       (Methods 2.4, `s03`) uses all samples over `split_leaf_age` (studies 1, 27, 28, 30, 31). Same
       word, different numbers: at minimum the expression card should say which τ it is.
-      (c) The pool-exit explanation on gene cards still carries C2's attribution to *Idesia*. MS2
-      audits A38 and K2 dispute it (the frozen run searched nr only; only part of the exits may
-      need *Idesia*). C2 stands until Chen rules; revisit the "Why" line then, and the "12-genome"
-      and "13-genome" panel wording in the manifest and the pool provenance record.
+      (c) RESOLVED by 51: the gene card no longer credits every rank change to *Idesia*; it says
+      the rerun also first searched the full comparison panel (the frozen call searched NCBI nr
+      only).
+
+- [x] **51: DONE, data 0.15.0. The pool is the frozen genEra call; every check is a flag.** Chen,
+      2026-09-21 (plan settled with the main MS2 session first, published together with the
+      matching ms2-lsg documentation). 842 HAP1 + 883 HAP2 everywhere; the rerun that added
+      Idesia is `ps.rr` (information) and `qc.rr` (a flag on 66 HAP1 + 48 HAP2 pool genes); all
+      1,725 pool genes carry the evidence card, with one line "in the chapter's post-QC set
+      (passes all four checks)" under the flags (589 + 625 yes). See CHANGELOG 0.15.0.
+- [ ] **52: flags the ruling names that are not here yet.** fagin, phylostratr, the Pfam and
+      MMseqs2 profile searches and the protein-structure searches exist only on ms2-lsg's unmerged
+      gene-age-comparison branch. Add them as per-gene flags after Chen merges it, gated like the
+      rest by check_ms2_canon.py.
+- [ ] **53: peptide numbers on frozen ranks.** The Protein page's per-stratum numbers are the owning
+      analysis's, ranked by the Idesia rerun, and labelled so. Swap them in when that analysis
+      publishes a recompute on the frozen ranks.

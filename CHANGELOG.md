@@ -9,6 +9,48 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.15.0 - 2026-09-21 - The pool is the frozen genEra call again, and every check on it is a flag
+
+Chen's ruling, 2026-09-21: "the 842/883 is the frozen but the various QC steps from Idesia to
+synteny to abSENSE ... are all for flagging and will apply for individual analysis when
+suitable, for most of the analysis they are applied and we plot the post QC for stronger signal
+but when looking for available candidates they are used to flag because the pool is already
+small". Settled with the main MS2 session before it was built, and published together with the
+matching ms2-lsg documentation.
+
+**The pool.** 842 HAP1 + 883 HAP2 genes (PS18/PS19: 392/450 and 454/429), rank 18 or above in the
+frozen genEra call, everywhere: gene pages, the home page, the phylostratigraphy page, Browse and
+the genome map. It does not change. From 2026-09-10 until today the atlas used the ranks of the
+rerun that added Idesia (776 + 835) as the pool, and kept the frozen call under `ps.frz`; that
+arrangement is reversed. `ps` is the frozen call again, including its taxonomic
+representativeness, which the swap had overwritten on 1,251 genes; the rerun's call sits under
+`ps.rr` on the 766 genes where its rank differs, and the gene card shows it as information.
+
+**Every check is a flag, on every pool gene.** All 1,725 pool genes now carry the evidence card;
+the 114 that fall below rank 18 in the rerun had none. New on the card:
+- the rerun flag: "falls below rank 18 in the rerun that added Idesia and searched the full
+  comparison panel", with the rerun's rank (66 HAP1, 48 HAP2). Worded so it does not credit
+  Idesia alone: that rerun was also the first to search the comparison panel at all, because the
+  frozen call searched NCBI nr only;
+- one line under the flags: "In the chapter's post-QC set (passes all four checks): yes/no",
+  where the four checks are the rerun, tblastn against Salix, abSENSE and WGD-era Ks (589 HAP1,
+  625 HAP2 yes). It is never called "clean", and it hides no flag: synteny contests, short ORFs
+  and sensitivity flags are listed on every gene that has them.
+
+The rerun and the post-QC set appear on overview pages only as pass counts, never as pools.
+
+**What did not move.** The locus tiles already marked the frozen pool (they were never rewritten
+after 2026-09-10, so for eleven days they disagreed with the gene pages on those 114 genes). The
+peptide numbers on the Protein page are the owning analysis's, which ranks genes by the rerun;
+they now say so, and a recompute on frozen ranks has been asked for.
+
+**Built and checked.** New source `sources/lsg_pool_frozen.tsv.gz` (ms2-lsg's frozen pool table,
+candidate labels dropped, one duplicated gene collapsed; gated against the rerun table's frozen
+columns). `patch_pool_idesia.py` became `patch_pool_frozen.py`; `patch_lsg_qc.py` flags all 1,725;
+the map bins (104 changed) and the Browse index were recomputed. `check_ms2_canon.py` now pins
+ms2-lsg's frozen pool table too and passes gene by gene: frozen ranks, the rerun call, every flag
+including the rerun flag and the post-QC set, and all 84 peptide cells.
+
 ## 0.14.0 - 2026-09-21 - NRX1's copies on both haplotypes, and every gene card says what kind of evidence it is
 
 Two additions to the gene page.

@@ -118,9 +118,10 @@ async function check(name, hash, { expect = [], forbid = [], theme = null, wait 
 await check('home', '#/',
   // the NUMBER, not just the label: the home page showed the withdrawn 1,725 for three
   // versions while every other page said 1,611, and asserting the label caught nothing
-  // Per haplotype since 2026-09-21: the pooled 1,611 summed HAP1 and HAP2 into one number.
+  // Per haplotype since 2026-09-21, and the frozen genEra pool since Chen's ruling that day.
   { expect: ['63,960', 'Start here', 'Browse all genes', 'Modules', 'Before you cite anything',
-             'lineage-specific candidates, HAP1 / HAP2', '776 / 835'] });
+             'lineage-specific candidates, HAP1 / HAP2', '842 / 883'],
+    forbid: ['776 / 835'] });
 await check('gene-ps18-to-ps17', '#/gene/PtXaTreH.05G120200',
   { expect: ['PtXaTreH.05G120200', 'Chr05', 'Synteny', 'Populus', 'Dispensable'] });
 await check('gene-private', '#/gene/PtXaTreH.01G006100',
@@ -156,15 +157,17 @@ await check('gene-hap2-pfam-gap', '#/gene/PtXaAlbH.01G000200',
   { expect: ['Function', 'Domain coverage is thinner on HAP2', 'AT1G55570'], wait: 1000 });
 await check('browse', '#/browse',
   { expect: ['Browse', 'Filters', 'Synteny class', '63,960', 'Export TSV', 'Saved sets'], wait: 1400 });
-// One ladder per haplotype, the pool split by haplotype AND stratum, and the frozen pool the
-// chapter reports named beside the corrected one (Chen, 2026-09-21: "split + name both").
+// One ladder per haplotype, the pool split by haplotype AND stratum. The pool is the frozen genEra
+// call and every check is a flag (Chen, 2026-09-21), so the rerun and the post-QC set appear
+// only as pass counts.
 await check('module-phylostrat', '#/module/phylostrat',
   { expect: ['Genes per stratum', 'ambiguous', 'cellular organisms', 'log-scaled',
-             'HAP1 LSG pool: 433 PS18 · 343 PS19', 'HAP2 LSG pool: 497 PS18 · 338 PS19',
-             'frozen genEra pool, 842 HAP1 and 883 HAP2', 'unplaced by genEra: 27 HAP1 · 18 HAP2'],
-    // '1,611' is the pooled HAP1+HAP2 figure this page used to lead with; nothing on the page
-    // should sum the two pools now.
-    forbid: ['1,611', '12-species', 'counts run from 22,769'] });
+             'HAP1 LSG pool: 392 PS18 · 450 PS19', 'HAP2 LSG pool: 454 PS18 · 429 PS19',
+             'PS ≥ 18 in the frozen genEra call: 842 HAP1 and 883 HAP2 genes',
+             '776 HAP1 and 835 HAP2 pool genes stay at rank 18 or above',
+             '589 HAP1 and 625 HAP2 pass all four checks', 'unplaced by genEra: 32 HAP1 · 18 HAP2'],
+    // '1,725' would be the two haplotypes' pools summed; nothing on the page should do that.
+    forbid: ['1,725', '1,611', '12-species', 'Idesia-corrected panel', 'counts run from 22,769'] });
 await check('gene-ambiguous-ps', '#/gene/PtXaTreH.06G037000',
   { expect: ['genEra flagged this gene as ambiguous'], wait: 900 });
 await check('module-duplication', '#/module/duplication',
@@ -188,12 +191,13 @@ await check('gene-pav-not-confirmed', '#/gene/PtXaTreH.T006000',
 await check('gene-lsg-qc-flagged', '#/gene/PtXaTreH.12G056600',
   { expect: ['Evidence quality', 'tblastn', 'retracts the young call', 'Flags, not filters'], wait: 900 });
 await check('gene-lsg-qc-clean', '#/gene/PtXaTreH.01G001500',
-  { expect: ['Evidence quality', 'Passes the QC funnel', 'abSENSE supports lineage-specific'],
-    forbid: ['No evidence-quality flag raised'], wait: 900 });
+  { expect: ['Evidence quality', 'post-QC set (passes all four checks): yes',
+             'abSENSE supports lineage-specific'],
+    forbid: ['No evidence-quality flag raised', 'Passes the QC funnel'], wait: 900 });
 // Clean on the funnel's three checks, but synteny-contested (twin route) and a short ORF. Until
 // 2026-09-21 a clean gene read "No evidence-quality flag raised" and hid both: 389 pool genes.
 await check('gene-lsg-qc-clean-but-flagged', '#/gene/PtXaTreH.08G114000',
-  { expect: ['Passes the QC funnel', 'disputes this gene', 'Short ORF (72 aa)'],
+  { expect: ['post-QC set (passes all four checks): yes', 'disputes this gene', 'Short ORF (72 aa)'],
     forbid: ['No evidence-quality flag raised'], wait: 900 });
 // sens_stable is DIAMOND default vs --ultra-sensitive stability (repro audit E3). The card used
 // to say the chapter's headline result depended on the gene. Also the gene-model card's
@@ -202,18 +206,23 @@ await check('gene-lsg-qc-unstable', '#/gene/PtXaTreH.12G066000',
   { expect: ['differs between the default and --ultra-sensitive DIAMOND runs',
              'has not been adopted'],
     forbid: ['headline result', '827-library'], wait: 900 });
-// A pool exit: named as leaving by a rank change, not as never QC-checked (it has upstream
-// QC values), and the frozen call named neutrally (MS2 audit A38).
-await check('gene-pool-exit', '#/gene/PtXaTreH.05G120200',
-  { expect: ['left the pool', 'not by failing a QC check', 'The frozen genEra call placed this gene at PS18'],
-    forbid: ['withdrawn 12-genome', 'never evaluated', 'Evidence quality'], wait: 900 });
+// A pool gene that falls below rank 18 in the Idesia rerun: it STAYS in the pool (the pool is
+// the frozen call, Chen 2026-09-21), and the rerun is one of its flags, worded so it does not
+// credit Idesia alone (that rerun also first searched the full comparison panel).
+await check('gene-rerun-flag', '#/gene/PtXaTreH.05G120200',
+  { expect: ['yes — PS18', 'Evidence quality', 'Idesia rerun',
+             'falls below rank 18 in the rerun that added Idesia and searched the full comparison panel (PS17 there)',
+             'post-QC set (passes all four checks): no', 'The gene stays in the pool'],
+    forbid: ['left the pool', 'withdrawn', 'Idesia-corrected panel', 'never evaluated'], wait: 900 });
 await check('module-protein-gradient', '#/module/protein',
-  { expect: ['1 of 776 HAP1 and 0 of 835 HAP2 lineage-specific pool',
+  { expect: ['1 of 776 HAP1 and 0 of 835 HAP2 genes at rank 18 or above',
+             'Strata here are those of the genEra rerun that added Idesia',
              'PXD025636 is P. trichocarpa, PXD020099 is P. tremula × tremuloides',
              'same P. tremula × P. alba cross as 717'],
     forbid: ['0.12% of the lineage-specific pool', 'PXD058986 are P. x canescens. A'] });
 await check('module-about-numbers', '#/module/about',
-  { expect: ['no rank for 27 HAP1 and 18 HAP2', '55 leaf (plus 11 young-leaf and 11 old-leaf)',
+  { expect: ['no rank for 32 HAP1 and 18 HAP2 genes in the frozen call',
+             '55 leaf (plus 11 young-leaf and 11 old-leaf)',
              'ComBat-seq', 'held on v9', 'for browsing, not quoting'],
     forbid: ['no rank for 50 genes', '77 leaf', 'is not in the mirror', 'v6 master'] });
 {
@@ -232,12 +241,12 @@ await check('module-about-numbers', '#/module/about',
 // Each of these renders something the site did not say before, so each gets a case. The
 // pool one matters most: the site published the withdrawn pool for four days, and a check
 // that only asserts "a pool number renders" would have passed throughout.
-await check('gene-left-the-pool', '#/gene/PtXaTreH.05G120200',
-  { expect: ['Changed in Sept 2026', 'PS18', 'left the pool',
-             'lineage-specific candidate in the frozen call'], wait: 900 });
+await check('gene-rerun-below-18', '#/gene/PtXaTreH.05G120200',
+  { expect: ['Idesia rerun', 'PS18', 'That is below rank 18, so it is a flag on this pool gene'],
+    wait: 900 });
 await check('gene-ps19-to-ps18', '#/gene/PtXaAlbH.17G073600',
-  { expect: ['Changed in Sept 2026', 'hybrid-only stratum to the Populus-wide one',
-             '179 genes made exactly this move'], wait: 900 });
+  { expect: ['Idesia rerun', 'Hybrid-only in the frozen call, Populus-wide in the rerun',
+             '179 pool genes do this', 'post-QC set (passes all four checks): yes'], wait: 900 });
 // The abSENSE calibration must travel with the flag, not sit in a doc nobody opens.
 await check('gene-absense-calibration', '#/gene/PtXaTreH.12G056600',
   { expect: ['Evidence quality', 'Salix purpurea', '59 to 61%',
