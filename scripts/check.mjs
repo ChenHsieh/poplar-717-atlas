@@ -160,7 +160,9 @@ await check('module-phylostrat', '#/module/phylostrat',
   { expect: ['Genes per stratum', 'ambiguous', 'cellular organisms', 'log-scaled',
              'HAP1 LSG pool: 433 PS18 · 343 PS19', 'HAP2 LSG pool: 497 PS18 · 338 PS19',
              'frozen genEra pool, 842 HAP1 and 883 HAP2', 'unplaced by genEra: 27 HAP1 · 18 HAP2'],
-    forbid: ['both haplotypes', '12-species', 'counts run from 22,769'] });
+    // '1,611' is the pooled HAP1+HAP2 figure this page used to lead with; nothing on the page
+    // should sum the two pools now.
+    forbid: ['1,611', '12-species', 'counts run from 22,769'] });
 await check('gene-ambiguous-ps', '#/gene/PtXaTreH.06G037000',
   { expect: ['genEra flagged this gene as ambiguous'], wait: 900 });
 await check('module-duplication', '#/module/duplication',
@@ -230,7 +232,7 @@ await check('module-about-numbers', '#/module/about',
 // that only asserts "a pool number renders" would have passed throughout.
 await check('gene-left-the-pool', '#/gene/PtXaTreH.05G120200',
   { expect: ['Changed in Sept 2026', 'PS18', 'left the pool',
-             'lineage-specific candidate under the old panel'], wait: 900 });
+             'lineage-specific candidate in the frozen call'], wait: 900 });
 await check('gene-ps19-to-ps18', '#/gene/PtXaAlbH.17G073600',
   { expect: ['Changed in Sept 2026', 'hybrid-only stratum to the Populus-wide one',
              '179 genes made exactly this move'], wait: 900 });
