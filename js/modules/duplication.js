@@ -57,7 +57,7 @@ function partnerHeaders() {
       + 'T tandem, D dispersed, C none)' }, 'Its class'),
     el('th', { class: 'num', title: 'highest TPM the partner reaches in any of the 652 samples '
       + '— raw, not batch-corrected' }, 'Max TPM'),
-    el('th', { title: 'tissue with the partner’s highest WT-control median' }, 'Peak tissue'),
+    el('th', { title: 'tissue with the partner’s highest baseline median' }, 'Peak tissue'),
   ];
 }
 

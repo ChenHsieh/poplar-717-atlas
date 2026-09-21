@@ -260,6 +260,9 @@ function glanceCard(g, man) {
     bits.push(['Expression', el('span', {},
       el('strong', {}, x.top), ` ${fmt(Math.round(x.t && x.t[x.top] != null ? x.t[x.top] : 0))} TPM`,
       x.tau != null ? el('span', { class: 'muted' }, ` · τ ${x.tau}`) : null)]);
+  } else if (x) {
+    // Every baseline median is 0, so there is no peak tissue to name (data 0.16.0).
+    bits.push(['Expression', el('span', { class: 'muted' }, 'no tissue above 0 TPM in the baseline')]);
   }
   if (g.resp && g.resp.v != null) {
     bits.push(['Responsiveness', el('span', {},
@@ -670,6 +673,18 @@ route(/^\/module\/(.+)$/, async (id) => {
   markNav();
 });
 
+// Which of a study's samples the gene-page tissue baseline uses, from each sample's own `base`
+// flag (written by the build from scripts/expr_baseline.py), never re-derived here.
+function baselineLine(mine) {
+  const nc = mine.filter((x) => x.ctrl === 'control').length;
+  const nb = mine.filter((x) => x.base).length;
+  if (!nb) return 'No sample from this study is in the tissue baseline shown on gene pages.';
+  if (nb === nc) return `All ${nb} controls are in the tissue baseline shown on gene pages.`;
+  return `${nb} of the ${nc} controls are in the tissue baseline shown on gene pages (marked `
+    + '"baseline"): the baseline takes wild-type controls, and from study 1 only its fresh '
+    + 'ambient-CO2 ones.';
+}
+
 route(/^\/study\/(\d+)$/, async (idStr) => {
   loading();
   const id = +idStr;
@@ -703,7 +718,7 @@ route(/^\/study\/(\d+)$/, async (idStr) => {
         el('td', {}, cell(x.genotype)),
         el('td', {}, cell(x.growth)),
         el('td', {}, x.ctrl === 'control'
-          ? el('span', { class: 'badge', style: 'font-size:11px' }, 'control')
+          ? el('span', { class: 'badge', style: 'font-size:11px' }, x.base ? 'control · baseline' : 'control')
           : el('span', { class: 'muted' }, 'perturbation')),
         el('td', { class: 'muted', style: 'font-size:11.5px' }, x.layout || '—'),
         el('td', { class: 'num' }, x.reads == null ? '—' : (x.reads / 1e6).toFixed(1) + 'M'),
@@ -713,7 +728,7 @@ route(/^\/study\/(\d+)$/, async (idStr) => {
     el('p', { class: 'muted', style: 'margin:11px 0 0;font-size:12px' },
       `${mine.filter((x) => x.ctrl === 'control').length} control, `
       + `${mine.filter((x) => x.ctrl === 'perturbation').length} perturbation. `
-      + 'Only WT controls contribute to the tissue baselines shown on gene pages.'));
+      + baselineLine(mine)));
 
   setView(el('div', {},
     el('h1', {}, `Study ${id}`),

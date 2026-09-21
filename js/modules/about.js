@@ -5,6 +5,15 @@ import { evidenceCard } from '../core/evidence.js';
 
 const SHORT = (p) => p.replace('/scratch/ch29576/', '').replace('/work/cjtlab/', 'work:');
 
+/** "55 leaf, 50 xylem, ... and 1 callus": every baseline tissue with its n, largest first. */
+function twList(tw) {
+  const label = { leaf_young: 'young-leaf', leaf_old: 'old-leaf' };
+  const parts = Object.entries(tw).sort((a, b) => b[1] - a[1])
+    .map(([t, n]) => `${fmt(n)} ${label[t] || t}`);
+  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+    : parts.join('');
+}
+
 function sourceTable(sources) {
   const rows = Object.entries(sources).sort().map(([path, s]) => el('tr', {},
     el('td', { class: 'mono', style: 'font-size:11.5px' }, SHORT(path)),
@@ -66,7 +75,7 @@ function overview(man) {
             `genEra returned no rank for ${fmt(unplaced.hap1)} HAP1 and ${fmt(unplaced.hap2)} HAP2 `
             + 'genes in the frozen call; they are excluded from the pool, not defaulted.'],
           ['Expression baseline', (man.expression || {}).n_genes_with_baseline || null,
-            'A gene with an all-zero baseline has no tissue profile and no \u03c4.'],
+            'A gene whose every tissue median is 0 has no peak tissue and no \u03c4.'],
           ['Ka/Ks vs P. trichocarpa', (man.kaks || {}).n_genes,
             'No reciprocal-best ortholog. Structural for the youngest stratum, which has none.'],
           ['Peptide evidence', ((man.proteomics || {}).genes_with_a_hit
@@ -132,12 +141,14 @@ function overview(man) {
           + 'is reviewed. The tandem component is taken from its curated union set. Codes '
           + 'follow its documented legend.'),
         // Read from the manifest: the hand-typed "77 leaf" was the pooled count from before the
-        // 2026-09-05 leaf regrouping (manifest.corrections), and nothing checked it.
+        // 2026-09-05 leaf regrouping (manifest.corrections), and nothing checked it. Every tissue
+        // is listed with its n, largest first: the sentence used to name young and old leaf
+        // beside the well-sampled tissues, which stopped being true at data 0.16.0, when the
+        // baseline kept only study 1's fresh ambient-CO2 controls (3 young-leaf, 2 old-leaf).
         el('li', {}, el('strong', {}, 'Thin tissue baselines. '),
-          `Median TPM per tissue rests on ${fmt(tw.leaf)} leaf (plus ${fmt(tw.leaf_young)} `
-          + `young-leaf and ${fmt(tw.leaf_old)} old-leaf) and ${fmt(tw.xylem)} xylem WT-control `
-          + `samples but only ${fmt(tw.bud)} bud, ${fmt(tw.catkin)} catkin, ${fmt(tw.stem)} stem `
-          + `and ${fmt(tw.callus)} callus. Every bar carries its n.`))),
+          'The baseline is wild-type controls, with study 1 represented only by its fresh '
+          + `ambient-CO2 controls. Median TPM per tissue rests on ${twList(tw)} samples. `
+          + 'Every bar carries its n.'))),
 
     el('div', { class: 'card' },
       el('h2', {}, 'Sources', el('span', { class: 'tag' }, 'checksummed at build')),

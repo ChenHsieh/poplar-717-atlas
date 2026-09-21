@@ -130,12 +130,21 @@ await check('gene-hap2', '#/gene/PtXaAlbH.14G133000', { expect: ['HAP2', 'Chr14'
 await check('gene-missing', '#/gene/PtXaTreH.99G999999', { expect: ['No such gene'] });
 await check('module-synteny', '#/module/synteny',
   { expect: ['Class distribution', 'Core syntenic', 'Private', 'Tandem array'] });
+// The baseline is wild-type controls grown fresh at ambient CO2 (Chen, 2026-09-21; data 0.16.0):
+// 169 samples, study 1's 44 controls at 500 ppm or at the recovery timepoint left out.
 await check('module-expression', '#/module/expression',
-  { expect: ['652', 'Studies', 'WT-control samples per tissue', 'leaf_young', 'leaf_old'] });
+  { expect: ['652', 'Studies', 'Baseline samples per tissue', 'leaf_young', 'leaf_old',
+             'across these 169 samples', 'fresh ambient-CO2 (380 ppm) controls',
+             'Its other 44 controls, grown at 500 ppm CO2 or sampled at the later (recovery) timepoint',
+             'mean of the two middle values'],
+    forbid: ['WT-control samples per tissue', 'stem, bud, catkin and callus are thin'] });
 // Study 1 is the leaf_young/leaf_old case: if this ever again shows plain 'leaf' for
 // every row, the tissue_analysis join (sources/sample_tissue_analysis.tsv) has regressed.
+// It is also the only study whose controls are not all in the baseline: 14 of its 58.
 await check('study-1', '#/study/1',
-  { expect: ['Study 1', 'PRJEB22956', 'Georgii', 'Tissue', 'Aligned %', 'control', 'leaf_old', 'leaf_young'], wait: 1000 });
+  { expect: ['Study 1', 'PRJEB22956', 'Georgii', 'Tissue', 'Aligned %', 'control', 'leaf_old', 'leaf_young',
+             'control · baseline', '14 of the 58 controls are in the tissue baseline'],
+    forbid: ['Only WT controls contribute'], wait: 1000 });
 // Study 29 carries the "prefer counts over TPM" flag (it has no per-sample notes).
 await check('study-29', '#/study/29',
   { expect: ['Study 29', 'prefer est_counts'], wait: 1000 });
@@ -144,9 +153,20 @@ await check('study-29', '#/study/29',
 await check('study-10-notes', '#/study/10',
   { expect: ['Study 10', 'Notes', 'below-typical alignment rate'], wait: 1000 });
 // This gene is the manually-verified leaf_young/leaf_old case (13.74 vs 4.52 TPM, was
-// pooled to a single 8.12 before the 2026-09-05 fix) -- assert the split is visible.
+// pooled to a single 8.12 before the 2026-09-05 fix) -- assert the split is visible. On the
+// fresh ambient-CO2 baseline (data 0.16.0) the two read 15.47 and 8.73, on 3 and 2 samples,
+// checked by hand against statistics.median; catkin's 4 samples now give the mean of the two
+// middle values, 137.85, so bud (141.48) is the peak.
 await check('gene-expr-ps18-to-ps17', '#/gene/PtXaTreH.05G120200',
-  { expect: ['Expression', 'Median TPM', 'catkin', 'Show all 652 samples', 'leaf_young', 'leaf_old'], wait: 900 });
+  { expect: ['Expression', 'Median TPM', 'catkin', 'Show all 652 samples', 'leaf_young', 'leaf_old',
+             'Peak: bud (141.48 TPM)', '8.73', 'n=2', 'fresh ambient-CO2 controls'],
+    forbid: ['Peak: catkin', 'WT-control subset'], wait: 900 });
+// A gene whose every baseline median is 0 has no peak tissue. Before data 0.16.0 all 2,154 such
+// genes read "Peak: leaf_young (0 TPM)", the first tissue in sample order.
+await check('gene-expr-no-peak', '#/gene/PtXaTreH.01G004300',
+  { expect: ['No tissue has a median above 0 TPM, so there is no peak tissue',
+             'τ is not computable', 'no tissue above 0 TPM in the baseline'],
+    forbid: ['Peak: leaf_young'], wait: 900 });
 await check('gene-annotated', '#/gene/PtXaTreH.01G000300',
   { expect: ['Function', 'Allele', 'Panel presence', 'AT1G55570'], wait: 1000 });
 // A gene with a reciprocal 1:1 P. trichocarpa syntenic ortholog (11,490 genes have none).
@@ -225,9 +245,12 @@ await check('module-protein-gradient', '#/module/protein',
     forbid: ['0.12% of the lineage-specific pool', 'PXD058986 are P. x canescens. A'] });
 await check('module-about-numbers', '#/module/about',
   { expect: ['no rank for 32 HAP1 and 18 HAP2 genes in the frozen call',
-             '55 leaf (plus 11 young-leaf and 11 old-leaf)',
+             'rests on 55 leaf, 50 xylem, 29 bark, 18 root, 5 bud, 4 catkin, 3 young-leaf, '
+               + '2 old-leaf, 2 stem and 1 callus samples',
+             'Expression baseline', '62,034',
              'ComBat-seq', 'held on v9', 'for browsing, not quoting'],
-    forbid: ['no rank for 50 genes', '77 leaf', 'is not in the mirror', 'v6 master'] });
+    forbid: ['no rank for 50 genes', '77 leaf', '(plus 11 young-leaf', 'is not in the mirror',
+             'v6 master'] });
 {
   const fp = await browser.newPage();
   const ferrs = [];
@@ -768,7 +791,9 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
 
   // follow three of them and check the destination agrees
   const checks = [
-    ['#/browse?tandem=yes&top=xylem&tau_min=0.8', 283],
+    // 283 on the old baseline; 339 on the fresh ambient-CO2 one (data 0.16.0), recomputed from
+    // the facet index with Browse's own predicates, which reproduce 283 on the old index.
+    ['#/browse?tandem=yes&top=xylem&tau_min=0.8', 339],
     ['#/browse?wgd_disputed=yes', 904],
     ['#/browse?allele=no', 12098],
   ];
@@ -1728,8 +1753,10 @@ await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
 // value the browser auto-picks with no 'change' event to hook, while the caption and
 // canvas still showed stale tissue-mode content. Checked here so it cannot silently
 // return.
+// This gene's own top tissue is bud since data 0.16.0 (it was catkin; see gene-expr-ps18-to-ps17).
 await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
-  { expect: ['Expression across the neighbourhood', 'By tissue', 'By contrast', 'Median TPM in catkin'], wait: 1200 });
+  { expect: ['Expression across the neighbourhood', 'By tissue', 'By contrast', 'Median TPM in bud',
+             'across the baseline controls'], wait: 1200 });
 {
   const sp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
   const serrs2 = [];

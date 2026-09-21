@@ -156,6 +156,44 @@ def main():
           f"{len(bad_tissue_keys)} mismatched, e.g. {bad_tissue_keys[:3]}" if bad_tissue_keys
           else f"{len(want_tissues)} tissues: {sorted(want_tissues)}")
 
+    # The baseline is wild-type controls grown fresh at ambient CO2 (Chen, 2026-09-21). One rule,
+    # in expr_baseline.py; these checks hold the shipped data to it rather than to a copy of it.
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import expr_baseline as eb
+    samples = json.load(open(f"{DATA}/expr/samples.json"))
+    eb.audit(samples)   # exits on metadata the rule was not written for
+    bad_flag = [s["label"] for s in samples if s.get("base") != eb.in_baseline(s)]
+    check("every sample's `base` flag is the baseline rule", not bad_flag,
+          f"{len(bad_flag)} disagree, e.g. {bad_flag[:3]}" if bad_flag
+          else f"{sum(s['base'] for s in samples)} of {len(samples)} samples in the baseline")
+    base_idx = eb.tissue_index(samples, eb.in_baseline)
+    want_n = {t: len(v) for t, v in base_idx.items()}
+    man_n = (man.get("expression") or {}).get("tissue_wt_control_n", {})
+    check("the manifest's per-tissue baseline n counts the baseline samples", man_n == want_n,
+          f"manifest {man_n} vs samples {want_n}")
+    bad_n = [gid for gid, (_, _, rec) in genes.items() if rec.get("x") and rec["x"]["n"] != want_n]
+    check("every gene's per-tissue n is the baseline's", not bad_n,
+          f"{len(bad_n)} disagree, e.g. {bad_n[:3]}" if bad_n else "")
+    bad_top = [gid for gid, (_, _, rec) in genes.items() if rec.get("x") and (
+        (rec["x"]["top"] is None) != (max(rec["x"]["t"].values()) <= 0)
+        or (rec["x"]["top"] is not None
+            and rec["x"]["t"][rec["x"]["top"]] != max(rec["x"]["t"].values())))]
+    check("a peak tissue is the highest median, and a gene with none expressed has none",
+          not bad_top, f"{len(bad_top)} wrong, e.g. {bad_top[:3]}" if bad_top else "")
+    if have_ranges:
+        bad_base = []
+        for gid in sample:
+            hap, _, rec = genes[gid]
+            x = rec.get("x")
+            if not x or not x.get("o") or blobs.get(hap) is None:
+                continue
+            v = json.loads(_gz.decompress(blobs[hap][x["o"][0]:x["o"][0] + x["o"][1]]))
+            if eb.summarise(v, base_idx) != {k: x.get(k) for k in ("t", "n", "tau", "top")}:
+                bad_base.append(gid)
+        check("sampled genes' baselines recompute from their own vectors", not bad_base,
+              f"{len(bad_base)} differ, e.g. {bad_base[:3]}" if bad_base
+              else f"{len(sample)} genes: medians, n, tau and peak all reproduce")
+
     # ComBat-seq is opt-in per gene (TODO 18): x.cb present only where the source matrix had
     # enough count signal to batch-correct. Every gene claiming one must actually resolve.
     want_cb = (man.get("expression") or {}).get("combat_eligible_genes")

@@ -493,12 +493,15 @@ only what still has no second layer after that gets folded into About.
       **A new fetch outside that list will 404 live while every local check passes** (the checks
       serve the repo root), so add it to `pages.yml` in the same commit.
 - [ ] **50: definitions to decide, not bugs (flagged 2026-09-21).**
-      (a) The expression baseline is `genotype == WT and ctrl == control` on the raw flag. In
-      study 1 that includes 500 ppm CO2 and second-timepoint ("recovered") controls, 44 of its 58
-      WT controls, and study 24's four field-condition controls. The chapter's rule
-      (`ms2-lsg pipeline/lib/contrasts.py`, GOTCHAS #15) builds contrast ARMS, not a baseline, so
-      it does not decide this directly; the chapter's own control-detection rerun (T7.4) is not
-      canon yet and its numbers must not be published. (b) The atlas's τ is that baseline's τ over
+      (a) DECIDED, data 0.16.0. Chen, 2026-09-21: "use WT fresh ambient-CO2 controls
+      for the baseline". The baseline is every wild-type control except study 1's 500 ppm and
+      recovered ones (169 samples; study 1 keeps 14 of its 58). Study 24's four field-grown catkin
+      controls stay: wild type, fresh, ambient CO2. The rule is `scripts/expr_baseline.py`; the
+      same release made an even-n median the mean of the two middle values and stopped giving a
+      peak tissue to genes with no expressed tissue. See CHANGELOG 0.16.0. What was flagged: the
+      baseline read `genotype == WT and ctrl == control` on the raw flag, which in study 1 included
+      500 ppm CO2 and second-timepoint ("recovered") controls, 44 of its 58 WT controls. (b) STILL
+      OPEN. The atlas's τ is that baseline's τ over
       the MS1 v4 panel's `tissue_analysis` grouping (leaf split for study 1 only). The chapter's τ
       (Methods 2.4, `s03`) uses all samples over `split_leaf_age` (studies 1, 27, 28, 30, 31). Same
       word, different numbers: at minimum the expression card should say which τ it is.

@@ -202,7 +202,7 @@ export async function pairView(id) {
         + 'on the right is a gap in the annotation, not a protein without domains.')),
 
     tc ? el('div', { class: 'card' },
-      el('h2', {}, 'Expression, allele against allele', el('span', { class: 'tag' }, 'median TPM, WT controls')),
+      el('h2', {}, 'Expression, allele against allele', el('span', { class: 'tag' }, 'median TPM, baseline controls')),
       tc,
       el('div', { style: 'margin-top:10px' }, corr)) : null,
 

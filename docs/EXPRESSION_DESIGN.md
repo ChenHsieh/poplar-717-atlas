@@ -29,10 +29,15 @@ HAP1+HAP2 v5.1 primary transcripts. This supersedes the 531-sample atlas; the si
 4. **Study is the community-facing unit** — one page per curated study, the way GEO / ArrayExpress
    / PopGenIE present data — with BioProject, citation + DOI, design factors, a sample table, and
    external links. Study numbering (1–31, gaps = excluded) follows the delivery.
-5. **Baseline = median TPM across WT controls per tissue.** Counts per tissue are healthy for
-   leaf 77 / xylem 59 / bark 38 / root 27, thin for bud 5 / catkin 4 / stem 2 / callus 1, and the
-   n is shown beside every bar. **Tau** (Yanai) is computed over the 8 non-callus tissues, per
-   the delivery note that callus stays out of the manuscript panel; callus is still shown, flagged.
+5. **Baseline = median TPM across wild-type controls grown fresh at ambient CO2, per tissue.**
+   Revised 2026-09-21 (Chen: "use WT fresh ambient-CO2 controls for the baseline"; data 0.16.0):
+   every wild-type control except study 1's 500 ppm CO2 and recovered ones, 169 samples. The rule,
+   the median (the mean of the two middle values for an even n) and τ live in
+   `scripts/expr_baseline.py`. Per tissue: leaf 55 / xylem 50 / bark 29 / root 18, thin for bud 5 /
+   catkin 4 / young leaf 3 / old leaf 2 / stem 2 / callus 1, and the n is shown beside every bar.
+   (The original counts, leaf 77 / xylem 59 / bark 38 / root 27, predate both the 2026-09-05 leaf
+   split and this revision.) **Tau** (Yanai) is computed over the non-callus tissues, per the
+   delivery note that callus stays out of the manuscript panel; callus is still shown, flagged.
 6. **Study 29 (PRJNA752367) is flagged "prefer counts over TPM"** on its page, per the README's
    effective-length caveat. Processing notes (188 samples, e.g. requantified unstranded) surface
    in the sample table.

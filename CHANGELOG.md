@@ -9,6 +9,59 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.16.0 - 2026-09-21 - The expression baseline is wild-type controls grown fresh at ambient CO2
+
+Chen's decision, 2026-09-21: "use WT fresh ambient-CO2 controls for the baseline" (TODO 50a).
+
+**What the baseline is now.** Every gene card's tissue medians, τ and peak tissue, the Browse
+filters built on them (τ ≥, peak tissue, expressed in) and the genome map's τ overlay are taken
+over 169 samples: every wild-type control, except that study 1 contributes only its 14 fresh
+ambient-CO2 (380 ppm) controls. Its other 44 controls, grown at 500 ppm CO2 or sampled at the
+later (recovery) timepoint, are left out. Until now the baseline read the raw control flag, which
+put all 58 of study 1's controls in it (ms2-lsg `docs/GOTCHAS.md` #15 says why that flag is
+coarse). No other study's control carries a CO2 level or a later timepoint, and the rule refuses
+metadata where one does rather than classifying it. Study 24's four field-grown catkin controls
+stay in: they are wild type, fresh and at ambient CO2.
+
+Samples per tissue, before and after: bark 38 to 29, young leaf 11 to 3, old leaf 11 to 2, root
+27 to 18, xylem 59 to 50; leaf 55, bud 5, catkin 4, stem 2 and callus 1 unchanged.
+
+**Two errors in the same arithmetic, fixed with it.** (1) With an even number of samples the
+"median" was the upper of the two middle values, which for a two-sample tissue is the larger
+sample. It is now the mean of the two middle values, which is what the label says. On the new
+samples this rule alone moves 259,243 gene-by-tissue values, and it is why stem and catkin change
+although their samples did not. (2) A gene whose every tissue median is 0 was given a peak tissue,
+the first tissue in sample order (young leaf), on 2,154 genes. Such a gene now has none (1,926
+genes on the new baseline): its card says so, and Browse's peak-tissue filter no longer returns it.
+
+**What moved.** 366,837 of the 639,600 gene-by-tissue medians; τ on 59,420 genes (not computable
+on 2,152, was 2,394); the peak tissue on 14,725 genes. Genes above 1 TPM in at least one tissue go
+from 53,704 to 53,293, and the home page's tandem, xylem-peak, τ ≥ 0.8 question from 283 genes to
+339. Example, PtXaTreH.05G120200: young and old leaf read 15.47 and 8.73 TPM on 3 and 2 samples
+(were 13.74 and 4.52 on 11 each), and its peak tissue is bud, 141.48, where it was catkin at
+142.32 (catkin's four samples now give 137.85). Checked by hand against Python's
+`statistics.median`.
+
+**How.** No new source: every gene's 652-sample vector already ships, and the baseline is an
+aggregation of it. `scripts/patch_baseline_fresh_ambient.py` first proves that the old rule and
+old median reproduce the shipped `x.t`, `x.n`, `x.tau` and `x.top` exactly for all 63,960 genes,
+then rewrites them. The rule lives in `scripts/expr_baseline.py`, shared with
+`build_expression.py` (fixed at source, so a full rebuild gives the same numbers) and
+`validate_data.py`, whose new checks hold every sample's `base` flag to the rule, the manifest and
+every gene to the baseline's per-tissue n, a peak tissue to the highest median, and a fixed sample
+of genes to a recompute from their own vectors. The locus tiles and chromosome indexes were
+rebuilt with `build_locus.py` (only τ and peak tissue differ, checked field by field against a
+scratch build), then `patch_map_overlays.py` and `build_facets.py`.
+
+**On the page.** The Expression card, the Expression module, every study page (a "baseline" badge
+on the controls in it, and a line saying how many) and the About page (every tissue's n, and the
+genes-with-a-baseline row, 62,034 of 63,960) say what the baseline is, and the copies, allele-pair,
+scrubber and duplicate-partner labels say "baseline controls" instead of "WT controls".
+`samples.json` carries `base`; the manifest carries `expression.baseline` and a corrections entry.
+
+**Still open (TODO 50b).** The atlas's τ is this baseline's τ over the atlas's tissue grouping.
+The chapter's τ (Methods 2.4) uses all samples over `split_leaf_age`, so the two still differ.
+
 ## 0.15.0 - 2026-09-21 - The pool is the frozen genEra call again, and every check on it is a flag
 
 Chen's ruling, 2026-09-21: "the 842/883 is the frozen but the various QC steps from Idesia to

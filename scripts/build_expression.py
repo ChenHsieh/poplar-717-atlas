@@ -9,10 +9,15 @@ TPM matrix gene IDs == the BED gene set exactly, sample columns == metadata samp
 exactly, no ragged rows.
 
 Two-level data, per the design doc:
-  - a tissue-baseline SUMMARY (median TPM over WT controls per tissue, n, tau) is folded into
-    the existing gene shard at data/genes/{hap}/{chr}.json under key "x"
+  - a tissue-baseline SUMMARY (median TPM over the baseline samples per tissue, n, tau) is
+    folded into the existing gene shard at data/genes/{hap}/{chr}.json under key "x"
   - the full 652-sample vector lives in a SEPARATE bucket (250 genes/bucket, gene order fixed
     by first appearance in the BED, i.e. genomic order) that a gene page fetches on demand
+
+THE BASELINE (Chen, 2026-09-21): wild-type controls grown fresh at ambient CO2, i.e. every
+wild-type control except study 1's 500 ppm and recovered ones. The rule, the median it takes and
+tau all live in scripts/expr_baseline.py, shared with validate_data.py and with the in-place
+correction patch_baseline_fresh_ambient.py, whose output this build reproduces exactly.
 
 TISSUE GROUPING (fixed 2026-09-05, see docs/DATA_AUDIT.md): the baseline and tau MUST group
 on `tissue_analysis`, not the coarser `tissue`. The source metadata's own `tissue` column
@@ -25,7 +30,9 @@ covers all 652 samples exactly; anything short of that is a hard stop, not a sil
 join -- see the assert immediately after `read_samples()` below.
 """
 import argparse, csv, gzip, hashlib, json, math, os, shutil, sys, time
-from collections import defaultdict
+from collections import Counter, defaultdict
+
+import expr_baseline as eb
 
 EXPR = "/scratch/ch29576/ms2_genespace/expression"
 ATLAS = "/scratch/ch29576/poplar-717-atlas"
@@ -42,8 +49,8 @@ def note(path):
     return path
 
 # Non-callus tissues for tau, per README: "include in any full data delivery, do NOT include
-# in the manuscript panel." Tau is a manuscript-facing statistic.
-TAU_TISSUES_EXCLUDE = {"callus"}
+# in the manuscript panel." Tau is a manuscript-facing statistic. Defined in expr_baseline.
+TAU_TISSUES_EXCLUDE = eb.TAU_TISSUES_EXCLUDE
 
 def read_tissue_analysis():
     """sample_label -> tissue_analysis, from the frozen join file (see docstring above)."""
@@ -56,17 +63,6 @@ def read_tissue_analysis():
             label, ta = line.rstrip("\n").split("\t")
             out[label] = ta
     return out
-
-def tau(values):
-    """Yanai's tau. 0 = uniformly expressed, 1 = perfectly tissue-specific. Undefined (None)
-    if every value is <=0."""
-    mx = max(values)
-    if mx <= 0:
-        return None
-    n = len(values)
-    if n <= 1:
-        return None
-    return sum(1 - (v / mx) for v in values) / (n - 1)
 
 def read_samples():
     with open(note(f"{EXPR}/COLUMN_LEVEL_sample_metadata.csv")) as fh:
@@ -157,6 +153,9 @@ def main():
         "pct_aligned": float(r["pct_pseudoaligned"]) if r["pct_pseudoaligned"] else None,
         "field": bool(r["field?"].strip()), "notes": r["processing_notes"] or None,
     } for i, r in enumerate(samples)]
+    left_out = eb.audit(samples_out)
+    for s in samples_out:
+        s["base"] = eb.in_baseline(s)
     with open(os.path.join(a.out, "expr", "samples.json"), "w") as fh:
         json.dump(samples_out, fh, separators=(",", ":"))
     print(f"wrote samples.json ({len(samples_out)} rows, this IS the vector index order)")
@@ -171,12 +170,10 @@ def main():
         assert not missing, f"{len(missing)} sample_labels missing from TPM header"
         idx = [col_of[s] for s in order]
 
-        # tissue -> list of column indices, restricted to WT controls (the baseline definition)
-        wt_ctrl_idx = defaultdict(list)
-        for i, s in enumerate(samples_out):
-            if s["genotype"] == "WT" and s["ctrl"] == "control":
-                wt_ctrl_idx[s["tissue_analysis"]].append(i)
-        print("WT-control samples per tissue:", {t: len(v) for t, v in sorted(wt_ctrl_idx.items())})
+        # tissue -> list of column indices, restricted to the baseline samples (expr_baseline)
+        base_idx = eb.tissue_index(samples_out, eb.in_baseline)
+        print("baseline samples per tissue:", {t: len(v) for t, v in sorted(base_idx.items())},
+              f"({len(left_out)} wild-type controls left out, all study 1)")
 
         gene_order = []  # genomic order, from the BED files -- fixes bucket assignment
         for hap, fname in (("hap1", "Ptrxalhap1"), ("hap2", "Ptrxalhap2")):
@@ -194,27 +191,16 @@ def main():
             if gid not in gene_pos:
                 continue  # defensive; README says gene sets match exactly
             seen.add(gid)
-            vals = [float(row[1 + j]) for j in idx]
+            # The baseline is taken on the 2-decimal values the site ships, so a reader can
+            # reproduce it from the vector they download (expr_baseline docstring).
+            vals = [round(float(row[1 + j]), 2) for j in idx]
             pos = gene_pos[gid]
             hap = "hap1" if pos < 32137 else "hap2"  # BED read hap1 fully before hap2
             bnum = pos if hap == "hap1" else pos - 32137
             bkey = f"{hap}/{bnum // BUCKET_SIZE}"
-            buckets.setdefault(bkey, {})[gid] = [round(v, 2) for v in vals]
+            buckets.setdefault(bkey, {})[gid] = vals
 
-            tmed = {}
-            tn = {}
-            for t, idxs in wt_ctrl_idx.items():
-                tv = sorted(vals[k] for k in idxs)
-                tmed[t] = round(tv[len(tv) // 2], 2)
-                tn[t] = len(idxs)
-            tau_vals = [tmed[t] for t in tmed if t not in TAU_TISSUES_EXCLUDE]
-            tv = tau(tau_vals) if tau_vals else None
-            top = max(tmed, key=tmed.get) if tmed else None
-            summary[gid] = {
-                "b": bkey, "t": tmed, "n": tn,
-                "tau": round(tv, 3) if tv is not None else None,
-                "top": top, "max": max(vals),
-            }
+            summary[gid] = {"b": bkey, **eb.summarise(vals, base_idx), "max": max(vals)}
             n_rows += 1
             if n_rows % 10000 == 0:
                 print(f"  {n_rows} genes processed")
@@ -264,7 +250,17 @@ def main():
         "n_bioprojects": len(set(r["bioproject"] for r in samples)),
         "bucket_size": BUCKET_SIZE, "n_buckets": len(buckets),
         "tau_excludes": sorted(TAU_TISSUES_EXCLUDE),
-        "tissue_wt_control_n": {t: len(v) for t, v in sorted(wt_ctrl_idx.items())},
+        "tissue_wt_control_n": {t: len(v) for t, v in sorted(base_idx.items())},
+        "n_genes_with_baseline": sum(1 for v in summary.values() if v["top"] is not None),
+        "baseline": {"rule": eb.RULE, "decided": eb.DECISION,
+                     "n_samples": sum(len(v) for v in base_idx.values()),
+                     "left_out": {"study": 1, "n": len(left_out),
+                                  "per_tissue": dict(sorted(Counter(
+                                      s["tissue_analysis"] for s in left_out).items())),
+                                  "why": "500 ppm CO2, or recovered after re-watering"},
+                     "median": eb.MEDIAN_RULE,
+                     "peak": "none when every tissue's median is 0",
+                     "tau": "Yanai's tau over the baseline medians of every tissue except callus"},
     }
     man["sources"].update(SRC)
     with open(man_path, "w") as fh:

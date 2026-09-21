@@ -230,7 +230,7 @@ function geneCard(g) {
   async function paintTissue(tissue) {
     state.mode = 'tissue'; state.tissue = tissue;
     state.values = state.records.map((rec) => (rec.x && rec.x.t ? rec.x.t[tissue] : null) ?? null);
-    caption.textContent = `Median TPM in ${tissue.replace('_', ' ')} across the WT-control subset, `
+    caption.textContent = `Median TPM in ${tissue.replace('_', ' ')} across the baseline controls, `
       + 'the same value shown on each gene\'s own Expression card. Drag between tissues to watch '
       + 'the window light up and go dark.';
     refresh();

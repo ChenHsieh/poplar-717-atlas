@@ -83,6 +83,10 @@ STAGES=(
 # DELIBERATELY NOT A STAGE: patch_leaf_tissue_analysis.py. It is a one-time correction to
 # already-shipped data; build_expression.py is fixed at source, so a real rebuild already
 # produces the corrected baseline and re-running the patch would be a no-op at best.
+# Same for patch_baseline_fresh_ambient.py (2026-09-21, the baseline became wild-type controls
+# grown fresh at ambient CO2): build_expression.py applies the same rule through
+# scripts/expr_baseline.py, a shared module rather than a stage, and the patch's reproduction
+# gate would refuse to run on data that already carries the new baseline.
 
 # --- can this machine run each class? --------------------------------------------------
 have_sapelo2=0

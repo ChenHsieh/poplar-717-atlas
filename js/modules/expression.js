@@ -9,7 +9,7 @@ const TISSUE_ORDER = ['leaf_young', 'leaf', 'leaf_old', 'xylem', 'bark', 'root',
 const orderTissues = (keys) => TISSUE_ORDER.filter((t) => keys.includes(t)).concat(keys.filter((t) => !TISSUE_ORDER.includes(t)));
 
 function tauNote(tau) {
-  if (tau == null) return 'not computable (all-zero baseline)';
+  if (tau == null) return 'not computable (every tissue except callus has a median of 0)';
   if (tau >= 0.85) return 'tissue-specific';
   if (tau >= 0.5) return 'moderately tissue-biased';
   return 'broadly expressed';
@@ -164,16 +164,20 @@ function geneCard(g) {
   },
     el('h2', {}, 'Expression', el('span', { class: 'tag' }, 'kallisto k21')),
     el('p', { class: 'sub', style: 'margin:0 0 10px' },
-      `Median TPM across the WT-control subset (used for the baseline and τ below only — `,
-      `perturbation and the full 652-sample profile are separate views, see below). Peak: `,
-      el('strong', {}, x.top || '—'), ` (${fmt(x.t[x.top])} TPM). `,
-      `τ = ${x.tau ?? '—'} — ${tauNote(x.tau)}.`),
+      'Median TPM across the baseline samples: wild-type controls, with study 1 represented only ',
+      'by its fresh ambient-CO2 controls. Perturbation samples and the full 652-sample profile are ',
+      'separate views below. ',
+      // No peak for a gene whose every median is 0 (data 0.16.0; it used to read "young leaf").
+      ...(x.top
+        ? ['Peak: ', el('strong', {}, x.top), ` (${fmt(x.t[x.top])} TPM). `]
+        : ['No tissue has a median above 0 TPM, so there is no peak tissue. ']),
+      x.tau != null ? `τ = ${x.tau}, ${tauNote(x.tau)}.` : `τ is ${tauNote(x.tau)}.`),
     baselineChart(x),
     el('p', { class: 'muted', style: 'font-size:11px;margin:6px 0 0' },
       `τ computed over ${orderTissues(Object.keys(x.t).filter((t) => t !== 'callus')).join(' / ')} `,
-      '(callus excluded — 1 sample, not part of the manuscript panel per the delivery notes). ',
-      'callus is still shown above. leaf_young/leaf_old (study 1 only) and the unsplit leaf ',
-      '(every other study) are three separate tissues here, not one — see docs/DATA_AUDIT.md.'),
+      '(callus excluded: 1 sample, not part of the manuscript panel per the delivery notes). ',
+      'callus is still shown above. leaf_young/leaf_old (study 1’s fresh ambient-CO2 controls only) ',
+      'and the unsplit leaf (every other study) are three separate tissues here, not one.'),
     g.resp && g.resp.v != null ? el('p', { style: 'font-size:12.5px;margin:9px 0 0' },
       el('strong', {}, 'Responsiveness: '),
       'median |log2 fold-change| across perturbation contrasts is ',
@@ -383,8 +387,24 @@ function tissuePanelMatrix(man) {
     el('td', {}, t), el('td', { class: 'num' }, n),
     el('td', {}, el('div', { class: 'bar', style: `width:${(n / Math.max(...Object.values(tw))) * 100}%;background:var(--accent)` }))));
   return el('table', { class: 'data' },
-    el('thead', {}, el('tr', {}, el('th', {}, 'Tissue'), el('th', { class: 'num' }, 'WT-control n'), el('th', {}, ''))),
+    el('thead', {}, el('tr', {}, el('th', {}, 'Tissue'), el('th', { class: 'num' }, 'Baseline n'), el('th', {}, ''))),
     el('tbody', {}, ...rows));
+}
+
+// What the baseline is, read from the manifest block the build wrote beside the numbers, so the
+// page cannot describe a different sample set from the one the medians were taken over.
+function baselineNote(e) {
+  const b = e.baseline || {};
+  const lo = b.left_out || {};
+  const tw = e.tissue_wt_control_n;
+  const thin = orderTissues(Object.keys(tw)).filter((t) => tw[t] <= 5);
+  return `Every gene's tissue bars are the median TPM across these ${fmt(b.n_samples)} samples `
+    + '(for an even count, the mean of the two middle values): wild-type controls, with study 1 '
+    + 'represented only by its fresh ambient-CO2 (380 ppm) controls. '
+    + (lo.n ? `Its other ${fmt(lo.n)} controls, grown at 500 ppm CO2 or sampled at the later `
+      + '(recovery) timepoint, are left out. ' : '')
+    + (thin.length ? `${thin.join(', ')} rest on 5 or fewer samples; read differences with that `
+      + 'in mind.' : '');
 }
 
 async function overview(man) {
@@ -404,10 +424,8 @@ async function overview(man) {
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(e.n_buckets * e.bucket_size)), el('div', { class: 'l' }, 'gene profiles indexed')),
     ),
     el('div', { class: 'card' },
-      el('h2', {}, 'WT-control samples per tissue', el('span', { class: 'tag' }, 'baseline denominator')),
-      el('p', { class: 'muted', style: 'font-size:12px;margin:0 0 10px' },
-        `Every gene's tissue-baseline bars are the median TPM across these WT-control samples. `
-        + `stem, bud, catkin and callus are thin (≤5) — read differences with that in mind.`),
+      el('h2', {}, 'Baseline samples per tissue', el('span', { class: 'tag' }, 'baseline denominator')),
+      el('p', { class: 'muted', style: 'font-size:12px;margin:0 0 10px' }, baselineNote(e)),
       tissuePanelMatrix(man)),
     el('div', { class: 'card' },
       el('h2', {}, 'Studies', el('span', { class: 'tag' }, 'click a row to open it')),

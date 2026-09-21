@@ -129,6 +129,37 @@
    "detail": "CHANGELOG.md 0.13.2, sources/proteomics_ms_v2.provenance.json corrections_2026_09_21",
    "what": "proteomics.method and proteomics.age_gradient_pct corrected; no gene record changed",
    "why": "method named the original Tier 2 database (98,659 targets) but every shipped search used the expanded 135,843-target database; age_gradient_pct was a hand-typed, haplotype-pooled copy of the published Tier 2 figures (LSG pool 0.12%, i.e. 2 of 1,611) that still counted PtXaTreH.14G041300, withdrawn upstream on 2026-09-09. Now computed from the shards per haplotype by patch_proteomics_v2.py:age_gradient() and gated against the owner's union counts."
+  },
+  {
+   "after_tissue_wt_control_n": {
+    "bark": 29,
+    "bud": 5,
+    "callus": 1,
+    "catkin": 4,
+    "leaf": 55,
+    "leaf_old": 2,
+    "leaf_young": 3,
+    "root": 18,
+    "stem": 2,
+    "xylem": 50
+   },
+   "also": "an even-n median is now the mean of the two middle values (was the upper one), and a gene with no expressed tissue has no peak tissue (was young leaf)",
+   "before_tissue_wt_control_n": {
+    "bark": 38,
+    "bud": 5,
+    "callus": 1,
+    "catkin": 4,
+    "leaf": 55,
+    "leaf_old": 11,
+    "leaf_young": 11,
+    "root": 27,
+    "stem": 2,
+    "xylem": 59
+   },
+   "date": "2026-09-21",
+   "detail": "CHANGELOG.md 0.16.0, scripts/expr_baseline.py",
+   "what": "expression baseline = wild-type controls grown fresh at ambient CO2",
+   "why": "Chen, 2026-09-21: \"use WT fresh ambient-CO2 controls for the baseline\". Study 1's 500 ppm and recovered controls had been in it, because the baseline read the raw control flag."
   }
  ],
  "cre": {
@@ -199,7 +230,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.15.0",
+ "data_version": "0.16.0",
  "duplicate_coexpr": {
   "basis": "Pearson r on log2(ComBat-corrected TPM + 1) over 652 samples -- the same matrix the neighbour co-expression (nb) uses, because a 652-sample correlation spans 28 studies and is therefore a cross-study comparison.",
   "coverage": "A pair needs BOTH partners in the ComBat matrix (59,599 of 63,960 genes), so 7,707 of 32,333 duplicate pairs have no value. Absence means 'not comparable', not 'uncorrelated'.",
@@ -275,32 +306,53 @@
   "why": "A gene page fetched 786 KB of its 250 neighbours' expression to draw one card. A range request fetches ~1.1 KB."
  },
  "expression": {
+  "baseline": {
+   "decided": "Chen, 2026-09-21: \"use WT fresh ambient-CO2 controls for the baseline\"",
+   "left_out": {
+    "n": 44,
+    "per_tissue": {
+     "bark": 9,
+     "leaf_old": 9,
+     "leaf_young": 8,
+     "root": 9,
+     "xylem": 9
+    },
+    "study": 1,
+    "why": "500 ppm CO2, or recovered after re-watering"
+   },
+   "median": "the middle value, or the mean of the two middle values when n is even",
+   "n_samples": 169,
+   "peak": "none when every tissue's median is 0",
+   "rule": "Wild-type control samples, leaving out controls grown at raised CO2 (500 ppm) or sampled at a later timepoint (recovered after re-watering). Only study 1 has either; its 14 fresh ambient-CO2 (380 ppm) controls are kept and its other 44 left out.",
+   "tau": "Yanai's tau over the baseline medians of every tissue except callus"
+  },
   "bucket_size": 250,
   "combat_eligible_genes": 59599,
   "n_bioprojects": 38,
   "n_buckets": 257,
   "n_contrasts": 191,
   "n_contrasts_recommended": 117,
+  "n_genes_with_baseline": 62034,
   "n_samples": 652,
   "n_studies": 28,
   "tau_excludes": [
    "callus"
   ],
   "tissue_wt_control_n": {
-   "bark": 38,
+   "bark": 29,
    "bud": 5,
    "callus": 1,
    "catkin": 4,
    "leaf": 55,
-   "leaf_old": 11,
-   "leaf_young": 11,
-   "root": 27,
+   "leaf_old": 2,
+   "leaf_young": 3,
+   "root": 18,
    "stem": 2,
-   "xylem": 59
+   "xylem": 50
   }
  },
  "facets": {
-  "bytes": 2932464,
+  "bytes": 2933055,
   "cols": [
    "hap",
    "chr",

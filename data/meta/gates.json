@@ -1,6 +1,6 @@
 {
- "data_version": "0.15.0",
- "n_checks": 87,
+ "data_version": "0.16.0",
+ "n_checks": 92,
  "n_failed": 0,
  "checks": [
   {
@@ -37,6 +37,31 @@
    "name": "every gene's tissue baseline uses the manifest's tissue set",
    "ok": true,
    "detail": "10 tissues: ['bark', 'bud', 'callus', 'catkin', 'leaf', 'leaf_old', 'leaf_young', 'root', 'stem', 'xylem']"
+  },
+  {
+   "name": "every sample's `base` flag is the baseline rule",
+   "ok": true,
+   "detail": "169 of 652 samples in the baseline"
+  },
+  {
+   "name": "the manifest's per-tissue baseline n counts the baseline samples",
+   "ok": true,
+   "detail": "manifest {'bark': 29, 'bud': 5, 'callus': 1, 'catkin': 4, 'leaf': 55, 'leaf_old': 2, 'leaf_young': 3, 'root': 18, 'stem': 2, 'xylem': 50} vs samples {'leaf_young': 3, 'leaf_old': 2, 'bark': 29, 'root': 18, 'xylem': 50, 'leaf': 55, 'bud': 5, 'catkin': 4, 'stem': 2, 'callus': 1}"
+  },
+  {
+   "name": "every gene's per-tissue n is the baseline's",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "a peak tissue is the highest median, and a gene with none expressed has none",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "sampled genes' baselines recompute from their own vectors",
+   "ok": true,
+   "detail": "65 genes: medians, n, tau and peak all reproduce"
   },
   {
    "name": "manifest combat_eligible_genes matches the shard count",
@@ -251,7 +276,7 @@
   {
    "name": "no embargoed LSG candidate label in any published file",
    "ok": true,
-   "detail": "1328 text files"
+   "detail": "1330 text files"
   },
   {
    "name": "ancestral karyotype counts match the route C coverage, per haplotype",
