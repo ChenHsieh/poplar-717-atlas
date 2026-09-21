@@ -9,6 +9,70 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.14.0 - 2026-09-21 - NRX1's copies on both haplotypes, and every gene card says what kind of evidence it is
+
+Two additions to the gene page.
+
+### Copies on both haplotypes
+
+From any of NRX1's seven HAP1 gene pages, nothing led to HAP2. None of the seven copies has an
+assigned allele, and a gene table can only show annotated genes. The Duplication band now carries
+a panel that is the same on every gene page in the locus. It draws each copy on both haplotypes as
+the part of the 564 aa protein that stretch of genome still encodes:
+
+- **HAP1:** 7 annotated copies covering 53-95% of the protein, plus an eighth the annotation does
+  not call (73%).
+- **HAP2:** no copy longer than 48%. There are three pieces within 17 kb. Two sit under a single
+  gene model, `PtXaAlbH.10G043900`, 4.8 kb apart. The most complete piece is not annotated at all.
+
+The panel also has its own page, `#/copies/nrx1`. The gene page's summary strip gains a **Both
+haplotypes** row that jumps to it. The layout is drawn at the container's real width, so on a
+phone the labels move above the bars instead of shrinking.
+
+**Where the copies come from.** A search of the genome sequence: tblastn of the array's proteins
+against each whole haplotype genome. It is committed as `sources/copy_search.json` by
+`scripts/make_copy_search_source.py`, which runs on Sapelo2 by hand, like the other source makers.
+A new build stage, `patch_copies.py`, publishes it. Nothing in it is hand-picked:
+
+- The search region is bounded by the nearest genes with an allele on each side of the array.
+- The bound that separates pieces is measured on the array itself: its longest gene model, 3.3 kb.
+- The search must recover all seven annotated HAP1 copies, or it writes nothing.
+- Re-running it reproduces the committed file byte for byte.
+
+The panel cannot disagree with the gene pages it sits on. Annotated genes carry their gene
+shard's own position, and peak TPM is read from each gene's record when the panel is drawn.
+`validate_data.py` checks both on every build, with 6 new gates.
+
+**What it does not claim.**
+- Exact gene structures. tblastn does not model introns, so identity reads low across one; the
+  reference aligned to its own gene reads 96%.
+- Anything about the expression of unannotated pieces, which the expression index cannot measure.
+- Anything about other loci: only NRX1 has been searched.
+
+Tried and rejected, both recorded in `sources/copy_search.provenance.json`:
+- A spliced aligner (miniprot). It chained separate HAP2 pieces into single alignments spanning
+  11 and 75 kb, which is the very joining the panel exists to show.
+- A piece-separating gap measured inside intact copies. It cut HAP1's unannotated copy in two.
+
+### Evidence weight
+
+The gene page was already ordered from the strongest evidence to the weakest, but every card
+looked equally authoritative. Each card now says where its evidence comes from, in a chip: **from
+the genome**, **measured here**, **measured in P. trichocarpa**, **predicted**, **by homology** or
+**database-dependent**. Its left rule carries the same distinction in a form that survives
+greyscale: solid, dashed, or dotted on a recessed card.
+
+The table is `CARD_EVIDENCE` in `js/core/registry.js`. A card with no entry is a console error,
+which fails the render checks, so a new card cannot arrive looking like a measurement. Cards
+used to be identified by module, and a module can draw cards of different kinds, so the extra
+cards now carry their own identity: allele, selection, presence variation, panel presence,
+chromatin, gene model.
+
+Two cards near the top are recessed on purpose. **Function** and **Panel presence** sit in the
+Identity band, but both are inferences by homology.
+
+Also: the home page's question list no longer overflows a 375 px phone (it did by 74 px).
+
 ## Pages publishes only the site, and only after checks pass
 
 Chen, 2026-09-21: "merge pages-site-only and turn on the site-only deploy". Until today GitHub

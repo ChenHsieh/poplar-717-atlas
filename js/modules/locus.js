@@ -141,7 +141,7 @@ function geneModelCard(g) {
   // The last sentence used to read "An 827-library expansion is in progress and will supersede
   // this panel". The enlarged panel is 1,755 libraries on ms2-lsg PR #20, unmerged and held for
   // Chen's review (2026-09-21), so neither the size nor "will supersede" was true.
-  return el('div', { class: 'card' },
+  return el('div', { class: 'card', 'data-card': 'gene-model' },
     el('h2', {}, 'Gene model, from RNA-seq',
       el('span', { class: 'tag' }, '94 public libraries')), kv,
     el('p', { class: 'muted', style: 'font-size:11px;margin:10px 0 0' },

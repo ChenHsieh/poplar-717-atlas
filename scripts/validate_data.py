@@ -836,6 +836,45 @@ def main():
               (man.get("structure") or {}).get("genes") == len(seen),
               f"manifest {(man.get('structure') or {}).get('genes')} vs {len(seen)}")
 
+    # ---- copies on both haplotypes (patch_copies.py): a panel must not disagree with the gene
+    # pages it sits on, and must not be the only place a searched locus is recorded ----
+    cdir = f"{DATA}/copies"
+    if "copies" in man or os.path.isdir(cdir):
+        import hashlib
+        cman = man.get("copies") or {}
+        files = sorted(f[:-5] for f in os.listdir(cdir) if f.endswith(".json")) if os.path.isdir(cdir) else []
+        check("copies: each locus in the manifest has its data file, and no file is unlisted",
+              set(files) == set(cman.get("loci", {})), f"files {files} vs manifest {sorted(cman.get('loci', {}))}")
+        drawn, unknown, moved, controls = {}, [], [], []
+        for slug in files:
+            L = json.load(open(f"{cdir}/{slug}.json"))
+            got, of = L["controls"]["array_members_recovered"]
+            controls.append(f"{slug} {got}/{of}")
+            for r in L["rows"]:
+                if not r["gene"]:
+                    continue
+                drawn[r["gene"]] = slug
+                if r["gene"] not in genes:
+                    unknown.append(r["gene"])
+                    continue
+                hap, _, rec = genes[r["gene"]]
+                if (hap, rec["chr"], rec["start"], rec["end"]) != (r["hap"], r["chr"], r["start"], r["end"]):
+                    moved.append(r["gene"])
+        check("copies: every annotated gene a panel draws exists in the gene shards", not unknown,
+              f"{len(unknown)} unknown: {unknown[:3]}" if unknown else f"{len(drawn)} genes")
+        check("copies: every annotated row carries its gene page's exact position", not moved,
+              f"{len(moved)} differ: {moved[:3]}" if moved else f"{len(drawn)} genes")
+        check("copies: manifest.copies.genes is exactly the set of annotated genes drawn",
+              cman.get("genes") == drawn, f"{len(cman.get('genes') or {})} listed vs {len(drawn)} drawn")
+        check("copies: each search recovered every annotated member of its array (positive control)",
+              bool(controls) and all(c.split()[1].split("/")[0] == c.split()[1].split("/")[1] for c in controls),
+              ", ".join(controls))
+        src = os.path.join(os.path.dirname(DATA), "sources", "copy_search.json")
+        sha = hashlib.sha256(open(src, "rb").read()).hexdigest() if os.path.exists(src) else None
+        check("copies: data was built from the committed sources/copy_search.json",
+              sha is not None and sha == cman.get("source_sha256"),
+              "source missing" if sha is None else f"{sha[:12]} vs manifest {str(cman.get('source_sha256'))[:12]}")
+
     sdir = f"{DATA}/index/search"
     oob = 0
     for fn in sorted(os.listdir(sdir)):

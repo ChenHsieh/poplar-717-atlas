@@ -422,3 +422,97 @@ h2.sect:first-child { margin-top: 2px; }
 @media (max-width: 640px) {
   .lfc-rows, .lfc-axis { grid-template-columns: minmax(70px, 1.2fr) 2fr 46px 38px; gap: 3px 6px; }
 }
+
+/* The home page's question list overflowed at 375px (scrollWidth 449, reported 2026-09-21):
+   .kv sizes its first column to max-content, and a question is a sentence, not a label. On a
+   phone the list stacks instead -- question, then its note and count underneath. */
+@media (max-width: 640px) {
+  .kv.qa { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+  .kv.qa dd { margin-bottom: 9px; }
+}
+
+/* ---- evidence weight on the gene page (registry.js CARD_EVIDENCE, app.js applyEvidence) ----
+   Three tiers, each carried three ways: the chip says it in words, the left rule's STYLE
+   differs (solid / dashed / dotted), and the weakest tier is recessed. Colour is never the
+   only channel -- the house relief rule. A dashed outline all round was tried for tier 3 and
+   dropped: it reads as "empty" or "drop here", a different claim from "weaker evidence".
+   --c-priv is under the 3:1 non-text floor on a light panel (2.1:1), hence --ev2-ink. */
+:root { --ev2-ink: #8a6000; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ev2-ink: #d99a1e; } }
+:root[data-theme="dark"] { --ev2-ink: #d99a1e; }
+.card > h2 { flex-wrap: wrap; row-gap: 4px; }
+.ev-1 { border-left: 3px solid var(--accent); }
+.ev-2 { border-left: 3px dashed var(--ev2-ink); }
+.ev-3 { border-left: 3px dotted var(--ink-3); background: var(--panel-2); }
+.card-fold.ev-3 > summary:hover { background: var(--panel); }
+.ev-chip {
+  margin-left: auto; font-size: 10.5px; font-weight: 550; letter-spacing: .02em;
+  text-transform: none; white-space: nowrap; padding: 1px 8px; border-radius: 999px;
+  border: 1px solid var(--line-2); color: var(--ink-2); background: var(--surface);
+}
+.ev-chip-1 { border-color: var(--accent); color: var(--accent-ink); }
+.ev-chip-2 { border-color: var(--ev2-ink); color: var(--ev2-ink); }
+.ev-chip-3 { border-style: dashed; border-color: var(--ink-3); }
+.ev-key {
+  display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center;
+  margin: -4px 0 12px; font-size: 12px; color: var(--ink-2);
+}
+.ev-key-item { display: inline-flex; align-items: center; gap: 7px; }
+@media (max-width: 640px) { .ev-key-note { display: none; } }   /* a row a phone cannot spare */
+.ev-sw {
+  display: inline-block; width: 16px; height: 14px; border-radius: 3px;
+  border: 1px solid var(--line-2); background: var(--panel);
+}
+.ev-sw.ev-1 { border-left: 3px solid var(--accent); }
+.ev-sw.ev-2 { border-left: 3px dashed var(--ev2-ink); }
+.ev-sw.ev-3 { border-left: 3px dotted var(--ink-3); background: var(--panel-2); }
+
+/* ---- copies on both haplotypes (js/modules/copies.js) ------------------------------------
+   An SVG drawn at the container's real width. Every colour is a class rather than an
+   attribute, so the theme toggle recolours it without a redraw. Text that must be READ uses
+   --ink or --ink-2 (--ink-3 is under 4.5:1 on a panel); --ink-3 is for strokes only. */
+.cp-lede {
+  font-size: 13px; line-height: 1.55; margin: 0 0 12px; padding: 9px 12px; border-radius: 6px;
+  background: var(--panel-2); border-left: 3px solid var(--accent);
+}
+.cp-holder { width: 100%; min-width: 0; }
+/* The summary strip and the Allele card jump to the panel; land it below the sticky header and
+   section nav, the same offset h2.sect uses, or its heading scrolls in underneath them. */
+.cards > .card { scroll-margin-top: calc(var(--top-h, 47px) + 54px); }
+.cp-svg { display: block; max-width: 100%; height: auto; }
+.cp-svg text { font-size: 12px; fill: var(--ink-2); }
+.cp-svg .cp-head { font-size: 11px; }
+.cp-svg .cp-tick { font-size: 10.5px; }
+.cp-svg .cp-group { font-size: 13px; font-weight: 650; fill: var(--ink); }
+.cp-svg .cp-groupsub { font-size: 11.5px; }
+.cp-svg .cp-id { font-family: var(--mono); fill: var(--ink); }
+.cp-svg .cp-link .cp-id { fill: var(--accent-ink); }
+.cp-svg .cp-link:hover .cp-id { text-decoration: underline; }
+.cp-svg .cp-focal { font-weight: 700; }
+.cp-svg .cp-unann { font-style: italic; }
+.cp-svg .cp-pos { font-family: var(--mono); font-size: 10.5px; }
+.cp-svg .cp-stat { fill: var(--ink); font-variant-numeric: tabular-nums; }
+.cp-svg .cp-stat2, .cp-svg .cp-stat3 { font-variant-numeric: tabular-nums; }
+.cp-svg .cp-note { font-size: 11px; }
+.cp-svg .cp-piece { font-size: 11px; font-weight: 650; }
+.cp-axis { stroke: var(--line-2); }
+.cp-track { stroke: var(--line); }
+.cp-rule { stroke: var(--line); }
+.cp-bar { fill: var(--accent); }
+.cp-bracket { fill: none; stroke: var(--ink-3); }
+.cp-dashed { fill: none; stroke: var(--ink-3); stroke-dasharray: 4 3; }
+.cp-hit { fill: transparent; }
+.cp-focalbg { fill: var(--panel-2); }
+.cp-focalbar { fill: var(--accent); }
+.cp-key {
+  display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--ink-2); margin: 10px 0 0;
+}
+.cp-key > span { display: inline-flex; align-items: center; gap: 6px; }
+.cp-sw { display: inline-block; width: 20px; height: 10px; border-radius: 3px; background: var(--accent); }
+.cp-sw.cp-sw-dashed { background: transparent; border: 1.5px dashed var(--ink-3); }
+.cp-sw.cp-sw-focal { background: var(--panel-2); border-left: 3px solid var(--accent); height: 14px; }
+.cp-foot {
+  font-size: 12px; color: var(--ink-2); margin: 12px 0 0; padding: 10px 0 0 18px;
+  border-top: 1px solid var(--line); line-height: 1.5;
+}
+.cp-foot li { margin: 3px 0; }

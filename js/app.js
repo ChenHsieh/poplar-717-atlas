@@ -1,7 +1,8 @@
 import { el, clear, fmt } from './core/dom.js';
 import { getGene, loadManifest, hapLabel, loadExprStudies,
          loadExprSamples, searchGenesRanked, loadFacets, facetRow } from './core/data.js';
-import { MODULES, byId, GENE_SECTIONS, geneSectionModules } from './core/registry.js';
+import { MODULES, byId, GENE_SECTIONS, geneSectionModules, CARD_EVIDENCE,
+         EVIDENCE_TIERS } from './core/registry.js';
 import { dupTypeLabel } from './modules/duplication.js';
 import { classBadge } from './modules/synteny.js';
 import { route, start, navigate } from './core/router.js';
@@ -13,6 +14,7 @@ import { pairView } from './modules/pair.js';
 import { karyotypeView } from './modules/karyotype.js';
 import { familyView } from './modules/family.js';
 import { statusView } from './modules/status.js';
+import { copiesView } from './modules/copies.js';
 
 const view = () => document.getElementById('view');
 const setView = (node) => { const v = clear(view()); v.append(node); window.scrollTo(0, 0); };
@@ -196,7 +198,7 @@ function questionsCard() {
   const counts = QUESTIONS.map(() => el('span', { class: 'muted', style: 'font-size:12px' }, ''));
   const card = el('div', { class: 'card' },
     el('h2', {}, 'Start from a question', el('span', { class: 'tag' }, 'live counts')),
-    el('div', { class: 'kv' }, ...QUESTIONS.flatMap((q, i) => [
+    el('div', { class: 'kv qa' }, ...QUESTIONS.flatMap((q, i) => [
       el('dt', {}, el('a', { href: browseHref(q.params) }, q.q)),
       el('dd', {}, el('span', { class: 'muted', style: 'font-size:12.5px' }, q.sub),
         ' ', counts[i])])),
@@ -232,7 +234,7 @@ function questionsCard() {
  *                  a band that produced nothing for this gene never appears as a dead link.
  * ------------------------------------------------------------------------------------- */
 
-function glanceCard(g) {
+function glanceCard(g, man) {
   const bits = [];
 
   const dt = dupTypeLabel(g.dup);
@@ -269,6 +271,23 @@ function glanceCard(g) {
       el('a', { href: `#/gene/${g.allele.id}`, class: 'mono' }, g.allele.id),
       el('span', { class: 'muted' }, ' · '),
       el('a', { href: `#/pair/${g.id}` }, 'side by side'))]);
+  }
+  // A gene in a copy-search panel: the route to the other haplotype's copies, which the allele
+  // map cannot give when the array has no assigned allele (NRX1: none of its 7 copies has one).
+  const cp = man && man.copies && man.copies.genes && man.copies.genes[g.id];
+  if (cp) {
+    const L = man.copies.loci[cp];
+    const s1 = L.summary.hap1 || {}, s2 = L.summary.hap2 || {};
+    const side = (h, s) => (s.pieces == null ? `${h}: nothing found`
+      : h === (L.hap === 'hap1' ? 'HAP1' : 'HAP2')
+        ? `${h}: ${s.annotated + s.unannotated} copies, ${s.unannotated} not annotated`
+        : `${h}: ${s.pieces} piece${s.pieces === 1 ? '' : 's'}, the longest ${Math.round(s.max_cov_pct)}% of the protein`);
+    bits.push(['Both haplotypes', el('span', {},
+      `${L.name} · ${side('HAP1', s1)} · ${side('HAP2', s2)} `,
+      el('a', { href: `#/copies/${cp}`, onclick: (ev) => {
+        const c = document.querySelector('[data-card="copies"]');
+        if (c) { ev.preventDefault(); c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      } }, 'see the copies \u2193'))]);
   }
   if (!bits.length) return null;
 
@@ -439,6 +458,42 @@ function sectionNav(bands) {
   return nav;
 }
 
+/** Stamp every top-level card with its evidence tier (registry.js CARD_EVIDENCE): a class
+ *  that draws the left rule, and a chip that says it in words. A folded card carries both on
+ *  the fold, whose summary is what a reader sees. A card with no entry is a console error --
+ *  which fails the render checks -- rather than a card that silently reads as tier 1. */
+function applyEvidence(cards) {
+  const missing = [];
+  for (const top of [...cards.children]) {
+    if (top.matches('h2.sect')) continue;
+    const card = top.matches('details.card-fold') ? top.querySelector(':scope > .card') : top;
+    const key = card && card.dataset.card;
+    const ev = key && CARD_EVIDENCE[key];
+    if (!ev) { missing.push(key || '(unstamped card)'); continue; }
+    const [tier, words] = ev;
+    top.classList.add(`ev-${tier}`);
+    top.dataset.evidence = String(tier);
+    const head = top.matches('details') ? top.querySelector(':scope > summary')
+      : top.querySelector(':scope > h2');
+    (head || top).append(el('span', { class: `ev-chip ev-chip-${tier}`, title: EVIDENCE_TIERS[tier] }, words));
+  }
+  if (missing.length) {
+    console.error(`evidence: no tier declared for card(s) ${missing.join(', ')} -- add them to `
+      + 'CARD_EVIDENCE in js/core/registry.js');
+  }
+}
+
+/** One line under the section nav decoding the three rule styles. The words come from the same
+ *  table the chips do, so the key cannot list a label no card carries. */
+function evidenceKey() {
+  const words = (t) => [...new Set(Object.values(CARD_EVIDENCE).filter(([k]) => k === t).map(([, w]) => w))];
+  return el('p', { class: 'ev-key' },
+    el('span', { class: 'ev-key-item' }, el('i', { class: 'ev-sw ev-1' }), words(1).join(' or ')),
+    el('span', { class: 'ev-key-item' }, el('i', { class: 'ev-sw ev-2' }), words(2).join(' or ')),
+    el('span', { class: 'ev-key-item' }, el('i', { class: 'ev-sw ev-3' }), words(3).join(', ')),
+    el('span', { class: 'ev-key-note' }, 'Cards run from the strongest evidence to the weakest.'));
+}
+
 route(/^\/gene\/(.+)$/, async (id) => {
   loading(`Loading ${id}…`);
   const [g, man] = await Promise.all([getGene(id), loadManifest()]);
@@ -472,7 +527,7 @@ route(/^\/gene\/(.+)$/, async (id) => {
   }
 
   // The Location card built above belongs to Identity, so that band opens already non-empty.
-  const glance = glanceCard(g);
+  const glance = glanceCard(g, man);
   const bands = [];
   for (const sec of GENE_SECTIONS) {
     const made = [];
@@ -519,6 +574,8 @@ route(/^\/gene\/(.+)$/, async (id) => {
     d.append(c);
   });
 
+  applyEvidence(cards);
+
   const ord = g.ord || {};
   setView(el('div', {},
     el('h1', { class: 'mono' }, g.id),
@@ -529,7 +586,15 @@ route(/^\/gene\/(.+)$/, async (id) => {
       ord.n ? el('a', { href: `#/gene/${ord.n}`, class: 'mono' }, ord.n + ' →') : null) : null,
     glance,
     sectionNav(bands),
+    evidenceKey(),
     cards));
+  markNav();
+});
+
+// #/copies/<locus> -- a copy-search panel on its own page, for linking.
+route(/^\/copies\/(.+)$/, async (slug) => {
+  loading(`Loading ${slug}\u2026`);
+  setView(await copiesView(slug, await loadManifest()));
   markNav();
 });
 

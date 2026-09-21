@@ -19,6 +19,7 @@ const KNOWN = [
   ['karyotype_route_c', 'Ancestral karyotype'],
   ['dup_v9_and_pav', 'Duplication v9 and PAV'],
   ['duplicate_coexpr', 'Duplicate co-expression'],
+  ['copy_search', 'Copies on both haplotypes'],
   ['lsg_pool_idesia', 'LSG pool, Idesia-corrected'],
   ['lsg_qc_flags', 'LSG evidence quality'],
   ['kaks_ptri', 'Ka/Ks vs P. trichocarpa'],
@@ -71,7 +72,7 @@ function renderSidecar(obj) {
 export function evidenceCard() {
   const body = el('div', {});
   const card = el('div', { class: 'card' },
-    el('h2', {}, 'Why each layer says what it says', el('span', { class: 'tag' }, '19 provenance records')),
+    el('h2', {}, 'Why each layer says what it says', el('span', { class: 'tag' }, `${KNOWN.length} provenance records`)),
     el('p', { class: 'muted', style: 'font-size:12.5px;margin:0 0 10px' },
       'Each source ships a provenance record stating what it is for, the gate that had to pass '
       + 'before it was allowed in, what it deliberately does not claim, and what was tried and '

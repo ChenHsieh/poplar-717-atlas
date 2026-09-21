@@ -53,6 +53,10 @@ STAGES=(
   "repo|build_cre.py|promoter/CRE layer"
   "repo|patch_chromatin.py|GSE128434 chromatin at the P. trichocarpa ortholog (after build_crossspecies)"
   "repo|patch_karyotype.py|ancestral eudicot karyotype, route C, exploratory (before build_facets, which indexes it)"
+  # Touches no shard; it checks sources/copy_search.json against them and writes data/copies/
+  # plus manifest.copies. A stage rather than a one-off because build_data.py rewrites the
+  # manifest, which would otherwise drop the section and leave every panel unreachable.
+  "repo|patch_copies.py|copies of an array on both haplotypes, from the committed sequence search"
   "onedrive|build_combat.py|ComBat-seq view (after build_expression)"
   # MUST come after both expression stages and before build_facets. It reads the bucket trees,
   # packs one gzip member per gene into per-haplotype blobs, writes [offset, length] onto each
@@ -70,6 +74,8 @@ STAGES=(
 # patch_*.py stage below. Both refuse to write unless they reproduce their owning analysis's
 # published summary table. make_karyotype_source.py is the same kind of script, except that it
 # reads the OneDrive tree, so it runs on the Mac; its patch stage, patch_karyotype.py, is above.
+# make_copy_search_source.py is the same kind again (tblastn against the v5.0 genomes, Sapelo2
+# only); its stage is patch_copies.py. Run it when a locus is added to its LOCI list.
 #
 # DELIBERATELY NOT A STAGE: patch_leaf_tissue_analysis.py. It is a one-time correction to
 # already-shipped data; build_expression.py is fixed at source, so a real rebuild already

@@ -91,7 +91,9 @@ async function check(name, hash, { expect = [], forbid = [], theme = null, wait 
 
   await p.goto(base + '/' + hash, { waitUntil: 'networkidle' });
   await p.waitForTimeout(wait);
-  await p.screenshot({ path: `${outdir}/${name}.png`, fullPage: true });
+  // The name becomes a file name, and CI's artifact upload rejects : " < > | * ? -- a check
+  // named "copies:absent-elsewhere" passed and then failed the run at the upload step.
+  await p.screenshot({ path: `${outdir}/${name.replace(/[:"<>|*?]/g, '-')}.png`, fullPage: true });
 
 
   const text = await viewText(p);
@@ -877,7 +879,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await kp.close();
 }
 
-// The provenance sidecars, made reachable. 19 of them are committed and served over HTTP and
+// The provenance sidecars, made reachable. They are committed and served over HTTP, and before
 // nothing in the interface linked to any of them -- they are where this project does its most
 // careful writing (the gate a layer had to pass, what it deliberately does not claim, what was
 // tried and rejected). Asserted: the records open and carry their own caveats, and no internal
@@ -900,17 +902,26 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await ep.waitForTimeout(1100);
   const tdPair = await card.innerText();
 
-  const leaks = /\.claude\/worktrees|\/scratch\/ch29576\/|\/home\/ch29576\//.test(routeC + tdPair);
+  await card.locator('button', { hasText: 'Copies on both haplotypes' }).click();
+  await ep.waitForTimeout(1100);
+  const copies = await card.innerText();
+
+  // The expected count is the list evidence.js declares, read from the file, not a number typed
+  // here: this was `=== 19`, and adding a record made the check fail for being right.
+  const declared = (fs.readFileSync('js/core/evidence.js', 'utf8').match(/^\s*\['[a-z0-9_]+', '/gm) || []).length;
+  const leaks = /\.claude\/worktrees|\/scratch\/ch29576\/|\/home\/ch29576\//.test(routeC + tdPair + copies);
   const ok = !eerrs.length
-    && buttons === 19
+    && declared >= 20 && buttons === declared
     // each record carries the caveat that is the reason it exists
     && /not applied/i.test(routeC)
     && /array median/i.test(tdPair)
+    && /not the same as having no copies/i.test(copies)
     && !leaks;
   if (!ok) failures++;
   console.log(`\n### about:provenance-records-reachable  ${ok ? 'OK' : 'FAIL'}`);
-  console.log(`   ${buttons} records; routeC states NOT APPLIED: ${/not applied/i.test(routeC)}; `
-    + `tandem states array-median caveat: ${/array median/i.test(tdPair)}; path leak: ${leaks}`);
+  console.log(`   ${buttons} records of ${declared} declared; routeC states NOT APPLIED: ${/not applied/i.test(routeC)}; `
+    + `tandem states array-median caveat: ${/array median/i.test(tdPair)}; copies states its scope: `
+    + `${/not the same as having no copies/i.test(copies)}; path leak: ${leaks}`);
   eerrs.forEach((e) => console.log('   !! ' + e));
   await ep.close();
 }
@@ -1905,6 +1916,198 @@ for (const scheme of ['light', 'dark']) {
   console.log(`   positive control (old colour injected) flagged: ${r.probeFlagged}`);
   lerrs.forEach((e) => console.log('   !! ' + e));
   await lp.close();
+}
+
+// ---- copies on both haplotypes (js/modules/copies.js) ----------------------------------------
+// The panel exists because no HAP1 NRX1 page led to HAP2. What must hold: it is on every gene
+// page it draws and on no other; it draws EXACTLY the rows the data file holds (compared as
+// sets, not probed for a few expected names); the focal row is the page's own gene; a number
+// it shares with another card is the same number; and no two labels collide, at desktop AND
+// phone width, where the layout folds differently. The collision test has a positive control
+// -- a label deliberately stacked on another must be flagged -- or "0 overlaps" could simply
+// mean the measurement found no text.
+async function copiesPanel(p) {
+  await p.waitForSelector('[data-card="copies"] svg.cp-svg, .card .cp-holder svg.cp-svg', { timeout: 20000 });
+  return p.evaluate(async () => {
+    const card = document.querySelector('[data-card="copies"]') || document.querySelector('.cp-holder').closest('.card');
+    const L = await (await fetch('data/copies/nrx1.json')).json();
+    const svg = card.querySelector('svg.cp-svg');
+    const texts = [...svg.querySelectorAll('text')].filter((t) => t.textContent.trim());
+    const overlaps = (list) => {
+      const boxes = list.map((t) => t.getBoundingClientRect());
+      let n = 0;
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i], b = boxes[j];
+          if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) n++;
+        }
+      }
+      return n;
+    };
+    const n = overlaps(texts);
+    // positive control: a second label stacked exactly on the first. Cloned from the SAME
+    // element, anchor included -- the first version cloned a right-anchored label onto a
+    // left-anchored one, which lands beside it rather than on it, so the control never fired.
+    const probe = texts[0].cloneNode(true);
+    probe.textContent = 'overlap probe';
+    svg.appendChild(probe);
+    const nWithProbe = overlaps([...texts, probe]);
+    probe.remove();
+    const clipped = texts.filter((t) => {
+      const r = t.getBoundingClientRect(), s = svg.getBoundingClientRect();
+      return r.left < s.left - 1 || r.right > s.right + 1;
+    }).map((t) => t.textContent);
+    const drawnIds = [...svg.querySelectorAll('.cp-id')].map((t) => t.textContent).sort();
+    const fileIds = L.rows.filter((r) => r.gene).map((r) => r.gene).sort();
+    return {
+      drawnIds, fileIds,
+      unannText: svg.querySelectorAll('.cp-unann').length,
+      unannFile: L.rows.filter((r) => !r.gene).length,
+      dashed: svg.querySelectorAll('.cp-dashed').length,
+      focal: (svg.querySelector('.cp-focal') || {}).textContent || null,
+      pieces: [...svg.querySelectorAll('.cp-piece')].map((t) => t.textContent),
+      links: [...svg.querySelectorAll('a.cp-link')].map((a) => a.getAttribute('href')),
+      overlaps: n, controlFlagged: nWithProbe > n, clipped,
+      chip: (card.querySelector('.ev-chip') || {}).textContent || null,
+      lede: (card.querySelector('.cp-lede') || {}).innerText || '',
+      glance: (document.querySelector('.card.glance') || {}).innerText || '',
+      allele: (document.querySelector('[data-card="allele"]') || {}).innerText || '',
+      // the element's own text only: its <title> tooltip is a child, and textContent would
+      // append "median TPM in stem, ..." to the number
+      tpmOf: Object.fromEntries([...svg.querySelectorAll('[data-tpm-for]')]
+        .map((t) => [t.getAttribute('data-tpm-for'), [...t.childNodes].filter((c) => c.nodeType === 3)
+          .map((c) => c.nodeValue).join('').split('·').pop().trim()])),
+      pageFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    };
+  });
+}
+for (const [label, hash, focal, width] of [
+  ['hap1-desktop', '#/gene/PtXaTreH.10G047000', 'PtXaTreH.10G047000', 1180],
+  ['hap1-phone', '#/gene/PtXaTreH.10G047000', 'PtXaTreH.10G047000', 375],
+  ['hap2-desktop', '#/gene/PtXaAlbH.10G043900', 'PtXaAlbH.10G043900', 1180],
+  ['route', '#/copies/nrx1', null, 1180],
+]) {
+  const p = await browser.newPage({ viewport: { width, height: 1000 } });
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  p.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
+  await p.goto(base + '/' + hash, { waitUntil: 'networkidle' });
+  const r = await copiesPanel(p);
+  await p.screenshot({ path: `${outdir}/copies-${label}.png`, fullPage: true });
+  const sameRows = JSON.stringify(r.drawnIds) === JSON.stringify(r.fileIds);
+  const hap2Link = focal === 'PtXaAlbH.10G043900' || r.links.includes('#/gene/PtXaAlbH.10G043900');
+  // The focal gene's peak TPM must be the number the summary strip prints for it. The strip
+  // rounds to a whole number and the panel keeps a decimal, so compare at the strip's precision.
+  const glanceTpm = (r.glance.match(/Expression\s+\S+\s+([\d,.]+) TPM/) || [])[1];
+  const panelTpm = focal ? r.tpmOf[focal] : null;
+  const tpmAgrees = !focal || (glanceTpm != null && panelTpm != null
+    && Math.round(parseFloat(panelTpm.replace(/,/g, ''))) === parseInt(glanceTpm.replace(/,/g, ''), 10));
+  const checks = {
+    'rows drawn == rows in data/copies/nrx1.json': sameRows,
+    'each unannotated row says so in words and is outlined': r.unannText === r.unannFile && r.dashed === r.unannFile,
+    'focal row is this page': r.focal === focal,
+    'a link leads to the HAP2 gene model': hap2Link,
+    'the joined gene model shows pieces A and B': r.pieces.join('') === 'AB',
+    'no two labels overlap': r.overlaps === 0,
+    'overlap control (stacked label) is flagged': r.controlFlagged,
+    'no label runs outside the panel': !r.clipped.length,
+    'the page fits its width': r.pageFits,
+    'chip says where the evidence comes from': !focal || r.chip === 'from the genome',
+    'lede states HAP2 in pieces': r.lede.includes('HAP2: 3 pieces'),
+    'glance row leads here': !focal || r.glance.includes('Both haplotypes'),
+    // where a reader looking for the other haplotype stops: an Allele card with no allele
+    'the allele card points to the panel': !focal || r.allele.includes('NRX1 panel'),
+    'focal peak TPM equals the summary strip': tpmAgrees,
+  };
+  const bad = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+  const ok = !errs.length && !bad.length;
+  if (!ok) failures++;
+  console.log(`\n### copies:${label}  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${r.drawnIds.length} annotated + ${r.unannText} unannotated rows; focal ${r.focal}; `
+    + `pieces ${r.pieces.join('') || '-'}; overlaps ${r.overlaps} (control flagged: ${r.controlFlagged}); `
+    + `peak TPM strip ${glanceTpm ?? '-'} / panel ${panelTpm ?? '-'}`);
+  bad.forEach((b) => console.log('   !! ' + b));
+  errs.forEach((e) => console.log('   !! ' + e));
+  await p.close();
+}
+// ...and on no other gene page: a panel must not appear where no search was run.
+await check('copies-absent-elsewhere', '#/gene/PtXaTreH.08G070200',
+  { expect: ['Location'], forbid: ['on both haplotypes', 'Both haplotypes'] });
+await check('copies-unknown-locus', '#/copies/nope', { expect: ['No such copy search', 'nrx1'] });
+
+// ---- evidence tiers (registry.js CARD_EVIDENCE) --------------------------------------------
+// Every top-level card carries exactly one chip whose words and tier are the ones the table
+// declares for its data-card; the tier's rule STYLE is what the CSS says it is (so the channel
+// that survives greyscale exists); chip text clears 4.5:1 on its own background in both schemes.
+// Three genes between them draw every tier: NRX1 (copies, predicted band), a chromatin gene,
+// and a presence-variation candidate with chromatin. The contrast measurement has its own
+// positive control.
+for (const scheme of ['light', 'dark']) {
+  for (const gid of ['PtXaTreH.10G047000', 'PtXaTreH.01G000700', 'PtXaTreH.01G000100']) {
+    const p = await browser.newPage({ viewport: { width: 1180, height: 1000 }, colorScheme: scheme });
+    const errs = [];
+    p.on('pageerror', (e) => errs.push(e.message));
+    p.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
+    await p.goto(`${base}/#/gene/${gid}`, { waitUntil: 'networkidle' });
+    await p.waitForSelector('.ev-chip', { timeout: 20000 });
+    const r = await p.evaluate(async () => {
+      const { CARD_EVIDENCE } = await import('./js/core/registry.js');
+      const rgb = (s) => (s.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+      const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+      const L = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+      const ratio = (el) => {
+        const a = L(rgb(getComputedStyle(el).color)), b = L(rgb(getComputedStyle(el).backgroundColor));
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      };
+      const STYLE = { 1: 'solid', 2: 'dashed', 3: 'dotted' };
+      const wrong = [], seen = {};
+      let minRatio = Infinity;
+      for (const top of document.querySelectorAll('.cards > .card, .cards > details.card-fold')) {
+        const key = top.dataset.card || (top.querySelector(':scope > .card') || {}).dataset?.card;
+        const chips = top.querySelectorAll(':scope > h2 > .ev-chip, :scope > summary > .ev-chip');
+        const want = CARD_EVIDENCE[key];
+        const tier = Number(top.dataset.evidence);
+        seen[key] = tier;
+        if (!want) { wrong.push(`${key}: not in CARD_EVIDENCE`); continue; }
+        if (chips.length !== 1) { wrong.push(`${key}: ${chips.length} chips`); continue; }
+        if (tier !== want[0] || chips[0].textContent !== want[1]) wrong.push(`${key}: shows ${tier}/${chips[0].textContent}`);
+        if (getComputedStyle(top).borderLeftStyle !== STYLE[tier]) wrong.push(`${key}: rule ${getComputedStyle(top).borderLeftStyle}`);
+        minRatio = Math.min(minRatio, ratio(chips[0]));
+      }
+      // positive control: a chip in --line-2 must measure under 4.5 in BOTH schemes. (--ink-3 was
+      // the first choice and fails only in light: it is 5.28:1 on the dark surface, so in dark
+      // mode the control could never fire.)
+      const probe = document.createElement('span');
+      probe.className = 'ev-chip';
+      probe.style.color = getComputedStyle(document.documentElement).getPropertyValue('--line-2');
+      document.querySelector('.ev-key').append(probe);
+      probe.textContent = 'probe';
+      const probeRatio = ratio(probe);
+      probe.remove();
+      return { wrong, seen, minRatio, probeRatio, key: document.querySelectorAll('.ev-key .ev-key-item').length };
+    });
+    const tiers = new Set(Object.values(r.seen));
+    const ok = !errs.length && !r.wrong.length && r.minRatio >= 4.5 && r.probeRatio < 4.5 && r.key === 3;
+    if (!ok) failures++;
+    console.log(`\n### evidence:${gid}-${scheme}  ${ok ? 'OK' : 'FAIL'}`);
+    console.log(`   ${Object.keys(r.seen).length} cards, tiers ${[...tiers].sort().join('/')}, chip contrast min `
+      + `${r.minRatio.toFixed(2)}:1 (control ${r.probeRatio.toFixed(2)}:1 must be < 4.5)`);
+    r.wrong.forEach((w) => console.log('   !! ' + w));
+    errs.forEach((e) => console.log('   !! ' + e));
+    await p.close();
+  }
+}
+
+// The home page overflowed a 375px phone by 74px (the question list). Held at phone width now.
+{
+  const p = await browser.newPage({ viewport: { width: 375, height: 800 } });
+  await p.goto(base + '/#/', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(800);
+  const w = await p.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+  const ok = w[0] <= w[1];
+  if (!ok) failures++;
+  console.log(`\n### home:fits-a-phone  ${ok ? 'OK' : 'FAIL'}  scrollWidth ${w[0]} vs ${w[1]}`);
+  await p.close();
 }
 
 await browser.close();

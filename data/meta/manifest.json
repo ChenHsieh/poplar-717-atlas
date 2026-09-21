@@ -161,7 +161,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.13.2",
+ "data_version": "0.14.0",
  "duplicate_coexpr": {
   "basis": "Pearson r on log2(ComBat-corrected TPM + 1) over 652 samples -- the same matrix the neighbour co-expression (nb) uses, because a 652-sample correlation spans 28 studies and is therefore a cross-study comparison.",
   "coverage": "A pair needs BOTH partners in the ComBat matrix (59,599 of 63,960 genes), so 7,707 of 32,333 duplicate pairs have no value. Absence means 'not comparable', not 'uncorrelated'.",
@@ -1438,5 +1438,43 @@
    "out_of_salicoid": 173
   },
   "rule": "topology where grape and segment Ks independently agree; v8 otherwise; split-evidence pairs set aside as `review`."
+ },
+ "copies": {
+  "genes": {
+   "PtXaAlbH.10G043900": "nrx1",
+   "PtXaTreH.10G046700": "nrx1",
+   "PtXaTreH.10G046800": "nrx1",
+   "PtXaTreH.10G046900": "nrx1",
+   "PtXaTreH.10G047000": "nrx1",
+   "PtXaTreH.10G047100": "nrx1",
+   "PtXaTreH.10G047200": "nrx1",
+   "PtXaTreH.10G047600": "nrx1"
+  },
+  "loci": {
+   "nrx1": {
+    "name": "NRX1",
+    "desc": "nucleoredoxin",
+    "hap": "hap1",
+    "reference": "PtXaTreH.10G047000",
+    "summary": {
+     "hap1": {
+      "annotated": 7,
+      "unannotated": 1,
+      "pieces": 8,
+      "max_cov_pct": 95.0
+     },
+     "hap2": {
+      "annotated": 1,
+      "unannotated": 1,
+      "pieces": 3,
+      "max_cov_pct": 47.5
+     }
+    }
+   }
+  },
+  "source": "sources/copy_search.json",
+  "source_sha256": "a585338949104a65b97c8e7c50fdbc7067f57a71999a4881f71ab112a9c06523",
+  "method": "tblastn (BLAST+ 2.14.1) of every array protein against each whole haplotype genome; see scripts/make_copy_search_source.py",
+  "note": "Copies found in the genome SEQUENCE, so a panel can show pieces the annotation does not call. Only the loci listed here have been searched; a gene without a panel has not been searched, which is not the same as having no copies."
  }
 }

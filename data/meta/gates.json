@@ -1,6 +1,6 @@
 {
- "data_version": "0.13.2",
- "n_checks": 77,
+ "data_version": "0.14.0",
+ "n_checks": 83,
  "n_failed": 0,
  "checks": [
   {
@@ -236,7 +236,7 @@
   {
    "name": "no embargoed LSG candidate label in any published file",
    "ok": true,
-   "detail": "1319 text files"
+   "detail": "1328 text files"
   },
   {
    "name": "ancestral karyotype counts match the route C coverage, per haplotype",
@@ -382,6 +382,36 @@
    "name": "manifest structure.genes matches the 3D buckets",
    "ok": true,
    "detail": "manifest 40685 vs 40685"
+  },
+  {
+   "name": "copies: each locus in the manifest has its data file, and no file is unlisted",
+   "ok": true,
+   "detail": "files ['nrx1'] vs manifest ['nrx1']"
+  },
+  {
+   "name": "copies: every annotated gene a panel draws exists in the gene shards",
+   "ok": true,
+   "detail": "8 genes"
+  },
+  {
+   "name": "copies: every annotated row carries its gene page's exact position",
+   "ok": true,
+   "detail": "8 genes"
+  },
+  {
+   "name": "copies: manifest.copies.genes is exactly the set of annotated genes drawn",
+   "ok": true,
+   "detail": "8 listed vs 8 drawn"
+  },
+  {
+   "name": "copies: each search recovered every annotated member of its array (positive control)",
+   "ok": true,
+   "detail": "nrx1 7/7"
+  },
+  {
+   "name": "copies: data was built from the committed sources/copy_search.json",
+   "ok": true,
+   "detail": "a58533894910 vs manifest a58533894910"
   },
   {
    "name": "search postings are in range",

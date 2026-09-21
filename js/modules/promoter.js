@@ -144,7 +144,7 @@ function chromatinCard(g) {
     target: '_blank', rel: 'noopener', class: 'mono' }, p.id);
 
   if (!a.ex) {
-    return el('div', { class: 'card' },
+    return el('div', { class: 'card', 'data-card': 'chromatin' },
       el('h2', {}, 'Chromatin', el('span', { class: 'tag' }, 'ortholog, P. trichocarpa leaf')),
       el('p', { class: 'muted', style: 'margin:0;font-size:13px' },
         'This gene\u2019s P. trichocarpa ortholog ', link, ' is not expressed in the leaf '
@@ -160,7 +160,7 @@ function chromatinCard(g) {
     ['Own promoter', a.own, 'both of the above, so the promoter signal is this locus\u2019s own'],
     ['H3K36me3 over the body', a.k36, 'the elongation signature, across the gene body'],
   ];
-  return el('div', { class: 'card' },
+  return el('div', { class: 'card', 'data-card': 'chromatin' },
     el('h2', {}, 'Chromatin', el('span', { class: 'tag' }, 'ortholog, P. trichocarpa leaf')),
     el('p', { class: 'sub', style: 'margin:0 0 10px' },
       'Measured on the ortholog ', link, ', which is expressed in leaf at ',

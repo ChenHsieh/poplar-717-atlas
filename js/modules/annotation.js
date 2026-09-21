@@ -115,15 +115,27 @@ function annotationCard(g) {
   return card;
 }
 
-function alleleCard(g) {
+function alleleCard(g, man) {
   const a = g.allele;
   const other = g.hap === 'hap1' ? 'HAP2' : 'HAP1';
   if (!a) {
-    return el('div', { class: 'card' },
+    // No allele is exactly where a reader looking for the other haplotype stops. If a copy
+    // search covers this gene, say where its copies on both haplotypes are drawn.
+    const cp = man && man.copies && man.copies.genes && man.copies.genes[g.id];
+    const loc = cp && man.copies.loci[cp];
+    const unann = loc && Object.values(loc.summary).some((s) => s.unannotated > 0);
+    return el('div', { class: 'card', 'data-card': 'allele' },
       el('h2', {}, 'Allele', el('span', { class: 'tag' }, 'syntelog')),
       el('p', { class: 'muted', style: 'margin:0;font-size:13px' },
         `No 1:1 ${other} syntelog in the 25,931-pair map. That is expected for genes in tandem `
         + `arrays, hemizygous regions, or where synteny breaks down — not evidence of absence.`),
+      loc ? el('p', { style: 'margin:8px 0 0;font-size:13px' },
+        `Its copies on both haplotypes${unann ? ', including pieces the annotation does not call,' : ''} `
+        + 'are drawn in the ',
+        el('a', { href: `#/copies/${cp}`, onclick: (ev) => {
+          const c = document.querySelector('[data-card="copies"]');
+          if (c) { ev.preventDefault(); c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        } }, `${loc.name} panel`), ' in the Duplication band.') : null,
     );
   }
   const kv = el('dl', { class: 'kv' });
@@ -150,7 +162,7 @@ function alleleCard(g) {
             : a.w < 1 ? 'purifying selection' : 'Ka exceeds Ks')));
     }
   }
-  return el('div', { class: 'card' },
+  return el('div', { class: 'card', 'data-card': 'allele' },
     el('h2', {}, 'Allele', el('span', { class: 'tag' }, 'syntelog')), kv,
     el('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' },
       'Yang–Nielsen estimates over the HAP1↔HAP2 syntelog map (25,931 pairs), computed '
@@ -176,7 +188,7 @@ function selectionCard(g) {
   if (!k) return null;
   if (k.no) {
     const ps = g.ps || {};
-    return el('div', { class: 'card' },
+    return el('div', { class: 'card', 'data-card': 'selection' },
       el('h2', {}, 'Selection', el('span', { class: 'tag' }, 'vs P. trichocarpa')),
       el('p', { class: 'muted', style: 'margin:0;font-size:13px' },
         'No reciprocal-best P. trichocarpa ortholog, so Ka/Ks is not defined for this gene.',
@@ -219,7 +231,7 @@ function selectionCard(g) {
               + 'average, so treat a single gene\u2019s value as approximate.')
           : null));
   }
-  return el('div', { class: 'card' },
+  return el('div', { class: 'card', 'data-card': 'selection' },
     el('h2', {}, 'Selection', el('span', { class: 'tag' }, 'vs P. trichocarpa')), kv,
     el('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' },
       'Nei\u2013Gojobori estimates against the reciprocal-best P. trichocarpa ortholog, over '
@@ -273,7 +285,7 @@ function presenceVariationCard(g) {
         verdict));
     
   
-  return el('div', { class: 'card' },
+  return el('div', { class: 'card', 'data-card': 'pav' },
     el('h2', {}, 'Present on one haplotype only',
       el('span', { class: 'tag' }, 'candidate, DIAMOND-checked')), kv);
 }
@@ -291,7 +303,7 @@ function presenceCard(g) {
     }),
     el('span', { style: 'font-size:9.5px;color:var(--ink-2);text-align:center;line-height:1.2' },
       SHORT[p] || p)));
-  return el('div', { class: 'card' },
+  return el('div', { class: 'card', 'data-card': 'panel-presence' },
     el('h2', {}, 'Panel presence', el('span', { class: 'tag' }, `${g.pres.length} of 12`)),
     el('div', { style: 'display:flex;gap:5px;flex-wrap:wrap' }, ...cells),
     el('p', { class: 'muted', style: 'margin:11px 0 0;font-size:12px' },
@@ -299,10 +311,10 @@ function presenceCard(g) {
       + 'O. sativa and P. patens are orthogroup-only outgroups, excluded from synteny.'));
 }
 
-function geneCard(g) {
+function geneCard(g, man) {
   // Returns a fragment holding several cards; app.js appends whatever geneCard gives it.
   const frag = document.createDocumentFragment();
-  [annotationCard(g), alleleCard(g), presenceVariationCard(g), selectionCard(g),
+  [annotationCard(g), alleleCard(g, man), presenceVariationCard(g), selectionCard(g),
    presenceCard(g)].forEach((c) => c && frag.append(c));
   return frag.childNodes.length ? frag : null;
 }

@@ -400,3 +400,7 @@ export const loadLocusIndex = (hap, chr) => fetchJSON(`data/locus/index/${hap}/$
 /** The 191-contrast panel, sample labels already resolved to their fixed index in
  *  samples.json / any raw expression vector. One small fetch, loaded once. */
 export const loadContrasts = () => fetchJSON('data/expr/contrasts.json');
+
+/** One copy-search locus (scripts/patch_copies.py): every copy of a tandem array on both
+ *  haplotypes, found in the genome sequence. `manifest.copies.genes` says which genes have one. */
+export const loadCopies = (slug) => fetchJSON(`data/copies/${slug}.json`);
