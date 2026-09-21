@@ -8,6 +8,7 @@
   --line: #e2e1dd; --line-2: #cfceca;
   --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #86847e;
   --accent: #2a78d6;
+  --accent-ink: #2468bd;
   --c-core: #2a78d6; --c-disp: #eb6834; --c-nonsyn: #1baf7a;
   --c-priv: #eda100; --c-tandem: #e87ba4;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -19,6 +20,7 @@
     --line: #38382f; --line-2: #4a4a40;
     --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #8f8e84;
     --accent: #3987e5;
+    --accent-ink: #5b9fee;
     --c-core: #3987e5; --c-disp: #d95926; --c-nonsyn: #199e70;
     --c-priv: #c98500; --c-tandem: #d55181;
   }
@@ -29,6 +31,7 @@
   --line: #38382f; --line-2: #4a4a40;
   --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #8f8e84;
   --accent: #3987e5;
+  --accent-ink: #5b9fee;
   --c-core: #3987e5; --c-disp: #d95926; --c-nonsyn: #199e70;
   --c-priv: #c98500; --c-tandem: #d55181;
 }
@@ -38,7 +41,14 @@ body {
   margin: 0; background: var(--surface); color: var(--ink);
   font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
-a { color: var(--accent); text-decoration: none; }
+/* Links use --accent-ink, NOT --accent. Measured 2026-09-20: #2a78d6 is 4.30:1 on --surface,
+   4.42 on --panel, 4.04 on --panel-2 -- under WCAG AA's 4.5:1 for 14px text on EVERY
+   background, and links mostly sit on --panel inside cards. Dark mode was no better where it
+   matters: #3987e5 passes on --surface (4.79) but fails on --panel (4.32) and --panel-2 (3.90).
+   --accent-ink: light #2468bd = 5.40 / 5.54 / 5.08, dark #5b9fee = 6.34 / 5.72 / 5.16.
+   --accent itself is unchanged: it is a fill/border colour in the CVD-validated palette, where
+   the 3:1 non-text floor applies and it passes, so the palette's dE figures above still hold. */
+a { color: var(--accent-ink); text-decoration: none; }
 a:hover { text-decoration: underline; }
 .mono { font-family: var(--mono); }
 

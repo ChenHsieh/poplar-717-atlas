@@ -1810,6 +1810,64 @@ await check('browse-karyotype-hap2', '#/browse?aek=AEK1_gamma_copy_1&hap=hap2',
   await cp.close();
 }
 
+// Every visible link must clear its WCAG contrast floor, in BOTH colour schemes, measured on
+// the background it actually sits on. Added 2026-09-20 after the live site was measured with
+// 53 of 69 links failing in light mode and 51 in dark: --accent (#2a78d6) was 4.30:1 on
+// --surface and 4.04 on --panel-2, and the dark #3987e5 fell to 3.90 on --panel-2. Links are
+// 11.5-14px, so the 4.5:1 floor applies. They now use --accent-ink.
+//
+// POSITIVE CONTROL first: one link is injected in the OLD colour and must be flagged. Without
+// it a measurement that silently found no links, or read every background as white, would
+// report "0 failing" and pass -- the shape of every vacuous gate found in this project.
+for (const scheme of ['light', 'dark']) {
+  const lp = await browser.newPage({ viewport: { width: 1280, height: 1000 }, colorScheme: scheme });
+  const lerrs = [];
+  lp.on('pageerror', (e) => lerrs.push(e.message));
+  await lp.goto(base + '/#/gene/PtXaTreH.08G070200', { waitUntil: 'networkidle' });
+  await lp.waitForSelector('.card', { timeout: 20000 });
+  await lp.waitForTimeout(800);
+  const r = await lp.evaluate((sch) => {
+    const card = document.querySelector('#view .card');
+    const probe = document.createElement('a');
+    probe.href = '#'; probe.id = '__contrast_probe'; probe.textContent = 'probe';
+    probe.style.color = sch === 'dark' ? '#3987e5' : '#2a78d6';   // the OLD, failing colour
+    probe.style.fontSize = '12px';
+    card.appendChild(probe);
+    const rgb = (s) => (s.match(/[\d.]+/g) || []).slice(0, 4).map(Number);
+    const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    const L = ([rr, g, b]) => 0.2126 * lin(rr) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const bgOf = (el) => {
+      for (let e = el; e; e = e.parentElement) {
+        const c = rgb(getComputedStyle(e).backgroundColor);
+        if (c.length >= 3 && (c[3] === undefined || c[3] > 0.99)) return c;
+      }
+      return [255, 255, 255];
+    };
+    let n = 0, fails = 0, min = Infinity, probeFlagged = false;
+    for (const a of document.querySelectorAll('#view a, header a')) {
+      const box = a.getBoundingClientRect();
+      const cs = getComputedStyle(a);
+      if (!box.width || !box.height || cs.visibility === 'hidden') continue;
+      const l1 = L(rgb(cs.color)), l2 = L(bgOf(a));
+      const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+      const size = parseFloat(cs.fontSize), bold = parseInt(cs.fontWeight, 10) >= 700;
+      const need = (size >= 24 || (bold && size >= 18.66)) ? 3 : 4.5;
+      if (a.id === '__contrast_probe') { probeFlagged = ratio < need; continue; }
+      n++;
+      if (ratio < need) fails++;
+      min = Math.min(min, ratio);
+    }
+    return { n, fails, min, probeFlagged };
+  }, scheme);
+  const ok = !lerrs.length && r.probeFlagged && r.n >= 20 && r.fails === 0;
+  if (!ok) failures++;
+  console.log(`\n### links:contrast-${scheme}  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${r.n} visible links, ${r.fails} below their WCAG floor, min ${r.min.toFixed(2)}:1`);
+  console.log(`   positive control (old colour injected) flagged: ${r.probeFlagged}`);
+  lerrs.forEach((e) => console.log('   !! ' + e));
+  await lp.close();
+}
+
 await browser.close();
 console.log(`\n${failures ? `${failures} CHECK(S) FAILED` : 'ALL CHECKS PASSED'}`);
 process.exit(failures ? 1 : 0);
