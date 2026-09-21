@@ -156,6 +156,10 @@ echo; echo "== numbers stated in prose =="; python3 scripts/check_prose_numbers.
 
 echo; echo "== version consistency =="; python3 scripts/check_version.py
 
+# The only check here that looks OUTWARD. Every other one compares the atlas against itself,
+# which is why the withdrawn LSG pool shipped for four days with all of them green.
+echo; echo "== agreement with ms1-dup's numbers of record =="; python3 scripts/check_facts.py
+
 echo
 if [ ${#missing[@]} -gt 0 ]; then
   echo "PARTIAL build complete. Commit and push, then run the same command on the machine"
