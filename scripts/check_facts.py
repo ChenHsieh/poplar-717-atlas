@@ -142,7 +142,19 @@ def load_pinned_facts():
                   f"`git -C <ms1-dup> fetch` and re-run")
 
 
+class MissingFact(Exception):
+    pass
+
+
 def want(facts, key):
+    """A fact this check needs. Missing is a hard, NAMED failure, not a bare KeyError.
+
+    Real case: the v9 anchor facts were added on an ms1-dup branch before they reached main, so
+    `refresh_facts.sh` with its default ref (origin/main) would move the pin to a file that
+    does not have them. That must fail saying so, not crash with a traceback.
+    """
+    if key not in facts:
+        raise MissingFact(key)
     return facts[key]["value"]
 
 
@@ -230,4 +242,11 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except MissingFact as e:
+        print(f"\n  FAIL  the pinned facts file has no '{e.args[0]}'")
+        print("        The pin points at a FACTS_v10.json older than this check. Move the pin")
+        print("        (scripts/refresh_facts.sh <ref>) to a commit that carries it.")
+        print("\n1 CHECK(S) FAILED: ['pinned facts carry every fact this check needs']")
+        sys.exit(1)
