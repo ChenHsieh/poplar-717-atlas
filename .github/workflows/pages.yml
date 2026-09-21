@@ -1,0 +1,79 @@
+name: pages (site files only)
+
+# DRAFT for Chen's review (TODO 49, 2026-09-21). Inert until he turns it on.
+#
+# WHY. GitHub Pages currently publishes this repo's ROOT, so everything tracked here is public:
+# scripts/, docs/, TODO.md, CHANGELOG.md and every sources/*.tsv.gz table, not just the site.
+# That is how the unpublished candidate labels reached the public site on 2026-09-21: they
+# were never in the site's data, only in files the site did not need and served anyway.
+# This workflow publishes ONLY what the site fetches, measured rather than guessed: every
+# request a full walk of the site makes goes to index.html, css/, js/, data/ or
+# sources/*.provenance.json (the About page renders those records). LICENSE and CITATION.cff
+# ride along for readers.
+#
+# SAFER IN A SECOND WAY. The branch deploy publishes main whatever CI says. This deploys only a
+# commit whose `checks` run succeeded (validate_data, check_version, check.mjs).
+#
+# TO TURN IT ON (two settings, both Chen's):
+#   1. Settings -> Secrets and variables -> Actions -> Variables: PAGES_SITE_ONLY = true
+#   2. Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
+# Until both are set, every job below is skipped, so merging this file changes nothing.
+# To go back: set Source to "Deploy from a branch" (main, /root) and the variable to false.
+
+on:
+  workflow_run:
+    workflows: [checks]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      vars.PAGES_SITE_ONLY == 'true' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # the exact commit the checks passed on, not whatever main is by now
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Assemble the site, and nothing else
+        run: |
+          set -euo pipefail
+          mkdir -p _site/sources
+          cp -R index.html .nojekyll css js data LICENSE CITATION.cff _site/
+          cp sources/*.provenance.json _site/sources/
+          # Belt and braces: the published tree must be exactly the whitelist.
+          extra=$(cd _site && find . -mindepth 1 -maxdepth 1 \
+            ! -name index.html ! -name .nojekyll ! -name css ! -name js ! -name data \
+            ! -name sources ! -name LICENSE ! -name CITATION.cff)
+          if [ -n "$extra" ]; then echo "unexpected top-level entries: $extra"; exit 1; fi
+          if find _site/sources -type f ! -name '*.provenance.json' | grep -q .; then
+            echo "sources/ may only publish provenance records"; exit 1
+          fi
+          echo "publishing $(find _site -type f | wc -l) files, $(du -sh _site | cut -f1)"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
