@@ -3,7 +3,7 @@
  "why_pinned_not_vendored": "This repo's root is published by GitHub Pages. Pinning keeps the values out of the public tree, and reading through git means a stale or feature-branch checkout cannot feed the check the wrong file: the ms2-lsg clone on this machine is routinely checked out on another session's branch.",
  "why_blob_ids": "A commit pin alone churns on every unrelated commit to ms2-lsg main. A blob ID changes only when that table's bytes change, so a moved table fails loudly by name and nothing else does. The same commit and blob IDs anchor the chapter's data-freeze proposal (session 'canon check', 2026-09-21), so the atlas and the chapter share one anchor.",
  "source_repo": "ChenHsieh/ms2-lsg",
- "ms2_lsg_commit": "2cd2b59efbc4ecc978654411b9131723a9444aa9",
+ "ms2_lsg_commit": "13fa12fc8d5340a40ed1c5e0727753a057e35b04",
  "tables": {
   "pipeline/out/lsg_pool.tsv": "4f8b7cac3007220158d52c1057249bc901705e31",
   "pipeline/out/lsg_pool_idesia.tsv.gz": "7dccc0e7caa3cb67466388ad147a3e0a4f5153bf",

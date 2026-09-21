@@ -16,7 +16,8 @@ synteny to abSENSE ... are all for flagging and will apply for individual analys
 suitable, for most of the analysis they are applied and we plot the post QC for stronger signal
 but when looking for available candidates they are used to flag because the pool is already
 small". Settled with the main MS2 session before it was built, and published together with the
-matching ms2-lsg documentation.
+matching ms2-lsg documentation (ms2-lsg `13fa12f`, which records the ruling in its corrections
+log; the atlas's ms2-lsg pin moves to that commit, every pinned table's blob unchanged).
 
 **The pool.** 842 HAP1 + 883 HAP2 genes (PS18/PS19: 392/450 and 454/429), rank 18 or above in the
 frozen genEra call, everywhere: gene pages, the home page, the phylostratigraphy page, Browse and
