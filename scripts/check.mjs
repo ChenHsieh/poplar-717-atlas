@@ -167,7 +167,10 @@ await check('module-phylostrat', '#/module/phylostrat',
              '776 HAP1 and 835 HAP2 pool genes stay at rank 18 or above',
              '589 HAP1 and 625 HAP2 pass all four checks', 'unplaced by genEra: 32 HAP1 · 18 HAP2'],
     // '1,725' would be the two haplotypes' pools summed; nothing on the page should do that.
-    forbid: ['1,725', '1,611', '12-species', 'Idesia-corrected panel', 'counts run from 22,769'] });
+    // the old merged ladder's hand-typed range read "log-scaled — counts run from"; the range is
+    // now computed per haplotype ("HAP1 counts run from ..."), and on the frozen call HAP1's
+    // PS1 count genuinely is 22,769, so forbid the old wording, not the number.
+    forbid: ['1,725', '1,611', '12-species', 'Idesia-corrected panel', 'log-scaled — counts run from'] });
 await check('gene-ambiguous-ps', '#/gene/PtXaTreH.06G037000',
   { expect: ['genEra flagged this gene as ambiguous'], wait: 900 });
 await check('module-duplication', '#/module/duplication',
