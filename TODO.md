@@ -482,13 +482,16 @@ only what still has no second layer after that gets folded into About.
       split the pool by haplotype and stratum with the frozen pool named (Chen: "split + name
       both"). Scrubbed the candidate labels from every served file. New outward check
       `scripts/check_ms2_canon.py`. See CHANGELOG 0.13.2.
-- [ ] **49: serve only the site from Pages (Chen chose this 2026-09-21; DRAFTED, needs his settings
-      switch).** Pages publishes the repo root, so `scripts/`, `docs/`, `TODO.md`, `CHANGELOG.md`
-      and every `sources/*.tsv.gz` are public, which is how the label exposure in 48 happened. The
-      draft workflow is on branch `pages-site-only`, not merged: it publishes `index.html`,
-      `.nojekyll`, `css/`, `js/`, `data/` and `sources/*.provenance.json` (the About page renders
-      those). It takes effect only when Settings -> Pages -> Source is switched to "GitHub
-      Actions", which is Chen's call.
+- [x] **49: DONE 2026-09-21, Pages publishes only the site, and only after checks pass.** Chen:
+      "merge pages-site-only and turn on the site-only deploy". Merged as `5f1909b`; the
+      `PAGES_SITE_ONLY` variable is true and Settings -> Pages -> Source is "GitHub Actions", so
+      `.github/workflows/pages.yml` is the only publisher. It ships `index.html`, `.nojekyll`,
+      `css/`, `js/`, `data/`, `sources/*.provenance.json`, `LICENSE` and `CITATION.cff`, and
+      deploys only a commit whose `checks` run succeeded. Verified on the live site the same day:
+      the site, Range reads, the 3D model and the provenance records all load; `scripts/`,
+      `docs/`, `TODO.md`, `CHANGELOG.md`, `README.md` and `sources/*.tsv.gz` answer 404.
+      **A new fetch outside that list will 404 live while every local check passes** (the checks
+      serve the repo root), so add it to `pages.yml` in the same commit.
 - [ ] **50: definitions to decide, not bugs (flagged 2026-09-21).**
       (a) The expression baseline is `genotype == WT and ctrl == control` on the raw flag. In
       study 1 that includes 500 ppm CO2 and second-timepoint ("recovered") controls, 44 of its 58

@@ -1,10 +1,12 @@
 name: pages (site files only)
 
-# DRAFT for Chen's review (TODO 49, 2026-09-21). Inert until he turns it on.
+# LIVE since 2026-09-21 (Chen: "merge pages-site-only and turn on the site-only deploy").
+# PAGES_SITE_ONLY is true and Settings -> Pages -> Source is "GitHub Actions"; this is the only
+# thing that publishes the site now. A push to main publishes nothing by itself.
 #
-# WHY. GitHub Pages currently publishes this repo's ROOT, so everything tracked here is public:
+# WHY. GitHub Pages used to publish this repo's ROOT, so everything tracked here was public:
 # scripts/, docs/, TODO.md, CHANGELOG.md and every sources/*.tsv.gz table, not just the site.
-# That is how the unpublished candidate labels reached the public site on 2026-09-21: they
+# That is how the unpublished candidate labels reached the public site before 2026-09-21: they
 # were never in the site's data, only in files the site did not need and served anyway.
 # This workflow publishes ONLY what the site fetches, measured rather than guessed: every
 # request a full walk of the site makes goes to index.html, css/, js/, data/ or
@@ -14,11 +16,14 @@ name: pages (site files only)
 # SAFER IN A SECOND WAY. The branch deploy publishes main whatever CI says. This deploys only a
 # commit whose `checks` run succeeded (validate_data, check_version, check.mjs).
 #
-# TO TURN IT ON (two settings, both Chen's):
+# THE TWO SETTINGS it depends on (both set 2026-09-21, both Chen's to change):
 #   1. Settings -> Secrets and variables -> Actions -> Variables: PAGES_SITE_ONLY = true
 #   2. Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
-# Until both are set, every job below is skipped, so merging this file changes nothing.
-# To go back: set Source to "Deploy from a branch" (main, /root) and the variable to false.
+# With the variable unset every job below is skipped. To go back to publishing the whole repo:
+# set Source to "Deploy from a branch" (main, /root) and the variable to false.
+#
+# A NEW FETCH NEEDS A LINE HERE. If the site starts requesting a file outside the list below,
+# it will 404 on the live site while every local check passes (they serve the repo root).
 
 on:
   workflow_run:

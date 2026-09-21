@@ -9,7 +9,11 @@ Gene atlas for hybrid poplar 717 (*Populus tremula* × *alba*), haplotype-resolv
 Static site — no server, no build step, no framework.
 
 > **⚠ GitHub Pages is PUBLIC even from a private repository.** There is no auth-gated Pages
-> below GitHub Enterprise. This repo is private, and **the site has been deployed since
+> below GitHub Enterprise. Since 2026-09-21 Pages publishes only the site files
+> (`.github/workflows/pages.yml`: `index.html`, `css/`, `js/`, `data/`,
+> `sources/*.provenance.json`, `LICENSE`, `CITATION.cff`), and only after `checks` passes; the
+> rest of the repo is no longer served. A file the site starts fetching must be added there.
+> This repo is private, and **the site has been deployed since
 > 2026-09-01** (public, `noindex` until the chapter is out) — built with `--tier public`,
 > which withholds fields marked private in `FIELD_TIERS` (currently LSG-pool membership —
 > the unpublished candidate list). Re-verify the `--tier public` flag was used before any
@@ -112,7 +116,8 @@ reproducible from a clone alone — the committed `data/` is the artifact.
 ## Local viewing
 
 ```bash
-cd site && python3 -m http.server 8080     # then open http://localhost:8080
+python3 scripts/serve_ranges.py 8080 .      # then open http://localhost:8080
+# not `python3 -m http.server`: it ignores Range, and per-gene expression is read by byte range
 ```
 
 ## Status

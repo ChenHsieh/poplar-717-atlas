@@ -9,6 +9,23 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## Pages publishes only the site, and only after checks pass
+
+Chen, 2026-09-21: "merge pages-site-only and turn on the site-only deploy". Until today GitHub
+Pages published the repository root, so `scripts/`, `docs/`, `TODO.md`, this file and every
+`sources/*.tsv.gz` table were public beside the site, which is how unpublished candidate labels
+reached the public site without ever being in its data. `.github/workflows/pages.yml` now
+publishes `index.html`, `css/`, `js/`, `data/`, `sources/*.provenance.json`, `LICENSE` and
+`CITATION.cff`, and nothing else; the assemble step fails if anything more reaches the artifact.
+It deploys only a commit whose `checks` run succeeded, where the branch deploy published `main`
+whatever CI said.
+
+The list was measured, not guessed: a full walk of the site requested nothing outside it.
+Checked on the live site after the switch: pages, Range reads, the 3D model and the provenance
+records load; `scripts/`, `docs/`, `TODO.md`, `CHANGELOG.md`, `README.md` and the `.tsv.gz`
+tables answer 404. **A file the site starts fetching must be added to `pages.yml` in the same
+commit**, because every local check serves the repo root and would not notice.
+
 ## 0.13.2 - 2026-09-21 - The LSG layers checked against ms2-lsg, gene by gene, and nine wrong sentences
 
 An audit of every lineage-specific-gene layer against the tables that own it (ms2-lsg main at

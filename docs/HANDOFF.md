@@ -107,7 +107,7 @@ Standing verdicts:
 | **Do NOT ingest** | `hemi_pav_crosstab.csv` (orthogroup PAV — ms1-dup explicitly forbids it), `tau_n202_*` (superseded panel), `master_duplication_table_v4.csv` (carries the eliminated `W_excluded` class) |
 | **Resolved 2026-09-06 (TODO 21)** | neither was actually missing. `hemizygous_pav_diamond.csv` (PAV) and `master_duplication_table_v9.csv` (duplication -- v6 was already superseded) were in the mirror under different names than this line searched for. Both wired in; see CHANGELOG.md 0.3.8. |
 | **Read-only** | `ms2-lsg/pipeline/out/*.tsv` and `GOI_CANONICAL.tsv`, by Chen's standing instruction |
-| **Never publish** | LSG candidate labels (the `LSG<n>.<chr>g` names and the XO group names) while the chapter is unpublished, and curator identity or verbatim curation quotes. `build_layers.py:sanitise_note` enforces the second. `validate_data.py` enforces the first over the shards AND every tracked text file, because Pages serves the whole repo root (scripts/, docs/, sources/, CHANGELOG.md): until 2026-09-21 the names, two of them next to a gene ID, sat in files the site served while the shard-only check passed. Never write a label into this repo, not even in a check |
+| **Never publish** | LSG candidate labels (the `LSG<n>.<chr>g` names and the XO group names) while the chapter is unpublished, and curator identity or verbatim curation quotes. `build_layers.py:sanitise_note` enforces the second. `validate_data.py` enforces the first over the shards AND every tracked text file, because until 2026-09-21 Pages served the whole repo root (scripts/, docs/, sources/, CHANGELOG.md), and the names, two of them next to a gene ID, sat in files the site served while the shard-only check passed. Pages now publishes the site files only; the scan stays as the second guard. Never write a label into this repo, not even in a check |
 
 ## Checks — run all three, they catch different things
 
@@ -182,7 +182,7 @@ If a rebuild moves any of these, something changed upstream — find out what be
 
 | | |
 |---|---|
-| Site | repo root — `index.html`, `js/`, `css/` |
+| Site | repo root — `index.html`, `js/`, `css/`. Published by `.github/workflows/pages.yml` only (since 2026-09-21): the site files plus `sources/*.provenance.json`, `LICENSE`, `CITATION.cff`, and only after `checks` passes. Anything else the site fetches must be added there |
 | Data | `data/` — committed, 303 MB, **the artifact** |
 | Build | `scripts/build_all.sh` (+ `preflight.py`) |
 | Direction | `docs/ROADMAP.md` · tasks in `TODO.md` · history in `CHANGELOG.md` |
