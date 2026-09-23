@@ -18,6 +18,7 @@
 import { el, clear } from '../core/dom.js';
 import { loadLocusTile } from '../core/data.js';
 import { palette, fillFor } from '../core/palette.js';
+import { onDispose } from '../core/lifecycle.js';
 
 const MB = 1_000_000;
 const MIN_CENTRE_GAP = 24;   // CSS px, SC 2.5.8 spacing allowance
@@ -353,6 +354,7 @@ function geneCard(g) {
     dropDpr = () => mq.removeEventListener('change', watchDpr);
     refresh();
   })();
+  onDispose(stage, () => { ro.disconnect(); dropDpr?.(); });
 
   // ---- interaction -------------------------------------------------------------
   // getBoundingClientRect is post-transform and post-zoom, so this hit test stays

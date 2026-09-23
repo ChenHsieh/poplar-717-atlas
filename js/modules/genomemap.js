@@ -10,6 +10,7 @@
 import { el } from '../core/dom.js';
 import { loadLocusOverview, loadLocusIndex } from '../core/data.js';
 import { palette, fillFor } from '../core/palette.js';
+import { onDispose } from '../core/lifecycle.js';
 
 const CHROMS = Array.from({ length: 19 }, (_, i) => `Chr${String(i + 1).padStart(2, '0')}`);
 const MAX_DPR = 2;
@@ -104,6 +105,7 @@ function makeStage(height) {
     dropDpr = () => mq.removeEventListener('change', watchDpr);
     refresh();
   })();
+  onDispose(stage, () => { ro.disconnect(); dropDpr?.(); });
 
   return {
     stage, canvas,

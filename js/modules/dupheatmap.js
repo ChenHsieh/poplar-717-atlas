@@ -24,6 +24,7 @@
 import { el } from '../core/dom.js';
 import { getGene, loadExprSamples, loadExprVector } from '../core/data.js';
 import { palette } from '../core/palette.js';
+import { onDispose } from '../core/lifecycle.js';
 
 const MAX_ROWS = 24;
 const ROW_H = 22;
@@ -305,7 +306,9 @@ function geneCard(g) {
         stage, scaleNote, swatchLegend(samples, order),
         el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' }, notes.join(' ')));
 
-      new ResizeObserver(render).observe(stage);
+      const ro = new ResizeObserver(render);
+      ro.observe(stage);
+      onDispose(stage, () => ro.disconnect());
       render();
     } catch (e) {
       load.disabled = false;

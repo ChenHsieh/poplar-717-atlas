@@ -1491,7 +1491,7 @@
   "not_the_array_median": "`td.ks` remains the ARRAY MEDIAN and is a different quantity. A member without a `pks` entry was never scored as a pair; it does not mean the two copies are identical.",
   "scored_pairs": 15710
  },
- "tier": "full",
+ "tier": "public",
  "wgd_combined_call": {
   "canonical": "master_duplication_table_v9 (v8 rule 5c + dS resolution) remains the atlas's called class. The combined call is shown beside it as a proposed correction, NOT applied upstream as of 2026-09-16.",
   "genes_disagreeing_with_v9": 904,

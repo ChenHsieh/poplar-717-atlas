@@ -1,5 +1,7 @@
 // Hash router. Hash (not history API) so it works on GitHub Pages under a project subpath
 // with no server rewrite rules.
+import { disposeTree } from './lifecycle.js';
+
 const routes = [];
 export function route(pattern, handler) { routes.push({ pattern, handler }); }
 
@@ -11,6 +13,7 @@ let renderGeneration = 0;
 function replaceView(node) {
   const view = document.getElementById('view');
   if (!view) return;
+  disposeTree(view, { includeRoot: false });
   view.replaceChildren(node);
   window.scrollTo(0, 0);
 }

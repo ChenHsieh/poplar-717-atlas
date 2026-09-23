@@ -6,6 +6,7 @@ import { MODULES, byId, GENE_SECTIONS, geneSectionModules, CARD_EVIDENCE,
 import { dupTypeLabel } from './modules/duplication.js';
 import { classBadge } from './modules/synteny.js';
 import { route, start, navigate } from './core/router.js';
+import { disposeTree, onDispose } from './core/lifecycle.js';
 import { browseView, browseHref, FILTERS } from './core/browse.js';
 import { QUESTIONS, countQuestion } from './core/questions.js';
 import { searchResultsView } from './core/search.js';
@@ -18,8 +19,15 @@ import { copiesView } from './modules/copies.js';
 
 const view = () => document.getElementById('view');
 const mountView = (node, navigation) => {
-  if (navigation && !navigation.isCurrent()) return false;
-  const v = clear(view());
+  if (navigation && !navigation.isCurrent()) {
+    // The route may have finished building a detached view after the reader navigated away.
+    // Dispose it here too; otherwise observers installed during construction leak globally.
+    disposeTree(node);
+    return false;
+  }
+  const v = view();
+  disposeTree(v, { includeRoot: false });
+  clear(v);
   v.append(node);
   window.scrollTo(0, 0);
   return true;
@@ -40,6 +48,7 @@ function initSearch() {
   let seq = 0;
   let lastCompletedQuery = '';
   let lastTotal = 0;
+  let blurTimer = null;
 
   const close = () => {
     hits.style.display = 'none';
@@ -52,7 +61,19 @@ function initSearch() {
     lastTotal = 0;
     close();
   };
-  input.addEventListener('blur', () => setTimeout(invalidateAndClose, 150));
+  input.addEventListener('blur', () => {
+    if (blurTimer !== null) clearTimeout(blurTimer);
+    blurTimer = setTimeout(() => {
+      blurTimer = null;
+      invalidateAndClose();
+    }, 150);
+  });
+  input.addEventListener('focus', () => {
+    if (blurTimer !== null) {
+      clearTimeout(blurTimer);
+      blurTimer = null;
+    }
+  });
 
   const goToResults = (rawQuery = input.value) => {
     const q = rawQuery.trim();
@@ -467,7 +488,9 @@ function sectionNav(bands) {
   // fired, so headings that did not change state keep reporting where they used to be, and
   // scrolling back to the top left the last band still marked.
   let queued = false;
+  let frame = null;
   const spy = () => {
+    frame = null;
     queued = false;
     if (!nav.isConnected) {                       // view replaced by the router
       window.removeEventListener('scroll', onScroll);
@@ -501,10 +524,16 @@ function sectionNav(bands) {
       }
     }
   };
-  const onScroll = () => { if (!queued) { queued = true; requestAnimationFrame(spy); } };
+  const onScroll = () => { if (!queued) { queued = true; frame = requestAnimationFrame(spy); } };
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onScroll);
-  requestAnimationFrame(spy);
+  onScroll();
+  onDispose(nav, () => {
+    window.removeEventListener('scroll', onScroll);
+    window.removeEventListener('resize', onScroll);
+    if (frame !== null) cancelAnimationFrame(frame);
+    queued = false;
+  });
   return nav;
 }
 

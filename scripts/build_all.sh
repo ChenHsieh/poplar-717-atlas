@@ -36,7 +36,7 @@ python3 scripts/check_stages.py
 # this one in a complete build; check_stages.py rejects a reorder before build_data.py can
 # wipe data/genes.  build_facets.py must stay last.
 STAGES=(
-  "sapelo2|build_data.py --tier full|-|gene shards (WIPES data/genes)"
+  "sapelo2|build_data.py --tier public|-|public-tier gene shards (WIPES data/genes)"
   "sapelo2|build_expression.py|build_data.py|expression"
   "sapelo2|build_annotation.py|build_data.py|annotation + search index"
   "sapelo2|build_phylostrat.py|build_data.py|phylostratigraphy context"
