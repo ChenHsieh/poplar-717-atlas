@@ -33,7 +33,7 @@ const mountView = (node, navigation) => {
   return true;
 };
 const scopedView = (navigation) => {
-  const setView = (node) => mountView(node, navigation);
+  const setView = (node) => mountView(navigation?.track?.(node) || node, navigation);
   const loading = (msg = 'Loading…') => setView(el('div', { class: 'empty' }, msg));
   return { setView, loading };
 };
@@ -598,6 +598,7 @@ route(/^\/gene\/(.+)$/, async (id, navigation) => {
               el('span', { class: 'muted' }, ' · intronless'))
             : el('span', {}, `${g.gs.ex} exons`,
                 g.gs.in != null ? el('span', { class: 'muted' }, ` · ${g.gs.in} introns`) : null))] : []))));
+  navigation?.track?.(cards);
 
   if (g.org) {
     cards.firstChild.append(el('div', { class: 'warn' },

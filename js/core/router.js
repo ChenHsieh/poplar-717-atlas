@@ -9,6 +9,29 @@ export function route(pattern, handler) { routes.push({ pattern, handler }); }
 // follows another link. Each render therefore gets an identity. Handlers receive a context
 // whose `isCurrent()` answers whether their eventual result may still update the page.
 let renderGeneration = 0;
+let activeScope = null;
+
+// Route handlers can build DOM before an awaited fetch settles. Keep those detached roots in
+// the route scope so an error or a newer navigation releases their observers as well.
+function makeScope(generation) {
+  const roots = new Set();
+  let disposed = false;
+  const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    [...roots].reverse().forEach((root) => disposeTree(root));
+    roots.clear();
+  };
+  return {
+    track(root) {
+      if (!root) return root;
+      if (disposed || generation !== renderGeneration) disposeTree(root);
+      else roots.add(root);
+      return root;
+    },
+    dispose,
+  };
+}
 
 function replaceView(node) {
   const view = document.getElementById('view');
@@ -79,6 +102,9 @@ export function setQuery(params) {
 
 export function render() {
   const generation = ++renderGeneration;
+  activeScope?.dispose();
+  const scope = makeScope(generation);
+  activeScope = scope;
   const path = (location.hash.slice(1) || '/').split('?')[0];
   for (const { pattern, handler } of routes) {
     const m = pattern.exec(path);
@@ -88,16 +114,19 @@ export function render() {
       retry: () => {
         if (generation === renderGeneration) render();
       },
+      track: (root) => scope.track(root),
     });
     try {
       const result = handler(...m.slice(1), context);
       // Route failures used to leave the route's loading message in place indefinitely.
       // Catch them here, once, and only paint the error if this is still the active route.
       Promise.resolve(result).catch((error) => {
+        scope.dispose();
         if (context.isCurrent()) routeError(path, error, context.retry);
       });
       return result;
     } catch (error) {
+      scope.dispose();
       if (context.isCurrent()) routeError(path, error, context.retry);
       return undefined;
     }

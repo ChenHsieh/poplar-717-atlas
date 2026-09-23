@@ -252,6 +252,7 @@ export async function browseView(navigation) {
       el('strong', {}, '\u03c9 is Nei\u2013Gojobori against P. trichocarpa'),
       ', blank where the gene has no reciprocal-best ortholog \u2014 a measured absence, not '
       + 'missing data.'));
+  navigation?.track?.(root);
 
   const summary = el('div', { class: 'stat-row' });
   const tableHolder = el('div', {});
