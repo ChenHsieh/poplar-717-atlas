@@ -56,9 +56,9 @@ Source: `pipeline/out/lsg_pool_idesia.tsv.gz`, 63,960 rows, carrying `rank` and 
 side by side, plus `left_pool_under_idesia` / `entered_pool_under_idesia`. Because it carries
 both, the atlas can **show the correction** rather than silently swap one number for another.
 
-`canonical_label` and `group` in that file are the unpublished LSG candidate names (10 genes;
-the names are withheld here since 2026-09-21, because docs/ is served by GitHub Pages). They
-stay out: TODO 22's hold, unchanged.
+`canonical_label` and `group` in that file are unpublished LSG candidate names (10 genes). They
+remain withheld under the chapter embargo. The public-content guard scans tracked text as well as
+data, which avoids repeating the earlier period when documentation could be served with the site.
 
 ### A2 — the abSENSE flags on the QC card are worse calibrated than the card implies
 

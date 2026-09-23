@@ -15,8 +15,9 @@ Correlation: same basis as duplicate_coexpr.tsv.gz -- Pearson r on log2(ComBat T
 652 samples. Blank r = a partner is outside the ComBat matrix or flat, NOT uncorrelated.
 """
 import csv, gzip, io, json, os
-from collections import defaultdict
 import numpy as np
+
+from expr_range_reader import load_combat_vectors
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
@@ -33,24 +34,23 @@ def main():
                 if fn.endswith(".json"):
                     for gid, r in json.load(open(os.path.join(dp, fn))).items():
                         known.add(gid)
-                        if (r.get("x") or {}).get("cb"):
-                            ptr[gid] = r["x"]["cb"]
+                        x = r.get("x") or {}
+                        if x.get("cb"):
+                            ptr[gid] = {"hap": hap, "range": x.get("co"), "bucket": x["cb"]}
     missing = {g for r in src for g in (r["gene1"], r["gene2"]) if g not in known}
     assert not missing, f"{len(missing)} pair genes not in the atlas, e.g. {sorted(missing)[:3]}"
     assert {r["cls_v8"] for r in src} == {"sWGD", "aWGD"}
 
     need = {g for r in src for g in (r["gene1"], r["gene2"]) if g in ptr}
-    buckets = defaultdict(list)
-    for g in need:
-        buckets[ptr[g]].append(g)
+    vectors, storage = load_combat_vectors(DATA, {g: ptr[g] for g in need})
+    print(f"loaded {len(vectors):,} ComBat vectors "
+          f"({storage['range']:,} packed ranges; {storage['legacy']:,} from "
+          f"{storage['legacy_buckets']:,} legacy buckets)")
     cent = {}
-    for b, gs in buckets.items():
-        d = json.load(open(os.path.join(DATA, "expr", "combat_buckets", b + ".json")))
-        for g in gs:
-            if d.get(g):
-                v = np.log2(np.asarray(d[g], dtype=np.float64) + 1.0)
-                c = v - v.mean()
-                cent[g] = (c, float(np.sqrt((c * c).sum())), v)
+    for g, values in vectors.items():
+        v = np.log2(np.asarray(values, dtype=np.float64) + 1.0)
+        c = v - v.mean()
+        cent[g] = (c, float(np.sqrt((c * c).sum())), v)
 
     rows, n_r = [], 0
     for r in src:
