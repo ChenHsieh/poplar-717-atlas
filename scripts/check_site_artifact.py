@@ -20,6 +20,8 @@ from pathlib import Path
 
 ROOT_FILES = frozenset({"index.html", ".nojekyll", "LICENSE", "CITATION.cff"})
 RELEASE_PATH = Path("data/meta/site-release.json")
+# These source trees are build inputs and compatibility fallbacks, never Pages assets.
+EXCLUDED_DATA_PREFIXES = ("data/expr/buckets/", "data/expr/combat_buckets/")
 REQUIRED_PATHS = ROOT_FILES | {
     "css/app.css",
     "js/app.js",
@@ -42,6 +44,8 @@ def allowed(rel: Path) -> bool:
     if not parts:
         return False
     if any(part.startswith(".") for part in rel.parts):
+        return False
+    if any(posix.startswith(prefix) for prefix in EXCLUDED_DATA_PREFIXES):
         return False
     if parts[0] == "css":
         return rel.suffix == ".css"

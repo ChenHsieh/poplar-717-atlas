@@ -23,6 +23,9 @@ ROOT_FILES = frozenset({"index.html", ".nojekyll", "LICENSE", "CITATION.cff"})
 # This file is generated after data validation.  Never copy a tracked/stale version into a
 # staging tree: its commit and digest must describe the artifact being deployed.
 GENERATED_ARTIFACT_FILES = frozenset({"data/meta/site-release.json"})
+# These source trees are converted into range-addressed blobs for the live atlas. They are
+# build inputs and compatibility fallbacks, never Pages assets.
+EXCLUDED_DATA_PREFIXES = ("data/expr/buckets/", "data/expr/combat_buckets/")
 
 
 def fail(message: str) -> None:
@@ -51,6 +54,8 @@ def allowed_source(rel: Path) -> bool:
     if any(part.startswith(".") for part in rel.parts):
         return False
     if posix in GENERATED_ARTIFACT_FILES:
+        return False
+    if any(posix.startswith(prefix) for prefix in EXCLUDED_DATA_PREFIXES):
         return False
 
     parts = rel.parts
