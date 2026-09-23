@@ -41,6 +41,8 @@ def allowed(rel: Path) -> bool:
     parts = rel.parts
     if not parts:
         return False
+    if any(part.startswith(".") for part in rel.parts):
+        return False
     if parts[0] == "css":
         return rel.suffix == ".css"
     if parts[0] == "js":

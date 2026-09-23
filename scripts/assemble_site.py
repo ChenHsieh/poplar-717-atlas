@@ -28,6 +28,11 @@ GENERATED_ARTIFACT_FILES = frozenset({"data/meta/site-release.json"})
 def fail(message: str) -> None:
     raise SystemExit(f"assemble_site.py: {message}")
 
+def hidden_public_path(rel: Path) -> bool:
+    """Reject cleanup leftovers rather than silently treating them as data assets."""
+    return (rel.as_posix() != ".nojekyll" and rel.parts[0] in {"css", "js", "data", "sources"}
+            and any(part.startswith(".") for part in rel.parts))
+
 def committed_files() -> list[Path]:
     result = subprocess.run(
         ["git", "-C", str(ROOT), "ls-tree", "-r", "-z", "--name-only", "HEAD"],
@@ -43,6 +48,8 @@ def allowed_source(rel: Path) -> bool:
     posix = rel.as_posix()
     if posix in ROOT_FILES:
         return True
+    if any(part.startswith(".") for part in rel.parts):
+        return False
     if posix in GENERATED_ARTIFACT_FILES:
         return False
 
@@ -106,7 +113,13 @@ def main(argv: list[str] | None = None) -> int:
     if output.exists():
         fail(f"output already exists: {output} (use a fresh staging directory)")
 
-    selected = sorted((rel for rel in committed_files() if allowed_source(rel)),
+    committed = committed_files()
+    hidden = sorted((rel for rel in committed if hidden_public_path(rel)),
+                    key=lambda path: path.as_posix())
+    if hidden:
+        preview = ", ".join(path.as_posix() for path in hidden[:4])
+        fail(f"refusing hidden path in the public tree: {preview}")
+    selected = sorted((rel for rel in committed if allowed_source(rel)),
                       key=lambda p: p.as_posix())
     selected_names = {path.as_posix() for path in selected}
     missing = sorted(ROOT_FILES - selected_names)
