@@ -5,9 +5,13 @@
 // shards -- a filter that had to read 39 MB of shards plus 208 MB of expression buckets would
 // not be a filter anyone waits for.
 import { el, clear, fmt } from './dom.js';
-import { loadFacets, facetRow, loadGeneIndex } from './data.js';
+import { loadFacets, facetRow, loadGeneIndex, dataVersion } from './data.js';
 import { query, setQuery } from './router.js';
-import { saveSet, allSets, removeSet } from './geneset.js';
+import { onDispose } from './lifecycle.js';
+import {
+  saveSet, allSets, removeSet, subscribe, exportSets, importSets, storageStatus,
+  MAX_GENESET_IMPORT_BYTES,
+} from './geneset.js';
 
 const PAGE = 100;
 
@@ -182,13 +186,19 @@ function resultsTable(state) {
     el('tbody', {}, ...body)));
 }
 
-function download(name, text) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/tab-separated-values' }));
+function download(name, text, type = 'text/tab-separated-values;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([text], { type }));
   const a = el('a', { href: url, download: name });
   document.body.append(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  // Give the browser a task to start the download before releasing its blob URL.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function safeFileStem(name) {
+  const stem = name.replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80);
+  return stem || '717atlas_gene_set';
 }
 
 function exportTSV(state) {
@@ -247,6 +257,10 @@ export async function browseView(navigation) {
   const tableHolder = el('div', {});
   const pager = el('div', { style: 'display:flex;gap:9px;align-items:center;margin-top:12px' });
   const setsHolder = el('div', {});
+  const savedSetStatus = el('p', {
+    class: 'muted', role: 'status', 'aria-live': 'polite',
+    style: 'min-height:18px;margin:8px 0 0;font-size:12px',
+  });
 
   const render = () => {
     if (navigation && !navigation.isCurrent()) return;
@@ -340,44 +354,140 @@ export async function browseView(navigation) {
     }, `Clear all ${active.length}`));
   };
 
+  // Filled after facets load; saved filters are accepted only if this release still exposes
+  // their select value. That lets a JSON export survive a release vocabulary change without
+  // inventing a query the current data cannot answer.
+  let options = new Map();
+  const setSavedSetStatus = (message) => clear(savedSetStatus).append(message);
+  const savedFilterMeta = (set) => {
+    const filters = set.meta && typeof set.meta.filters === 'object' && !Array.isArray(set.meta.filters)
+      ? set.meta.filters : null;
+    const details = [];
+    if (typeof set.meta?.data_version === 'string' && set.meta.data_version) {
+      details.push(`data ${set.meta.data_version}`);
+    }
+    if (filters) {
+      const count = Object.keys(filters).length;
+      details.push(`${count} saved filter${count === 1 ? '' : 's'}`);
+    }
+    return { filters, detail: details.join(' · ') };
+  };
+
+  const restoreFilters = (set) => {
+    const { filters } = savedFilterMeta(set);
+    if (!filters) {
+      setSavedSetStatus(`“${set.name}” has gene IDs but no saved filters.`);
+      return;
+    }
+    const restored = {};
+    for (const filter of FILTERS) {
+      const value = filters[filter.id];
+      if (value == null || value === '') continue;
+      if (filter.kind === 'select') {
+        const option = String(value);
+        if (options.get(filter.id)?.includes(option)) restored[filter.id] = option;
+      } else if ((typeof value === 'string' || typeof value === 'number')
+          && Number.isFinite(Number(value))) {
+        restored[filter.id] = String(value);
+      }
+    }
+    state.values = restored;
+    for (const filter of FILTERS) {
+      const input = inputs.get(filter.id);
+      if (input) input.value = restored[filter.id] || '';
+    }
+    if (!applyFilters(state, navigation)) return;
+    render();
+    const count = Object.keys(restored).length;
+    setSavedSetStatus(`Restored ${count} filter${count === 1 ? '' : 's'} from “${set.name}”.`);
+  };
+
   const renderSets = () => {
     clear(setsHolder);
     const sets = allSets();
+    const persistence = storageStatus();
+    setsHolder.append(el('p', { class: 'muted', style: 'margin:0 0 8px;font-size:12.5px' },
+      persistence.persistent
+        ? 'Saved sets persist in this browser. Download JSON to move them or keep a copy.'
+        : persistence.message));
     if (!sets.length) {
       setsHolder.append(el('p', { class: 'muted', style: 'margin:0;font-size:12.5px' },
-        'No saved sets yet. Saved sets live for this browser session and can be exported.'));
+        'No saved sets yet. Save a filtered selection, or import a versioned JSON export.'));
       return;
     }
-    setsHolder.append(el('table', { class: 'data' },
-      el('tbody', {}, ...sets.map((s) => el('tr', {},
-        el('td', {}, s.name),
-        el('td', { class: 'num' }, fmt(s.ids.length)),
-        el('td', {}, el('a', {
-          href: '#', onclick: (e) => {
-            e.preventDefault();
-            download(`${s.name.replace(/\W+/g, '_')}.tsv`, ['gene_id', ...s.ids].join('\n'));
-          },
-        }, 'export')),
-        el('td', {}, el('a', {
-          href: '#', onclick: (e) => { e.preventDefault(); removeSet(s.name); renderSets(); },
-        }, 'remove')))))));
+    const rows = sets.map((set) => {
+      const meta = savedFilterMeta(set);
+      return el('tr', {},
+        el('td', {},
+          el('div', {}, set.name),
+          meta.detail ? el('div', { class: 'muted', style: 'font-size:11.5px' }, meta.detail) : null),
+        el('td', { class: 'num' }, fmt(set.ids.length)),
+        el('td', { style: 'white-space:nowrap' },
+          el('button', {
+            type: 'button',
+            onclick: () => download(`${safeFileStem(set.name)}.tsv`, ['gene_id', ...set.ids].join('\n')),
+            style: 'font-size:11.5px;padding:3px 7px;margin-right:5px',
+            'aria-label': `Export ${set.name} as TSV`,
+          }, 'TSV'),
+          meta.filters ? el('button', {
+            type: 'button', onclick: () => restoreFilters(set),
+            style: 'font-size:11.5px;padding:3px 7px;margin-right:5px',
+            'aria-label': `Restore filters from ${set.name}`,
+          }, 'Filters') : null,
+          el('button', {
+            type: 'button',
+            onclick: () => {
+              removeSet(set.name);
+              renderSets();
+              setSavedSetStatus(`Removed “${set.name}”.`);
+            },
+            style: 'font-size:11.5px;padding:3px 7px',
+            'aria-label': `Remove ${set.name}`,
+          }, 'Remove')));
+    });
+    setsHolder.append(
+      el('div', { class: 'scroll-x' },
+        el('table', { class: 'data' },
+          el('thead', {}, el('tr', {},
+            el('th', { scope: 'col' }, 'Set'),
+            el('th', { scope: 'col', class: 'num' }, 'Genes'),
+            el('th', { scope: 'col' }, 'Actions'))),
+          el('tbody', {}, ...rows))));
   };
+
+  // Keep an open Browse view current when another atlas tab imports, saves, or removes a set.
+  // onDispose prevents a detached route from keeping a live store listener.
+  const unsubscribeSets = subscribe(() => {
+    if (!navigation || navigation.isCurrent()) renderSets();
+  });
+  onDispose(root, unsubscribeSets);
 
   const actions = el('div', { style: 'display:flex;gap:9px;flex-wrap:wrap;margin-top:14px' },
     el('button', {
+      type: 'button',
       onclick: () => exportTSV(state),
       style: 'font-size:12.5px;padding:6px 12px;border:1px solid var(--accent);border-radius:5px;background:var(--accent);color:#fff;cursor:pointer',
     }, 'Export TSV'),
     el('button', {
+      type: 'button',
       onclick: () => {
-        const active = Object.entries(state.values).map(([k, v]) => `${k}=${v}`).join(' ');
-        const name = active || 'all genes';
-        saveSet(name, state.matches.map((i) => state.ids[i]), { filters: { ...state.values } });
-        renderSets();
+        try {
+          const active = Object.entries(state.values).map(([k, v]) => `${k}=${v}`).join(' ');
+          const name = active || 'all genes';
+          const set = saveSet(name, state.matches.map((i) => state.ids[i]), {
+            filters: { ...state.values }, data_version: dataVersion(), source: 'Browse',
+          });
+          renderSets();
+          const persistence = storageStatus();
+          setSavedSetStatus(`Saved “${set.name}” (${fmt(set.ids.length)} genes). ${persistence.message}`);
+        } catch (error) {
+          setSavedSetStatus(error?.message || 'Could not save this gene set.');
+        }
       },
       style: 'font-size:12.5px;padding:6px 12px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
     }, 'Save as set'),
     el('button', {
+      type: 'button',
       onclick: () => {
         state.values = {};
         controls.querySelectorAll('select,input').forEach((n) => { n.value = ''; });
@@ -387,11 +497,59 @@ export async function browseView(navigation) {
       style: 'font-size:12.5px;padding:6px 12px;border:1px solid var(--line-2);border-radius:5px;background:transparent;color:var(--ink-2);cursor:pointer',
     }, 'Reset'));
 
+  const importInput = el('input', {
+    id: 'saved-sets-import', type: 'file', accept: 'application/json,.json', tabindex: '-1',
+    'aria-hidden': 'true',
+    style: 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap',
+    onchange: async (event) => {
+      const input = event.currentTarget;
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        if (file.size > MAX_GENESET_IMPORT_BYTES) {
+          throw new Error(`This file is larger than the ${MAX_GENESET_IMPORT_BYTES.toLocaleString('en-US')}-byte saved-set import limit.`);
+        }
+        const text = await file.text();
+        if (navigation && !navigation.isCurrent()) return;
+        const report = importSets(JSON.parse(text));
+        renderSets();
+        const replacement = report.replaced ? ` Updated ${report.replaced} matching name${report.replaced === 1 ? '' : 's'}.` : '';
+        setSavedSetStatus(`Imported ${report.imported} saved set${report.imported === 1 ? '' : 's'}.${replacement} ${storageStatus().message}`);
+      } catch (error) {
+        if (!navigation || navigation.isCurrent()) {
+          setSavedSetStatus(error?.message || 'Could not import saved sets from that file.');
+        }
+      } finally {
+        input.value = '';
+      }
+    },
+  });
+  const savedSetActions = el('div', {
+    style: 'display:flex;gap:9px;flex-wrap:wrap;margin:10px 0 0', 'aria-label': 'Saved set import and export',
+  },
+  el('button', {
+    type: 'button',
+    onclick: () => {
+      download('717atlas_saved_sets.json', `${JSON.stringify(exportSets({ data_version: dataVersion() }), null, 2)}\n`,
+        'application/json;charset=utf-8');
+      setSavedSetStatus(`Downloaded ${allSets().length} saved set${allSets().length === 1 ? '' : 's'} as JSON.`);
+    },
+    style: 'font-size:12.5px;padding:6px 12px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
+  }, 'Export sets JSON'),
+  el('button', {
+    type: 'button', onclick: () => importInput.click(),
+    style: 'font-size:12.5px;padding:6px 12px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
+  }, 'Import sets JSON'),
+  importInput);
+
   root.append(
     el('div', { class: 'card' }, el('h2', {}, 'Filters'), controls, chipRow, actions),
     summary,
     el('div', { class: 'card' }, tableHolder, pager),
-    el('div', { class: 'card' }, el('h2', {}, 'Saved sets'), setsHolder));
+    el('div', { class: 'card' }, el('h2', {}, 'Saved sets'),
+      el('p', { class: 'muted', style: 'margin:0;font-size:12.5px' },
+        'Each saved set keeps its gene IDs, filters, and atlas data version. JSON is portable between browsers.'),
+      savedSetActions, savedSetStatus, setsHolder));
 
   const [facets, ids] = await Promise.all([loadFacets(), loadGeneIndex()]);
   if (navigation && !navigation.isCurrent()) return root;
@@ -400,7 +558,7 @@ export async function browseView(navigation) {
 
   // Build every select from its declared options after the facet vocabulary arrives. Peak
   // tissue deliberately comes from the release index, which includes leaf_young and leaf_old.
-  const options = new Map(FILTERS.filter((f) => f.kind === 'select')
+  options = new Map(FILTERS.filter((f) => f.kind === 'select')
     .map((f) => [f.id, filterOptions(f, facets)]));
   for (const filter of FILTERS.filter((f) => f.kind === 'select')) {
     const input = inputs.get(filter.id);
