@@ -31,8 +31,9 @@ export const FILTERS = [
     test: (r, v) => r.ps === +v },
   { id: 'tau_min', label: 'τ ≥', kind: 'number', placeholder: '0.8', step: '0.05',
     test: (r, v) => r.tau != null && r.tau >= +v },
+  // Peak-tissue categories are release data, not a UI-owned list. browseView() fills this
+  // control from facets.vocab.top so a new or split tissue appears without a source edit.
   { id: 'top', label: 'Peak tissue', kind: 'select',
-    options: ['leaf', 'xylem', 'bark', 'root', 'stem', 'bud', 'catkin', 'gall', 'callus'],
     test: (r, v) => r.top === v },
   { id: 'chr', label: 'Chromosome', kind: 'select',
     options: Array.from({ length: 19 }, (_, i) => 'Chr' + String(i + 1).padStart(2, '0')).concat('scaffolds'),
@@ -100,9 +101,31 @@ export const FILTERS = [
     test: (r, v) => r.xin.includes(v) },
 ];
 
-const state = { values: {}, page: 0, rows: null, ids: null, matches: [] };
+function filterOptions(filter, facets) {
+  const values = filter.id === 'top' ? facets.vocab?.top : filter.options;
+  // Preserve the vocabulary's data order: it is the release's declared category order.
+  return [...new Set(Array.isArray(values) ? values : [])];
+}
 
-function applyFilters() {
+function valuesFromQuery(options) {
+  const values = {};
+  const params = query();
+  for (const filter of FILTERS) {
+    const value = params[filter.id];
+    if (value == null || value === '') continue;
+    if (filter.kind === 'select') {
+      if (options.get(filter.id)?.includes(value)) values[filter.id] = value;
+    } else if (Number.isFinite(Number(value))) {
+      values[filter.id] = value;
+    }
+  }
+  return values;
+}
+
+function applyFilters(state, navigation) {
+  // A stale Browse request must not replace the query string for a newer route while its
+  // facets fetch finishes in the background.
+  if (navigation && !navigation.isCurrent()) return false;
   const active = FILTERS.filter((f) => state.values[f.id] !== undefined
     && state.values[f.id] !== '' && state.values[f.id] !== null);
   // Record the active filters in the URL so the view is shareable. setQuery uses
@@ -121,9 +144,10 @@ function applyFilters() {
   }
   state.matches = out;
   state.page = 0;
+  return true;
 }
 
-function resultsTable() {
+function resultsTable(state) {
   const start = state.page * PAGE;
   const slice = state.matches.slice(start, start + PAGE);
   const body = slice.map((i) => {
@@ -167,7 +191,7 @@ function download(name, text) {
   URL.revokeObjectURL(url);
 }
 
-function exportTSV() {
+function exportTSV(state) {
   const head = ['gene_id', 'haplotype', 'chr', 'synteny_class', 'phylostratum', 'tau',
                 'peak_tissue', 'genomes_in_orthogroup', 'has_allele', 'in_tandem_array',
                 'salicoid_wgd', 'gamma_wgd', 'omega_vs_ptrichocarpa', 'ms_datasets_detected_of_5',
@@ -198,7 +222,10 @@ export function browseHref(params) {
   return '#/browse' + (qs ? '?' + qs : '');
 }
 
-export async function browseView() {
+export async function browseView(navigation) {
+  // State belongs to one rendered Browse view. A module-level singleton made a stale URL
+  // retain filters from a previous visit and let overlapping loads rewrite each other's state.
+  const state = { values: {}, page: 0, rows: null, ids: null, matches: [] };
   const root = el('div', {},
     el('h1', {}, 'Browse'),
     el('p', { class: 'sub' },
@@ -222,12 +249,13 @@ export async function browseView() {
   const setsHolder = el('div', {});
 
   const render = () => {
+    if (navigation && !navigation.isCurrent()) return;
     drawChips();
     clear(summary).append(
       el('div', { class: 'stat' },
         el('div', { class: 'n' }, fmt(state.matches.length)),
         el('div', { class: 'l' }, `of ${fmt(state.rows.length)} genes match`)));
-    clear(tableHolder).append(state.matches.length ? resultsTable()
+    clear(tableHolder).append(state.matches.length ? resultsTable(state)
       : el('p', { class: 'muted', style: 'padding:14px 0' }, 'No gene matches every filter.'));
     const pages = Math.ceil(state.matches.length / PAGE);
     clear(pager);
@@ -254,13 +282,14 @@ export async function browseView() {
     const onchange = (e) => {
       const v = e.target.value;
       if (v === '') delete state.values[f.id]; else state.values[f.id] = v;
-      applyFilters();
+      if (!applyFilters(state, navigation)) return;
       render();
     };
     const input = f.kind === 'select'
       ? el('select', { onchange, style: 'width:100%;padding:5px;border:1px solid var(--line-2);border-radius:5px;background:var(--surface);color:var(--ink);font-size:12.5px' },
           el('option', { value: '' }, 'any'),
-          ...f.options.map((o) => el('option', { value: o }, o.replace(/_/g, ' '))))
+          ...((f.id === 'top' ? [] : f.options) || [])
+            .map((o) => el('option', { value: o }, String(o).replace(/_/g, ' '))))
       : el('input', { type: 'number', step: f.step || '1', placeholder: f.placeholder || '',
           oninput: onchange,
           style: 'width:100%;padding:5px;border:1px solid var(--line-2);border-radius:5px;background:var(--surface);color:var(--ink);font-size:12.5px' });
@@ -269,16 +298,7 @@ export async function browseView() {
       f.label, el('div', { style: 'margin-top:3px' }, input)));
   }
 
-  // A filter seeded from the URL must show in its widget, or Browse looks unfiltered.
-  // This MUST run after `inputs` is populated. It used to sit above the widget loop, where
-  // `const inputs` was still in the temporal dead zone -- so any deep link carrying a filter
-  // threw "Cannot access 'inputs' before initialization" and rendered nothing, while a plain
-  // /#/browse worked because the loop body never executed. The one path the seeding exists
-  // to serve was the only one that failed.
-  for (const [id, v] of Object.entries(state.values)) {
-    const w = inputs.get(id);
-    if (w) w.value = v;
-  }
+
 
   /** Active filters as removable chips. Without these, what is being filtered lives only in
    *  a grid of 15 inputs and a reader arriving from a chart link (or a pasted URL) cannot see
@@ -299,7 +319,8 @@ export async function browseView() {
           delete state.values[f.id];
           const w = inputs.get(f.id);
           if (w) w.value = '';
-          applyFilters(); render();
+          if (!applyFilters(state, navigation)) return;
+          render();
         },
       }, `${f.label} ${String(state.values[f.id]).replace(/_/g, ' ')}  \u00d7`);
       chipRow.append(chip);
@@ -313,7 +334,8 @@ export async function browseView() {
           const w = inputs.get(f.id);
           if (w) w.value = '';
         }
-        applyFilters(); render();
+        if (!applyFilters(state, navigation)) return;
+        render();
       },
     }, `Clear all ${active.length}`));
   };
@@ -343,7 +365,7 @@ export async function browseView() {
 
   const actions = el('div', { style: 'display:flex;gap:9px;flex-wrap:wrap;margin-top:14px' },
     el('button', {
-      onclick: exportTSV,
+      onclick: () => exportTSV(state),
       style: 'font-size:12.5px;padding:6px 12px;border:1px solid var(--accent);border-radius:5px;background:var(--accent);color:#fff;cursor:pointer',
     }, 'Export TSV'),
     el('button', {
@@ -359,7 +381,7 @@ export async function browseView() {
       onclick: () => {
         state.values = {};
         controls.querySelectorAll('select,input').forEach((n) => { n.value = ''; });
-        applyFilters();
+        if (!applyFilters(state, navigation)) return;
         render();
       },
       style: 'font-size:12.5px;padding:6px 12px;border:1px solid var(--line-2);border-radius:5px;background:transparent;color:var(--ink-2);cursor:pointer',
@@ -372,26 +394,31 @@ export async function browseView() {
     el('div', { class: 'card' }, el('h2', {}, 'Saved sets'), setsHolder));
 
   const [facets, ids] = await Promise.all([loadFacets(), loadGeneIndex()]);
+  if (navigation && !navigation.isCurrent()) return root;
   state.rows = facets.rows.map((_, i) => facetRow(facets, i));
-  // Seed from the URL so an overview chart can link straight to a filtered view, and so a
-  // filtered view can be bookmarked or pasted to someone else. Unknown keys are ignored
-  // rather than erroring: a stale link should degrade to a wider result, never to a crash.
-  //
-  // REPLACE the filter set, never merge into it. `state` is a module-level singleton that
-  // survives navigation, and this loop used to only ever ADD keys -- so going from
-  // ?hap=hap1&tandem=yes to ?tandem=yes silently kept hap1 and returned half the genes, and
-  // every filter a reader had ever followed accumulated for the rest of the session. It looks
-  // exactly like a miscounting filter, which is how it was first reported. The URL is the
-  // whole truth about what is filtered; anything not in it is not active.
-  {
-    const q = query();
-    const known = new Set(FILTERS.map((f) => f.id));
-    state.values = Object.fromEntries(
-      Object.entries(q).filter(([k]) => known.has(k)));
-    state.page = 0;
-  }
   state.ids = ids;
-  applyFilters();
+
+  // Build every select from its declared options after the facet vocabulary arrives. Peak
+  // tissue deliberately comes from the release index, which includes leaf_young and leaf_old.
+  const options = new Map(FILTERS.filter((f) => f.kind === 'select')
+    .map((f) => [f.id, filterOptions(f, facets)]));
+  for (const filter of FILTERS.filter((f) => f.kind === 'select')) {
+    const input = inputs.get(filter.id);
+    clear(input).append(
+      el('option', { value: '' }, 'any'),
+      ...options.get(filter.id).map((value) =>
+        el('option', { value }, String(value).replace(/_/g, ' '))));
+  }
+
+  // The URL is the whole truth about the filter set. Values are seeded only after widgets
+  // and dynamic options exist, so a deep link both filters the data and visibly selects it.
+  state.values = valuesFromQuery(options);
+  state.page = 0;
+  for (const [id, value] of Object.entries(state.values)) {
+    const input = inputs.get(id);
+    if (input) input.value = value;
+  }
+  if (!applyFilters(state, navigation)) return root;
   render();
   renderSets();
   return root;

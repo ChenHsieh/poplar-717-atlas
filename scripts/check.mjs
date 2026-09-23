@@ -157,6 +157,138 @@ await check('gene-hap2-pfam-gap', '#/gene/PtXaAlbH.01G000200',
   { expect: ['Function', 'Domain coverage is thinner on HAP2', 'AT1G55570'], wait: 1000 });
 await check('browse', '#/browse',
   { expect: ['Browse', 'Filters', 'Synteny class', '63,960', 'Export TSV', 'Saved sets'], wait: 1400 });
+
+// UI state: slow routes cannot overwrite a newer page; deep links must visibly select their
+// filters; and search must submit only the text currently in its input. These are interaction
+// checks rather than text snapshots because every failure here can leave a plausible page under
+// the wrong URL.
+{
+  const context = await browser.newContext({ viewport: { width: 1180, height: 900 } });
+  const p = await context.newPage();
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto(base + '/#/browse?hap=hap1', { waitUntil: 'networkidle' });
+  await p.waitForSelector('#view .stat .n');
+  const r = await p.evaluate(async () => {
+    const labels = [...document.querySelectorAll('#view label')];
+    const selectFor = (label) => labels.find((n) => n.firstChild.textContent.trim() === label)
+      ?.querySelector('select');
+    const hap = selectFor('Haplotype');
+    const peak = selectFor('Peak tissue');
+    const facets = await fetch('data/index/facets.json').then((response) => response.json());
+    return {
+      hap: hap && hap.value,
+      count: document.querySelector('#view .stat .n')?.textContent.trim(),
+      top: [...(peak?.options || [])].map((option) => option.value),
+      vocab: facets.vocab.top,
+    };
+  });
+  const ok = !errs.length && r.hap === 'hap1' && r.count === '32,137'
+    && r.top.slice(1).join('\u0000') === r.vocab.join('\u0000')
+    && r.top.includes('leaf_young') && r.top.includes('leaf_old');
+  if (!ok) failures++;
+  console.log('\n### ui-state:browse-deeplink  ' + (ok ? 'OK' : 'FAIL'));
+  console.log('   hap=' + r.hap + '  count=' + r.count + '  peak options=' + r.top.slice(1).join(', '));
+  errs.forEach((e) => console.log('   !! ' + e));
+  await context.close();
+}
+
+{
+  const context = await browser.newContext({ viewport: { width: 1180, height: 900 } });
+  const p = await context.newPage();
+  await p.goto(base + '/#/', { waitUntil: 'networkidle' });
+  await p.fill('#q', 'kinase');
+  await p.waitForSelector('#hits[data-query="kinase"]', { timeout: 20000 });
+  await p.fill('#q', 'xy');
+  await p.press('#q', 'Enter');
+  await p.waitForTimeout(250);
+  const staysPut = await p.evaluate(() => location.hash === '#/'
+    && !document.querySelector('#hits').dataset.query);
+  if (!staysPut) failures++;
+  console.log('\n### ui-state:search-current-query  ' + (staysPut ? 'OK' : 'FAIL'));
+  await context.close();
+}
+
+{
+  const context = await browser.newContext({ viewport: { width: 1180, height: 900 } });
+  const p = await context.newPage();
+  let release;
+  let seen;
+  const held = new Promise((resolve) => { release = resolve; });
+  const requested = new Promise((resolve) => { seen = resolve; });
+  await p.route('**/data/index/search/k.json*', async (route) => {
+    seen();
+    await held;
+    await route.continue();
+  });
+  await p.goto(base + '/#/', { waitUntil: 'networkidle' });
+  await p.fill('#q', 'kinase');
+  await requested;
+  await p.fill('#q', 'xylem');
+  await p.waitForSelector('#hits[data-query="xylem"]', { timeout: 20000 });
+  release();
+  await p.waitForTimeout(500);
+  const rendered = await p.$eval('#hits', (n) => n.dataset.query || null);
+  const ok = rendered === 'xylem';
+  if (!ok) failures++;
+  console.log('\n### ui-state:search-stale-dropdown  ' + (ok ? 'OK' : 'FAIL') + '  rendered=' + rendered);
+  await context.close();
+}
+
+{
+  const context = await browser.newContext({ viewport: { width: 1180, height: 900 } });
+  const p = await context.newPage();
+  let release;
+  let seen;
+  const held = new Promise((resolve) => { release = resolve; });
+  const requested = new Promise((resolve) => { seen = resolve; });
+  await p.route('**/data/genes/hap1/Chr05/4.json*', async (route) => {
+    seen();
+    await held;
+    await route.continue();
+  });
+  await p.goto(base + '/#/', { waitUntil: 'networkidle' });
+  await p.evaluate(() => { location.hash = '#/gene/PtXaTreH.05G120200'; });
+  await requested;
+  await p.evaluate(() => { location.hash = '#/module/about'; });
+  await p.waitForFunction(() => /^About/.test(document.querySelector('#view h1')?.textContent || ''),
+    null, { timeout: 20000 });
+  release();
+  await p.waitForTimeout(800);
+  const r = await p.evaluate(() => ({
+    hash: location.hash,
+    title: document.querySelector('#view h1')?.textContent || '',
+    staleGene: document.querySelector('#view')?.innerText.includes('PtXaTreH.05G120200'),
+  }));
+  const ok = r.hash === '#/module/about' && /^About/.test(r.title) && !r.staleGene;
+  if (!ok) failures++;
+  console.log('\n### ui-state:stale-route  ' + (ok ? 'OK' : 'FAIL')
+    + '  ' + r.hash + ' / ' + r.title);
+  await context.close();
+}
+
+{
+  const context = await browser.newContext({ viewport: { width: 1180, height: 900 } });
+  const p = await context.newPage();
+  let requests = 0;
+  await p.goto(base + '/#/module/about', { waitUntil: 'networkidle' });
+  await p.route('**/data/index/facets.json*', async (route) => {
+    if (requests++ === 0) await route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
+    else await route.continue();
+  });
+  await p.evaluate(() => { location.hash = '#/browse'; });
+  await p.getByRole('button', { name: 'Try again' }).waitFor({ timeout: 20000 });
+  const error = await p.locator('#view').innerText();
+  await p.getByRole('button', { name: 'Try again' }).click();
+  await p.waitForFunction(() => document.querySelector('#view')?.innerText.includes('of 63,960 genes match'),
+    null, { timeout: 20000 });
+  const ok = requests === 2 && error.includes('Could not load this page')
+    && error.includes('Try again') && (await p.locator('#view').innerText()).includes('Browse');
+  if (!ok) failures++;
+  console.log('\n### ui-state:route-error-retry  ' + (ok ? 'OK' : 'FAIL') + '  requests=' + requests);
+  await context.close();
+}
+
 // One ladder per haplotype, the pool split by haplotype AND stratum. The pool is the frozen genEra
 // call and every check is a flag (Chen, 2026-09-21), so the rerun and the post-QC set appear
 // only as pass counts.

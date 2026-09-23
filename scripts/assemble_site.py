@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import shutil
 import subprocess
+import tarfile
 import sys
 from pathlib import Path
 
@@ -27,15 +28,14 @@ GENERATED_ARTIFACT_FILES = frozenset({"data/meta/site-release.json"})
 def fail(message: str) -> None:
     raise SystemExit(f"assemble_site.py: {message}")
 
-
-def tracked_files() -> list[Path]:
+def committed_files() -> list[Path]:
     result = subprocess.run(
-        ["git", "-C", str(ROOT), "ls-files", "-z"],
+        ["git", "-C", str(ROOT), "ls-tree", "-r", "-z", "--name-only", "HEAD"],
         check=False,
         capture_output=True,
     )
     if result.returncode:
-        fail("must run from a Git checkout so only committed files can be packaged")
+        fail("must run from a Git checkout so the HEAD commit can be packaged")
     return [Path(path) for path in result.stdout.decode().split("\0") if path]
 
 
@@ -65,6 +65,33 @@ def allowed_source(rel: Path) -> bool:
     return False
 
 
+def extract_commit_files(selected: list[Path], output: Path) -> None:
+    """Stream allowlisted bytes from HEAD, never from a dirty working tree."""
+    names = [path.as_posix() for path in selected]
+    expected = set(names)
+    command = ["git", "-C", str(ROOT), "archive", "--format=tar", "HEAD", "--", *names]
+    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+        if process.stdout is None:
+            fail("could not read the committed artifact archive")
+        with tarfile.open(mode="r|", fileobj=process.stdout) as archive:
+            for member in archive:
+                if member.isdir():
+                    continue
+                rel = Path(member.name)
+                if rel.as_posix() not in expected:
+                    fail(f"Git archive emitted an unallowlisted file: {rel}")
+                if not member.isfile():
+                    fail(f"refusing non-regular committed file: {rel}")
+                source = archive.extractfile(member)
+                if source is None:
+                    fail(f"could not extract committed file: {rel}")
+                destination = output / rel
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                with destination.open("wb") as target:
+                    shutil.copyfileobj(source, target)
+        stderr = process.stderr.read().decode(errors="replace") if process.stderr else ""
+        if process.wait() != 0:
+            fail(f"could not archive HEAD: {stderr.strip()}")
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path,
@@ -79,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
     if output.exists():
         fail(f"output already exists: {output} (use a fresh staging directory)")
 
-    selected = sorted((rel for rel in tracked_files() if allowed_source(rel)),
+    selected = sorted((rel for rel in committed_files() if allowed_source(rel)),
                       key=lambda p: p.as_posix())
     selected_names = {path.as_posix() for path in selected}
     missing = sorted(ROOT_FILES - selected_names)
@@ -89,13 +116,7 @@ def main(argv: list[str] | None = None) -> int:
         fail("no data files selected")
 
     output.mkdir(parents=True)
-    for rel in selected:
-        source = ROOT / rel
-        if source.is_symlink() or not source.is_file():
-            fail(f"refusing non-regular source file: {rel}")
-        destination = output / rel
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, destination)
+    extract_commit_files(selected, output)
 
     actual = {path.relative_to(output).as_posix()
               for path in output.rglob("*") if path.is_file()}

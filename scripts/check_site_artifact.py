@@ -107,6 +107,8 @@ def read_json(path: Path, label: str) -> dict:
 
 def check_gates(site: Path) -> str:
     manifest = read_json(site / "data/meta/manifest.json", "data/meta/manifest.json")
+    if manifest.get("tier") != "public":
+        fail(f"manifest tier must be 'public' for GitHub Pages (got {manifest.get('tier')!r})")
     gates = read_json(site / "data/meta/gates.json", "data/meta/gates.json")
     version = manifest.get("data_version")
     if not isinstance(version, str) or not version:

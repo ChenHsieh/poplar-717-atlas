@@ -3,6 +3,49 @@
 const routes = [];
 export function route(pattern, handler) { routes.push({ pattern, handler }); }
 
+// A route can outlive the URL that started it: a slow gene shard may finish after a reader
+// follows another link. Each render therefore gets an identity. Handlers receive a context
+// whose `isCurrent()` answers whether their eventual result may still update the page.
+let renderGeneration = 0;
+
+function replaceView(node) {
+  const view = document.getElementById('view');
+  if (!view) return;
+  view.replaceChildren(node);
+  window.scrollTo(0, 0);
+}
+
+function notFound(path) {
+  const root = document.createElement('div');
+  root.className = 'empty';
+  const title = document.createElement('h2');
+  title.textContent = 'Not found';
+  const detail = document.createElement('p');
+  detail.className = 'mono';
+  detail.textContent = path;
+  root.append(title, detail);
+  replaceView(root);
+}
+
+function routeError(path, error, retry) {
+  const root = document.createElement('div');
+  root.className = 'empty';
+  const title = document.createElement('h2');
+  title.textContent = 'Could not load this page';
+  const explanation = document.createElement('p');
+  explanation.textContent = 'The atlas data could not be loaded. Check your connection and try again.';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = 'Try again';
+  button.addEventListener('click', retry);
+  const detail = document.createElement('p');
+  detail.className = 'muted mono';
+  detail.style.fontSize = '12px';
+  detail.textContent = `${path}: ${error && error.message ? error.message : String(error)}`;
+  root.append(title, explanation, button, detail);
+  replaceView(root);
+}
+
 export function navigate(path) {
   if (location.hash.slice(1) === path) render();
   else location.hash = path;
@@ -32,13 +75,31 @@ export function setQuery(params) {
 }
 
 export function render() {
+  const generation = ++renderGeneration;
   const path = (location.hash.slice(1) || '/').split('?')[0];
   for (const { pattern, handler } of routes) {
     const m = pattern.exec(path);
-    if (m) return handler(...m.slice(1));
+    if (!m) continue;
+    const context = Object.freeze({
+      isCurrent: () => generation === renderGeneration,
+      retry: () => {
+        if (generation === renderGeneration) render();
+      },
+    });
+    try {
+      const result = handler(...m.slice(1), context);
+      // Route failures used to leave the route's loading message in place indefinitely.
+      // Catch them here, once, and only paint the error if this is still the active route.
+      Promise.resolve(result).catch((error) => {
+        if (context.isCurrent()) routeError(path, error, context.retry);
+      });
+      return result;
+    } catch (error) {
+      if (context.isCurrent()) routeError(path, error, context.retry);
+      return undefined;
+    }
   }
-  const el = document.getElementById('view');
-  el.innerHTML = `<div class="empty"><h2>Not found</h2><p class="mono">${path}</p></div>`;
+  notFound(path);
 }
 
 export function start() {

@@ -17,8 +17,18 @@ import { statusView } from './modules/status.js';
 import { copiesView } from './modules/copies.js';
 
 const view = () => document.getElementById('view');
-const setView = (node) => { const v = clear(view()); v.append(node); window.scrollTo(0, 0); };
-const loading = (msg = 'Loading…') => setView(el('div', { class: 'empty' }, msg));
+const mountView = (node, navigation) => {
+  if (navigation && !navigation.isCurrent()) return false;
+  const v = clear(view());
+  v.append(node);
+  window.scrollTo(0, 0);
+  return true;
+};
+const scopedView = (navigation) => {
+  const setView = (node) => mountView(node, navigation);
+  const loading = (msg = 'Loading…') => setView(el('div', { class: 'empty' }, msg));
+  return { setView, loading };
+};
 
 /* ---------- search: dropdown preview, with a hand-off to a full results page when a
    query is too broad to disambiguate from 24 rows of "id + one-line description" ---------- */
@@ -28,57 +38,96 @@ function initSearch() {
   const input = document.getElementById('q');
   const hits = document.getElementById('hits');
   let seq = 0;
-  let lastQuery = '';
+  let lastCompletedQuery = '';
   let lastTotal = 0;
 
-  const close = () => { hits.style.display = 'none'; clear(hits); };
-  input.addEventListener('blur', () => setTimeout(close, 150));
+  const close = () => {
+    hits.style.display = 'none';
+    delete hits.dataset.query;
+    clear(hits);
+  };
+  const invalidateAndClose = () => {
+    ++seq;
+    lastCompletedQuery = '';
+    lastTotal = 0;
+    close();
+  };
+  input.addEventListener('blur', () => setTimeout(invalidateAndClose, 150));
 
-  const goToResults = () => { close(); navigate(`/search/${encodeURIComponent(lastQuery)}`); };
+  const goToResults = (rawQuery = input.value) => {
+    const q = rawQuery.trim();
+    if (q.length < 3) return close();
+    close();
+    navigate(`/search/${encodeURIComponent(q)}`);
+  };
 
   input.addEventListener('input', async () => {
     const q = input.value.trim();
     const mine = ++seq;
+    // A valid result from an earlier query must never become the Enter target for this one.
+    lastCompletedQuery = '';
+    lastTotal = 0;
     if (q.length < 3) return close();
 
-    const { ids, total } = await searchGenesRanked(q);
-    if (mine !== seq) return;
-    lastQuery = q; lastTotal = total;
-    const shown = ids.slice(0, DROPDOWN_SHOWN);
-
-    clear(hits);
-    if (!shown.length) {
-      hits.append(el('a', { class: 'muted' }, `Nothing matches "${q}"`));
-    } else {
-      for (const id of shown) {
+    try {
+      const { ids, total } = await searchGenesRanked(q);
+      if (mine !== seq || input.value.trim() !== q) return;
+      const shown = ids.slice(0, DROPDOWN_SHOWN);
+      // Fetch descriptions concurrently, then check again: this used to append one stale
+      // row at a time while a reader was already typing a different query.
+      const rows = await Promise.all(shown.map(async (id) => {
         const g = await getGene(id);
         const note = g && g.ann && (g.ann.d || g.ann.atd);
-        hits.append(el('a', { href: '#/gene/' + id, onclick: close },
-          el('span', {}, id),
-          note ? el('span', { class: 'muted', style: 'font-family:inherit' }, `  ${note.slice(0, 54)}`) : null));
+        return { id, note };
+      }));
+      if (mine !== seq || input.value.trim() !== q) return;
+
+      lastCompletedQuery = q;
+      lastTotal = total;
+      clear(hits);
+      hits.dataset.query = q;
+      if (!rows.length) {
+        hits.append(el('span', { class: 'muted' }, `Nothing matches "${q}"`));
+      } else {
+        for (const { id, note } of rows) {
+          hits.append(el('a', { href: '#/gene/' + id, onclick: invalidateAndClose },
+            el('span', {}, id),
+            note ? el('span', { class: 'muted', style: 'font-family:inherit' }, `  ${note.slice(0, 54)}`) : null));
+        }
+        // "too many results" hand-off: a dropdown row can show an id and one line of
+        // description, which is not enough to tell two paralogs apart. The results page
+        // carries synteny class, duplication class, PS and peak tissue side by side instead.
+        if (total > rows.length) {
+          hits.append(el('a', {
+            href: `#/search/${encodeURIComponent(q)}`,
+            onclick: (e) => { e.preventDefault(); goToResults(q); },
+            style: 'font-weight:600;color:var(--accent);border-top:1px solid var(--line)',
+          }, `${fmt(total)} results for "${q}" — compare them all →`));
+        }
       }
-      // "too many results" hand-off: a dropdown row can show an id and one line of
-      // description, which is not enough to tell two paralogs apart. The results page
-      // carries synteny class, duplication class, PS and peak tissue side by side instead.
-      if (total > shown.length) {
-        hits.append(el('a', {
-          href: `#/search/${encodeURIComponent(q)}`, onclick: goToResults,
-          style: 'font-weight:600;color:var(--accent);border-top:1px solid var(--line)',
-        }, `${fmt(total)} results for "${q}" — compare them all →`));
-      }
+      hits.style.display = 'block';
+    } catch {
+      if (mine !== seq || input.value.trim() !== q) return;
+      clear(hits);
+      hits.dataset.query = q;
+      hits.append(el('span', { class: 'muted' }, 'Search is unavailable. Try again.'));
+      hits.style.display = 'block';
     }
-    hits.style.display = 'block';
   });
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
+      const q = input.value.trim();
+      if (q.length < 3) return invalidateAndClose();
       // Ambiguous queries go to the comparison page rather than blindly opening the top
       // hit, which for a common word like "kinase" would land on an arbitrary gene.
-      if (lastTotal > DROPDOWN_SHOWN) return goToResults();
-      const a = hits.querySelector('a[href^="#/gene/"]');
-      if (a) { close(); navigate(a.getAttribute('href').slice(1)); }
+      if (lastCompletedQuery === q && lastTotal <= DROPDOWN_SHOWN) {
+        const a = hits.querySelector('a[href^="#/gene/"]');
+        if (a) { invalidateAndClose(); return navigate(a.getAttribute('href').slice(1)); }
+      }
+      return goToResults(q);
     }
-    if (e.key === 'Escape') close();
+    if (e.key === 'Escape') invalidateAndClose();
   });
 }
 
@@ -97,7 +146,8 @@ function markNav() {
 addEventListener('hashchange', markNav);
 
 /* ---------- views ---------- */
-route(/^\/$/, async () => {
+route(/^\/$/, async (navigation) => {
+  const { setView, loading } = scopedView(navigation);
   loading();
   const man = await loadManifest();
   const s = man.summary;
@@ -494,7 +544,8 @@ function evidenceKey() {
     el('span', { class: 'ev-key-note' }, 'Cards run from the strongest evidence to the weakest.'));
 }
 
-route(/^\/gene\/(.+)$/, async (id) => {
+route(/^\/gene\/(.+)$/, async (id, navigation) => {
+  const { setView, loading } = scopedView(navigation);
   loading(`Loading ${id}…`);
   const [g, man] = await Promise.all([getGene(id), loadManifest()]);
   if (!g) return setView(el('div', { class: 'empty' },
@@ -592,7 +643,8 @@ route(/^\/gene\/(.+)$/, async (id) => {
 });
 
 // #/copies/<locus> -- a copy-search panel on its own page, for linking.
-route(/^\/copies\/(.+)$/, async (slug) => {
+route(/^\/copies\/(.+)$/, async (slug, navigation) => {
+  const { setView, loading } = scopedView(navigation);
   loading(`Loading ${slug}\u2026`);
   setView(await copiesView(slug, await loadManifest()));
   markNav();
@@ -601,7 +653,8 @@ route(/^\/copies\/(.+)$/, async (slug) => {
 // #/pair/<id> -- the allele pair as one page. Takes EITHER haplotype's id and always
 // presents HAP1 on the left, so two readers arriving from opposite alleles see the same
 // picture rather than mirror images of it.
-route(/^\/pair\/(.+)$/, async (id) => {
+route(/^\/pair\/(.+)$/, async (id, navigation) => {
+  const { setView, loading } = scopedView(navigation);
   loading(`Loading the allele pair for ${id}\u2026`);
   setView(await pairView(id));
   markNav();
@@ -610,7 +663,8 @@ route(/^\/pair\/(.+)$/, async (id) => {
 // #/karyotype -- the ancestral genome as a navigable surface. The grid is reduced in the
 // browser from the `aek` facet column; precomputing it would create another aggregate a build
 // stage owns and can leave stale, for a table that takes milliseconds to derive.
-route(/^\/karyotype$/, async () => {
+route(/^\/karyotype$/, async (navigation) => {
+  const { setView, loading } = scopedView(navigation);
   loading('Reducing the ancestral karyotype\u2026');
   setView(await karyotypeView());
   markNav();
@@ -618,7 +672,8 @@ route(/^\/karyotype$/, async () => {
 
 // #/family/<gene id> -- the whole descent group, entered from any member. Clicking a member
 // recentres on it, so "steps from here" always means steps from the gene you are looking at.
-route(/^\/family\/(.+)$/, async (id) => {
+route(/^\/family\/(.+)$/, async (id, navigation) => {
+  const { setView, loading } = scopedView(navigation);
   loading(`Walking the descent group of ${id}\u2026`);
   setView(await familyView(id));
   markNav();
@@ -626,19 +681,22 @@ route(/^\/family\/(.+)$/, async (id) => {
 
 // #/status -- the gates this build passed, as a boot log. The verdicts are published by
 // validate_data.py as each gate executes; nothing here is written after the fact.
-route(/^\/status$/, async () => {
+route(/^\/status$/, async (navigation) => {
+  const { setView, loading } = scopedView(navigation);
   loading('Reading the gate record\u2026');
   setView(await statusView());
   markNav();
 });
 
-route(/^\/browse$/, async () => {
+route(/^\/browse$/, async (navigation) => {
+  const { setView, loading } = scopedView(navigation);
   loading('Loading the gene index…');
-  setView(await browseView());
+  setView(await browseView(navigation));
   markNav();
 });
 
-route(/^\/map(?:\/(hap[12]))?(?:\/(\w+))?$/, async (hapArg, chrArg) => {
+route(/^\/map(?:\/(hap[12]))?(?:\/(\w+))?$/, async (hapArg, chrArg, navigation) => {
+  const { setView, loading } = scopedView(navigation);
   const hap = hapArg || 'hap1';
   loading('Loading the genome map…');
   const hapBtn = (h, label) => el('button', {
@@ -656,13 +714,15 @@ route(/^\/map(?:\/(hap[12]))?(?:\/(\w+))?$/, async (hapArg, chrArg) => {
   markNav();
 });
 
-route(/^\/search\/(.+)$/, async (q) => {
+route(/^\/search\/(.+)$/, async (q, navigation) => {
+  const { setView, loading } = scopedView(navigation);
   loading('Searching…');
   setView(await searchResultsView(decodeURIComponent(q)));
   markNav();
 });
 
-route(/^\/module\/(.+)$/, async (id) => {
+route(/^\/module\/(.+)$/, async (id, navigation) => {
+  const { setView, loading } = scopedView(navigation);
   const m = byId(id);
   if (!m || !m.overview) return setView(el('div', { class: 'empty' }, el('h2', {}, 'No such module'), el('p', { class: 'mono' }, id)));
   loading();
@@ -670,7 +730,8 @@ route(/^\/module\/(.+)$/, async (id) => {
   markNav();
 });
 
-route(/^\/study\/(\d+)$/, async (idStr) => {
+route(/^\/study\/(\d+)$/, async (idStr, navigation) => {
+  const { setView, loading } = scopedView(navigation);
   loading();
   const id = +idStr;
   const studies = await loadExprStudies();
