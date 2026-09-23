@@ -13,24 +13,24 @@ name: pages (site files only)
 # sources/*.provenance.json (the About page renders those records). LICENSE and CITATION.cff
 # ride along for readers.
 #
-# SAFER IN A SECOND WAY. The branch deploy publishes main whatever CI says. This deploys only a
-# commit whose `checks` run succeeded (validate_data, check_version, check.mjs).
+# SAFER IN A SECOND WAY. A completed `checks` run establishes workflow-run eligibility for its
+# exact head SHA. This job then assembles a fresh allowlisted artifact, validates it, and runs
+# the browser suite against that directory before upload-pages-artifact receives those same bytes.
 #
 # THE TWO SETTINGS it depends on (both set 2026-09-21, both Chen's to change):
 #   1. Settings -> Secrets and variables -> Actions -> Variables: PAGES_SITE_ONLY = true
 #   2. Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
 # With the variable unset every job below is skipped. To go back to publishing the whole repo:
 # set Source to "Deploy from a branch" (main, /root) and the variable to false.
-#
-# A NEW FETCH NEEDS A LINE HERE. If the site starts requesting a file outside the list below,
-# it will 404 on the live site while every local check passes (they serve the repo root).
+# The allowlist is enforced by scripts/assemble_site.py and checked again by
+# scripts/check_site_artifact.py. Add a newly fetched asset type deliberately in both places;
+# otherwise it will 404 live while a source-tree-only local check can still pass.
 
 on:
   workflow_run:
     workflows: [checks]
     types: [completed]
     branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -44,30 +44,57 @@ concurrency:
 jobs:
   build:
     if: >-
-      vars.PAGES_SITE_ONLY == 'true' &&
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+      vars.PAGES_SITE_ONLY == 'true' && github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    env:
+      SITE_DIR: _site
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
       - uses: actions/checkout@v4
         with:
           # the exact commit the checks passed on, not whatever main is by now
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Assemble the site, and nothing else
+      - name: Verify checkout matches release revision
+        run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check version references agree
+        run: python3 scripts/check_version.py
+
+      - name: Assemble the public Pages artifact
+        run: python3 scripts/assemble_site.py --output "$SITE_DIR"
+
+      - name: Validate the exact public artifact
+        run: |
+          python3 scripts/validate_data.py \
+            --data-dir "$SITE_DIR/data" \
+            --source-root "$GITHUB_WORKSPACE" \
+            --scan-root "$SITE_DIR"
+          python3 scripts/check_site_artifact.py \
+            --site "$SITE_DIR" \
+            --commit "$RELEASE_SHA" \
+            --write-release
+
+      - name: Install Playwright Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-audit --no-fund playwright-core@1.62.1
+          npx --yes playwright@1.62.1 install --with-deps chromium
+
+      - name: Browser-test the exact public artifact
         run: |
           set -euo pipefail
-          mkdir -p _site/sources
-          cp -R index.html .nojekyll css js data LICENSE CITATION.cff _site/
-          cp sources/*.provenance.json _site/sources/
-          # Belt and braces: the published tree must be exactly the whitelist.
-          extra=$(cd _site && find . -mindepth 1 -maxdepth 1 \
-            ! -name index.html ! -name .nojekyll ! -name css ! -name js ! -name data \
-            ! -name sources ! -name LICENSE ! -name CITATION.cff)
-          if [ -n "$extra" ]; then echo "unexpected top-level entries: $extra"; exit 1; fi
-          if find _site/sources -type f ! -name '*.provenance.json' | grep -q .; then
-            echo "sources/ may only publish provenance records"; exit 1
-          fi
-          echo "publishing $(find _site -type f | wc -l) files, $(du -sh _site | cut -f1)"
+          python3 scripts/serve_ranges.py 8931 "$SITE_DIR" &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8931/index.html >/dev/null && break
+            sleep 1
+          done
+          CI_CHROME="$(node -e "console.log(require('playwright-core').chromium.executablePath())")" \
+            node scripts/check.mjs
 
       - uses: actions/upload-pages-artifact@v3
         with:

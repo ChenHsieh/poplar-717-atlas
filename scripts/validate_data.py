@@ -9,10 +9,18 @@ the ID->shard convention is load-bearing for every gene page; a dangling express
 pointer would 404 only for the unlucky gene; an allele link to a nonexistent gene would be a
 dead end a reader hits before a maintainer does.
 """
+import argparse
 import gzip, json, os, re, struct, subprocess, sys
 from collections import Counter
 
-DATA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Defaults preserve the long-standing local command, while the Pages workflow points these at
+# the staged public artifact. Keeping the source and scan roots separate matters: a few
+# integrity checks need an unpublishable source-side control file, whereas the embargo scan
+# must inspect only what the public artifact actually contains.
+DATA = os.path.join(ROOT, "data")
+SOURCE_ROOT = ROOT
+SCAN_ROOT = ROOT
 CHR_RE = re.compile(r"^PtXa(TreH|AlbH)\.(\d\d)G(\d+)$")
 SCAF_RE = re.compile(r"^PtXa(TreH|AlbH)\.T\d+$")
 BUCKET_SPAN = 25000   # mirrors build_data.py and js/core/data.js
@@ -51,6 +59,26 @@ def struct_key(gid):
     return None
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data-dir", help="data directory to validate (default: ./data)")
+    parser.add_argument("--source-root", help="repository root for source-side control files")
+    parser.add_argument("--scan-root", help="tree to scan for embargoed public text")
+    args = parser.parse_args()
+
+    global DATA, SOURCE_ROOT, SCAN_ROOT
+    DATA = os.path.abspath(args.data_dir or os.path.join(ROOT, "data"))
+    SOURCE_ROOT = os.path.abspath(args.source_root or ROOT)
+    SCAN_ROOT = os.path.abspath(args.scan_root or SOURCE_ROOT)
+    if not os.path.isdir(DATA):
+        print(f"data directory does not exist: {DATA}", file=sys.stderr)
+        return 1
+    if not os.path.isdir(SOURCE_ROOT):
+        print(f"source root does not exist: {SOURCE_ROOT}", file=sys.stderr)
+        return 1
+    if not os.path.isdir(SCAN_ROOT):
+        print(f"scan root does not exist: {SCAN_ROOT}", file=sys.stderr)
+        return 1
+
     man = json.load(open(f"{DATA}/meta/manifest.json"))
     genes, shard_files = {}, 0
     for hap in ("hap1", "hap2"):
@@ -565,9 +593,13 @@ def main():
     # ...and not any other published file either. The shard check above could not see the
     # CHANGELOG, a build script's docstring or a provenance record that the About page renders,
     # and all of those carried the names -- two of them paired with a gene ID -- while it passed.
-    # Every tracked text file is served by Pages, so every one is scanned.
-    root = os.path.dirname(DATA)
+    # Scan the selected public tree, rather than assuming it is the whole checkout. Pages
+    # packages only a strict allowlist now; a staging artifact has no .git of its own, so use a
+    # filesystem walk there and include generated files such as gates.json as well.
+    root = SCAN_ROOT
     try:
+        if not os.path.exists(os.path.join(root, ".git")):
+            raise OSError("scan root is not a checkout")
         tracked = subprocess.run(["git", "-C", root, "ls-files", "-z"], check=True,
                                  capture_output=True).stdout.decode().split("\0")
     except (OSError, subprocess.CalledProcessError):
@@ -887,7 +919,7 @@ def main():
         check("copies: each search recovered every annotated member of its array (positive control)",
               bool(controls) and all(c.split()[1].split("/")[0] == c.split()[1].split("/")[1] for c in controls),
               ", ".join(controls))
-        src = os.path.join(os.path.dirname(DATA), "sources", "copy_search.json")
+        src = os.path.join(SOURCE_ROOT, "sources", "copy_search.json")
         sha = hashlib.sha256(open(src, "rb").read()).hexdigest() if os.path.exists(src) else None
         check("copies: data was built from the committed sources/copy_search.json",
               sha is not None and sha == cman.get("source_sha256"),

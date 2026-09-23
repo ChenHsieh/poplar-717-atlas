@@ -5,6 +5,7 @@ node_modules/
 shots/
 shots-live/
 
+_site/
 # CRE deliverable from the ms2-lsg agent: the 1kb contract file + provenance are
 # committed (below the SWEEP line stays ignored -- 4.7MB, exploratory, not read
 # by the site; regenerate it from ms2-lsg if the window-sensitivity work resumes).
