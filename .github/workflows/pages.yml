@@ -99,6 +99,8 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+          # The validated artifact includes .nojekyll; this action otherwise drops dotfiles.
+          include-hidden-files: true
 
   deploy:
     needs: build
