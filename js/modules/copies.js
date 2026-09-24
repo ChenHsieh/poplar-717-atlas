@@ -18,6 +18,7 @@
 // the label column folds onto its own line above each bar.
 import { el, fmt } from '../core/dom.js';
 import { getGene, hapLabel, loadCopies } from '../core/data.js';
+import { onDispose } from '../core/lifecycle.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const HAP = (h) => (h === 'hap1' ? 'HAP1' : 'HAP2');
@@ -314,6 +315,7 @@ function panelCard(slug, meta, focalId) {
       if (w && w !== lastW) { lastW = w; draw(holder, L, recs, focalId); }
     }
     ro.observe(holder);
+    onDispose(holder, () => ro.disconnect());
     redraw();
     card.append(
       el('div', { class: 'cp-key' },

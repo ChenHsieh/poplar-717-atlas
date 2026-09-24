@@ -27,62 +27,65 @@ cd "$(dirname "$0")/.."
 ALLOW_PARTIAL=0
 [ "${1:-}" = "--allow-partial" ] && ALLOW_PARTIAL=1
 
+# This is read-only and runs before build_data.py can erase the previous shard layers.
+echo "== build graph =="
+python3 scripts/check_stages.py
+
 # --- what each stage needs -------------------------------------------------------------
-# env|script|description.  Order is load-bearing; build_facets.py must stay last.
+# env|command|dependencies|description.  A dependency names the script that must precede
+# this one in a complete build; check_stages.py rejects a reorder before build_data.py can
+# wipe data/genes.  build_facets.py must stay last.
 STAGES=(
-  "sapelo2|build_data.py --tier full|gene shards (WIPES data/genes)"
-  "sapelo2|build_expression.py|expression"
-  "sapelo2|build_annotation.py|annotation + search index"
-  "sapelo2|build_phylostrat.py|phylostratigraphy context"
-  "sapelo2|build_duplication.py|duplication (paralog dS)"
-  "sapelo2|build_layers.py|external genome-wide layers"
-  "sapelo2|build_crossspecies.py|cross-species orthologs"
-  "onedrive|patch_dup_v9_and_pav.py|duplication v9 + PAV (after build_duplication)"
-  # NOT PREVIOUSLY LISTED, and that was a real gap: `td.mem` and every `para[].r` on the
-  # shards are written by patch_duplicate_partners.py, which no stage ran. A full rebuild
-  # therefore dropped the array-member lists and the duplicate co-expression the Duplication
-  # card renders, and nothing failed -- the card just quietly lost its table. Found while
-  # adding the stage below, which depends on td.mem.
-  "repo|patch_duplicate_partners.py|array members + duplicate co-expression (after build_layers, which writes td and arrays.json)"
-  "repo|patch_td_pair_ks.py|per-PAIR tandem dS (after patch_duplicate_partners, which writes the td.mem it keys on)"
-  "repo|patch_wgd_combined_call.py|route C combined Ks+topology WGD call, BESIDE the canonical letters (after patch_dup_v9_and_pav, which writes the dup.s/dup.a it is compared against)"
-  "repo|patch_pool_frozen.py|LSG pool = the frozen genEra call, with the Idesia rerun kept beside it (after build_phylostrat; MUST precede patch_lsg_qc)"
-  "repo|patch_lsg_qc.py|LSG evidence flags on every pool gene, the Idesia rerun included (after patch_pool_frozen, which sets the pool it flags)"
-  "repo|patch_proteomics_v2.py|proteomics re-search, genome-wide (after build_layers, which writes the Tier-1 shape this replaces)"
-  "repo|patch_kaks.py|Ka/Ks vs P. trichocarpa"
-  "repo|build_cre.py|promoter/CRE layer"
-  "repo|patch_chromatin.py|GSE128434 chromatin at the P. trichocarpa ortholog (after build_crossspecies)"
-  "repo|patch_karyotype.py|ancestral eudicot karyotype, route C, exploratory (before build_facets, which indexes it)"
-  # Touches no shard; it checks sources/copy_search.json against them and writes data/copies/
-  # plus manifest.copies. A stage rather than a one-off because build_data.py rewrites the
-  # manifest, which would otherwise drop the section and leave every panel unreachable.
-  "repo|patch_copies.py|copies of an array on both haplotypes, from the committed sequence search"
-  "onedrive|build_combat.py|ComBat-seq view (after build_expression)"
-  # MUST come after both expression stages and before build_facets. It reads the bucket trees,
-  # packs one gzip member per gene into per-haplotype blobs, writes [offset, length] onto each
-  # shard, and the buckets are then deleted. Skipping it leaves shards pointing at ranges that
-  # do not exist; running it twice is harmless (it rewrites the blobs from the buckets).
-  "onedrive|build_expr_ranges.py|range-addressable expression blobs (after build_expression AND build_combat)"
-  "onedrive|build_contrasts.py|contrast index (after build_expression)"
-  "onedrive|build_locus.py|locus tiles + genome map"
-  "any|build_facets.py|facet index (MUST be last)"
+  "sapelo2|build_data.py --tier public|-|public-tier gene shards (WIPES data/genes)"
+  "sapelo2|build_expression.py|build_data.py|expression"
+  "sapelo2|build_annotation.py|build_data.py|annotation + search index"
+  "sapelo2|build_phylostrat.py|build_data.py|phylostratigraphy context"
+  "sapelo2|build_duplication.py|build_data.py|duplication (paralog dS)"
+  "sapelo2|build_layers.py|build_data.py|external genome-wide layers"
+  "sapelo2|build_crossspecies.py|build_data.py|cross-species orthologs"
+  "sapelo2|patch_gene_model.py|build_data.py|RNA-seq intron and split-model evidence"
+  "sapelo2|patch_structure.py|build_layers.py|ESMFold C-alpha structure buckets"
+
+  "onedrive|patch_dup_v9_and_pav.py|build_duplication.py|duplication v9 + PAV"
+  "repo|patch_wgd_pairs.py|build_data.py|WGD anchor partners and pair correlations"
+  "repo|patch_duplicate_partners.py|build_layers.py|array members + duplicate co-expression"
+  "repo|patch_td_pair_ks.py|patch_duplicate_partners.py|per-pair tandem dS"
+  "repo|patch_wgd_combined_call.py|patch_dup_v9_and_pav.py|route C combined Ks + topology WGD call"
+  "repo|patch_pool_frozen.py|build_phylostrat.py|frozen genEra LSG pool with Idesia rerun beside it"
+  "repo|patch_lsg_qc.py|patch_pool_frozen.py|LSG evidence flags"
+  "repo|patch_proteomics_v2.py|build_layers.py,patch_pool_frozen.py|proteomics re-search"
+  "repo|patch_peptide_detail.py|patch_proteomics_v2.py|per-gene peptide provenance"
+  "repo|patch_kaks.py|build_data.py|Ka/Ks vs P. trichocarpa"
+  "repo|build_cre.py|build_data.py|promoter/CRE layer"
+  "repo|patch_promoter_pos.py|build_cre.py|promoter motif positions"
+  "repo|patch_chromatin.py|build_crossspecies.py|GSE128434 chromatin at the P. trichocarpa ortholog"
+  "repo|patch_chromatin_profiles.py|patch_chromatin.py|TSS chromatin signal profiles"
+  "repo|patch_karyotype.py|build_data.py|ancestral eudicot karyotype, route C"
+  "repo|patch_copies.py|build_data.py|copies of an array on both haplotypes"
+
+  "onedrive|build_combat.py|build_expression.py|ComBat-seq view"
+  "onedrive|build_expr_ranges.py|build_expression.py,build_combat.py|range-addressable expression blobs"
+  "onedrive|build_contrasts.py|build_expression.py|contrast index"
+  "onedrive|build_locus.py|build_data.py|locus tiles + genome map"
+  "repo|patch_map_overlays.py|build_locus.py,patch_pool_frozen.py,patch_proteomics_v2.py,patch_kaks.py,patch_chromatin.py|genome-map overlays from current shards"
+  "repo|build_families.py|build_annotation.py,build_duplication.py,patch_wgd_pairs.py,patch_duplicate_partners.py|descent-family index"
+  "any|build_facets.py|build_families.py|facet index (MUST be last)"
 )
-# DELIBERATELY NOT STAGES: make_proteomics_v2_source.py and make_kaks_source.py. They read
-# /scratch analysis output and REGENERATE sources/*.tsv.gz, which is a different job from
-# building data/ -- the committed source file is the artifact, exactly as data/ is. Run them
-# by hand on Sapelo2 when the upstream analysis produces a new result, then run the matching
-# patch_*.py stage below. Both refuse to write unless they reproduce their owning analysis's
-# published summary table. make_karyotype_source.py is the same kind of script, except that it
-# reads the OneDrive tree, so it runs on the Mac; its patch stage, patch_karyotype.py, is above.
-# make_copy_search_source.py is the same kind again (tblastn against the v5.0 genomes, Sapelo2
-# only); its stage is patch_copies.py. Run it when a locus is added to its LOCI list.
-# make_pool_frozen_source.py too: it writes sources/lsg_pool_frozen.tsv.gz from ms2-lsg's frozen
-# pool table, read through git at the commit in sources/ms2_canon.pin.json, so it needs an ms2-lsg
-# clone (any machine). Its stage is patch_pool_frozen.py.
+
+# DELIBERATELY NOT STAGES: every make_*_source.py script regenerates a committed source
+# artifact from an upstream analysis. Run it by hand when that analysis changes, commit the
+# source, then run its matching stage above. The complete inventory lives in
+# scripts/check_stages.py and is checked before every build:
+#   make_chromatin_source.py, make_copy_search_source.py,
+#   make_duplicate_coexpr_source.py, make_gene_model_source.py, make_kaks_source.py,
+#   make_karyotype_source.py, make_peptide_detail_source.py, make_pool_frozen_source.py,
+#   make_proteomics_v2_source.py, make_structure_source.py, make_td_pair_ks_source.py,
+#   make_wgd_combined_call_source.py, make_wgd_pairs_source.py.
 #
 # DELIBERATELY NOT A STAGE: patch_leaf_tissue_analysis.py. It is a one-time correction to
 # already-shipped data; build_expression.py is fixed at source, so a real rebuild already
-# produces the corrected baseline and re-running the patch would be a no-op at best.
+# produces the corrected baseline. check_stages.py makes this exception explicit and refuses
+# every other unowned patcher.
 
 # --- can this machine run each class? --------------------------------------------------
 have_sapelo2=0
@@ -115,7 +118,7 @@ rm -f /tmp/preflight.$$
 
 missing=()
 for s in "${STAGES[@]}"; do
-  IFS='|' read -r env script desc <<< "$s"
+  IFS='|' read -r env script requires desc <<< "$s"
   avail "$env" || missing+=("$script  ($env)")
 done
 
@@ -141,7 +144,7 @@ fi
 # --- run -------------------------------------------------------------------------------
 n=0; total=${#STAGES[@]}
 for s in "${STAGES[@]}"; do
-  IFS='|' read -r env script desc <<< "$s"
+  IFS='|' read -r env script requires desc <<< "$s"
   n=$((n + 1))
   if ! avail "$env"; then
     echo; echo "== $n/$total SKIPPED ($env unavailable): $desc =="
@@ -151,6 +154,19 @@ for s in "${STAGES[@]}"; do
   # shellcheck disable=SC2086
   python3 scripts/$script
 done
+
+echo; echo "== required data layers =="
+if [ ${#missing[@]} -gt 0 ]; then
+  # A Sapelo2 half-build is expected to fail until the OneDrive stages run. A Mac
+  # finishing the second half should pass here, so print the result either way.
+  if python3 scripts/check_required_layers.py; then
+    echo "  current checkout already has every required layer."
+  else
+    echo "  current checkout is incomplete; run the missing-machine stages, then rerun this gate."
+  fi
+else
+  python3 scripts/check_required_layers.py
+fi
 
 echo; echo "== validate =="
 if [ ${#missing[@]} -gt 0 ]; then
@@ -179,7 +195,8 @@ echo; echo "== agreement with ms1-dup's numbers of record =="; python3 scripts/c
 echo
 if [ ${#missing[@]} -gt 0 ]; then
   echo "PARTIAL build complete. Commit and push, then run the same command on the machine"
-  echo "that has the missing sources -- it finishes the job and rewrites the facet index."
+  echo "that has the missing sources. The required-layer gate above confirms when the"
+  echo "checkout is complete; it must pass before publishing."
 else
   echo "Build complete. Now run the render checks:"
   echo "  python3 scripts/serve_ranges.py 8931 . &     # NOT http.server: it ignores Range"

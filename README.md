@@ -1,125 +1,169 @@
 # poplar-717-atlas
 
 > **Picking this up fresh? Read [`docs/HANDOFF.md`](docs/HANDOFF.md) first.**
-> The short version: `scripts/build_data.py` wipes `data/genes/` and the other seven scripts
-> patch it, so always build with `scripts/build_all.sh`. The build only runs on Sapelo2 — the
-> committed `data/` **is** the artifact everywhere else.
+> `scripts/build_data.py` wipes `data/genes/`; do not run individual data writers. Use
+> `scripts/build_all.sh`, which audits the build graph before mutation and runs source-dependent
+> stages in dependency order. The committed `data/` is the release artifact outside the build
+> hosts.
 
 Gene atlas for hybrid poplar 717 (*Populus tremula* × *alba*), haplotype-resolved v5.1.
-Static site — no server, no build step, no framework.
+Static site — no application server, framework, or browser-side build step.
 
-> **⚠ GitHub Pages is PUBLIC even from a private repository.** There is no auth-gated Pages
-> below GitHub Enterprise. Since 2026-09-21 Pages publishes only the site files
-> (`.github/workflows/pages.yml`: `index.html`, `css/`, `js/`, `data/`,
-> `sources/*.provenance.json`, `LICENSE`, `CITATION.cff`), and only after `checks` passes; the
-> rest of the repo is no longer served. A file the site starts fetching must be added there.
-> This repo is private, and **the site has been deployed since
-> 2026-09-01** (public, `noindex` until the chapter is out) — built with `--tier public`,
-> which withholds fields marked private in `FIELD_TIERS` (currently LSG-pool membership —
-> the unpublished candidate list). Re-verify the `--tier public` flag was used before any
-> future rebuild that touches `data/`; a `--tier full` build would publish that list.
+> **GitHub Pages is public even when the repository is private.** Pages receives a fresh,
+> allowlisted site tree, never the repository root. A successful `checks` run on `main` is the
+> only deployment trigger; Pages then checks out that exact SHA, rebuilds the tree, validates it,
+> browser-tests it, and uploads those bytes. The site is live with `noindex` until the chapter is
+> out. See [the staged-release steps](#verify-the-public-artifact) before changing a fetched
+> asset or data release.
 
 ## Architecture
 
 **The gene is the primitive.** Every module is a facet of a gene, plus browse views over the
-gene set. Same shape as Phytozome / NCBI Gene / PopGenIE.
+same gene set.
 
-### The gene ID encodes its own shard — so there is no index file
+### The gene ID encodes its shard
 
 ```
-PtXaTreH.05G120200  ->  data/genes/hap1/Chr05.json
-PtXaAlbH.14G133000  ->  data/genes/hap2/Chr14.json
-PtXaTreH.T000100    ->  data/genes/hap1/scaffolds.json   (T-form: 131 genes, HAP1 only)
+PtXaTreH.05G120200  ->  data/genes/hap1/Chr05/4.json
+PtXaAlbH.14G133000  ->  data/genes/hap2/Chr14/5.json
+PtXaTreH.T000100    ->  data/genes/hap1/scaffolds.json
 ```
 
-A gene page is **one fetch with zero lookups**. Shards are ≤113 KB gzipped.
+For chromosome genes, the numeric suffix divided by 25,000 selects a shard with at most 250
+records. A gene page loads that shard after checking the manifest, with no search-index lookup.
+The rule is mirrored by `scripts/build_data.py`, `js/core/data.js`, and
+`scripts/validate_data.py`; the build checks it against all 63,960 annotation records.
 
-That rule is load-bearing, so `build_data.py` **asserts** it reproduces the real BED
-coordinate for all 63,960 genes and fails the build if the annotation ever breaks the
-convention. The same rule is mirrored in `site/js/core/data.js`; the two must agree.
+### Versioned data and range reads
+
+The manifest is fetched with `no-store` once per page load. Its `data_version` is added to every
+subsequent data URL and client cache key, preventing fresh JavaScript from being combined with a
+stale shard or index after a Pages deployment.
+
+Full expression profiles live in one range-addressable `.gzb` blob per haplotype and matrix. A
+shard carries the raw and, when available, ComBat offset and length. The loader accepts a profile
+only when the server returns the requested `206` range with the exact `Content-Range`, byte
+length, and expected numeric sample vector. GitHub Pages supports Range requests; local testing
+must use `scripts/serve_ranges.py`, not `python3 -m http.server`.
 
 ### Layout
 
 ```
-index.html                shell (site is served from the repo root, for Pages)
-scripts/build_data.py     data build; --tier full|public
-scripts/check.mjs         headless render checks -- run before every commit
-data/genes/{hap}/{chr}.json   sharded gene records
-data/meta/manifest.json   module list, counts, summary stats, per-source sha256
-js/core/                  router, loader, gene-set store, dom helper
-js/modules/               ONE FILE PER MODULE
+index.html                         application shell
+scripts/build_all.sh               ordered, source-aware data build
+scripts/check_stages.py            pre-write build-graph ownership and dependency gate
+scripts/check_required_layers.py   read-only completeness gate after a rebuild
+scripts/assemble_site.py           strict public-artifact assembler
+scripts/check_site_artifact.py     public-artifact allowlist, budget, and identity gate
+scripts/check.mjs                  browser render and interaction checks
+data/genes/{hap}/{chr}/{bucket}.json  gene records
+data/expr/{raw,cb}_{hap}.gzb       range-addressable full expression profiles
+data/meta/manifest.json            release data version, modules, counts, provenance
+js/core/                            router, loader, gene-set store, DOM helpers
+js/modules/                         one file per module
 ```
 
-## Checks
+## Build data safely
+
+The data writers are not independent. `build_data.py` resets the gene shards, then later stages
+restore expression, annotation, derived indexes, structure, map overlays, and other source-backed
+layers. `build_facets.py` remains the final stage because it indexes the finished shards. The
+production graph invokes `build_data.py --tier public`, and the public artifact gate requires
+`manifest.tier` to be `public`. Phylostratigraphic ranks and LSG membership remain public because
+membership is directly inferable from the displayed rank; candidate labels and group names must
+remain absent from the release tree.
 
 ```bash
-python3 scripts/validate_data.py                  # data integrity, no browser needed
-python3 -m http.server 8931 --bind 127.0.0.1 &
-node scripts/check.mjs                            # headless render
+scripts/build_all.sh
 ```
 
-`validate_data.py` checks the committed data against itself: the ID→shard rule, expression
-bucket pointers, allele links (existing, cross-haplotype, reciprocal), the absence of the PAML
-omega sentinel, and search postings in range. `check.mjs` renders every view and fails on any
-console error or missing content — the site fetches JSON, so `file://` is not a valid test.
-Both run in CI on every push.
+A complete build needs the Sapelo2 source trees and the OneDrive MS1 tree. Before it can erase
+shards, `build_all.sh` runs `check_stages.py`; that gate verifies stage ownership, ordering, and
+dependencies for every data writer, while classifying source generators separately. If a machine
+lacks required sources, the default command stops before writing. `--allow-partial` explicitly
+runs only the stages available on that machine for a two-machine handoff.
 
-## Build order
-
-The data scripts are **not** independent — the later two patch the shards the first one writes:
+After all source-dependent stages have run, the following must pass before publication:
 
 ```bash
-python3 scripts/build_data.py --tier full     # writes shards (synteny + phylostratigraphy)
-python3 scripts/build_expression.py           # adds x: tissue baseline, tau, bucket pointer
-python3 scripts/build_annotation.py           # adds ann / allele / pres, builds the search index
-python3 scripts/build_phylostrat.py           # adds ps.amb / ps.fnd, the strata ladder
-python3 scripts/build_duplication.py          # adds para: paralog pairs with dS
-python3 scripts/build_facets.py               # LAST -- reads every field above
+python3 scripts/check_required_layers.py  # source-backed fields, blobs, indexes, and overlays
+python3 scripts/validate_data.py          # internal data invariants and public-content scan
 ```
 
-Running `build_data.py` alone will drop the expression and annotation layers.
+`check_required_layers.py` is read-only, so it is safe after either half of a handoff. A partial
+run reports incompleteness and deliberately does not treat the normal validator as a release
+verdict. Run the remaining stages, then rerun the gates. The full build invokes them in the right
+place already.
 
-## Colour
+Source generators (`make_*_source.py`) are not build stages: they create a committed source
+artifact from an upstream analysis. Regenerate and review that source separately, commit it, then
+run its matching data stage. The only historical patch exception is documented in
+`check_stages.py`; adding another writer without a stage is rejected.
 
-The five synteny classes use slots 1-5 of a validated categorical palette (worst adjacent
-CVD dE 9.1 light / 8.4 dark; normal-vision 19.6 / 19.3). Three light-mode hues sit under 3:1
-contrast on the surface, so **every class swatch ships with its text label** -- identity is
-never carried by colour alone.
+## Verify the public artifact
 
-### Adding a module = one file + one registry line
+CI validates and renders the staging tree, rather than the repository root. The assembler reads
+both paths and bytes from Git `HEAD`, deliberately ignoring uncommitted or untracked working-tree
+files. Commit the candidate revision before reproducing its release path locally with a new,
+nonexistent output directory:
+
+```bash
+SITE_DIR=/tmp/poplar-atlas-site-next-release   # choose a path that does not exist
+python3 scripts/check_version.py
+python3 scripts/assemble_site.py --output "$SITE_DIR"
+python3 scripts/validate_data.py   --data-dir "$SITE_DIR/data" --source-root "$PWD" --scan-root "$SITE_DIR"
+python3 scripts/check_site_artifact.py   --site "$SITE_DIR" --commit "$(git rev-parse HEAD)" --write-release
+python3 scripts/serve_ranges.py 8931 "$SITE_DIR" &
+node scripts/check.mjs
+```
+
+The assembler streams allowlisted files from Git `HEAD` and refuses an existing output directory.
+The artifact gate requires the expected site files, rejects hidden, extra, linked, or non-regular
+files, requires `manifest.tier: "public"`, enforces a 900 MiB engineering budget, and writes
+`data/meta/site-release.json` in the staging tree. That record binds the tested artifact to its
+commit, data version, file count, and content digest; it is generated for release and is not a
+source-data file to commit.
+
+The public tree contains the shell, CSS, JavaScript (and its vendored license), current data
+assets, reader-facing provenance sidecars, `LICENSE`, and `CITATION.cff`. Raw and ComBat bucket
+trees are build inputs and compatibility fallbacks, explicitly excluded from Pages; the
+range-addressable `.gzb` blobs are the released profile representation. If the client begins fetching a new asset
+type, update the explicit rules in both `assemble_site.py` and `check_site_artifact.py`, then
+rerun the staged checks. Do not copy files into `_site` by hand.
+
+## Local viewing
+
+```bash
+python3 scripts/serve_ranges.py 8080 .
+# open http://localhost:8080
+```
+
+The range-aware server mirrors the response semantics used in production. `file://` cannot load
+the JSON modules, and `python3 -m http.server` ignores Range requests.
+
+## Adding a module
 
 Each module exports:
 
 ```js
 export default {
   id: 'synteny', label: 'Synteny',
-  geneCard(gene)  { ... },   // a card on the gene page
-  browseView()    { ... },   // optional standalone view
-  filters: [...],            // optional facets for the query builder
+  geneCard(gene)  { ... },
+  browseView()    { ... },
+  filters: [...],
 }
 ```
 
-Modules never import each other. They interact only through the shared `GeneSet` store, which
-is what makes "filter to PS≥18, then inspect their expression" work across modules.
+Modules do not import one another. They meet through the shared `GeneSet` store, which supports
+queries such as “filter to PS≥18, then inspect expression.”
 
 ## Data provenance
 
-`data/meta/manifest.json` records a sha256 and mtime for every input file read. Regenerate:
-
-```bash
-python3 scripts/build_data.py --tier full
-```
-
-Sources live on Sapelo2 (`/scratch/ch29576/…`) and are not in this repo, so the build is not
-reproducible from a clone alone — the committed `data/` is the artifact.
-
-## Local viewing
-
-```bash
-python3 scripts/serve_ranges.py 8080 .      # then open http://localhost:8080
-# not `python3 -m http.server`: it ignores Range, and per-gene expression is read by byte range
-```
+`data/meta/manifest.json` records the release version, source hashes, counts, and module
+metadata. The source inputs live on the build hosts and are not enough to reproduce a release
+from a clone alone; the committed `data/` and the validated Pages artifact are the distributable
+records.
 
 ## Status
 
-See `TODO.md`.
+See [`TODO.md`](TODO.md) for active work and [`CHANGELOG.md`](CHANGELOG.md) for release history.

@@ -22,9 +22,10 @@ where either partner lacks one get NO value rather than a value on a different b
 This is a DESCRIPTIVE correlation, deliberately not called a divergence measure. No model, no
 threshold, no claim about what a given r implies for duplicate fate.
 """
-import csv, gzip, io, json, math, os, sys
-from collections import defaultdict
+import csv, gzip, io, json, os
 import numpy as np
+
+from expr_range_reader import load_combat_vectors
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
@@ -46,7 +47,7 @@ def main():
             for gid, r in json.load(open(p)).items():
                 x = r.get("x") or {}
                 if x.get("cb"):
-                    ptr[gid] = x["cb"]
+                    ptr[gid] = {"hap": hap, "range": x.get("co"), "bucket": x["cb"]}
                 for q in (r.get("para") or []):
                     pairs.add(tuple(sorted((gid, q["id"]))))
     arrays = json.load(open(os.path.join(DATA, "index", "arrays.json")))
@@ -62,17 +63,11 @@ def main():
     print(f"{len(ptr):,} genes have a ComBat vector")
 
     need = {g for pr in pairs for g in pr if g in ptr}
-    buckets = defaultdict(list)
-    for g in need:
-        buckets[ptr[g]].append(g)
-    vec = {}
-    for b, gs in buckets.items():
-        d = json.load(open(os.path.join(DATA, "expr", "combat_buckets", b + ".json")))
-        for g in gs:
-            v = d.get(g)
-            if v:
-                vec[g] = np.log2(np.asarray(v, dtype=np.float64) + 1.0)
-    print(f"loaded {len(vec):,} vectors from {len(buckets)} ComBat buckets")
+    vectors, storage = load_combat_vectors(DATA, {g: ptr[g] for g in need})
+    vec = {g: np.log2(np.asarray(values, dtype=np.float64) + 1.0)
+           for g, values in vectors.items()}
+    print(f"loaded {len(vec):,} vectors ({storage['range']:,} packed ranges; "
+          f"{storage['legacy']:,} from {storage['legacy_buckets']:,} legacy buckets)")
 
     # centre once; Pearson is then a normalised dot product
     cent = {}

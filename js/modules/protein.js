@@ -9,6 +9,7 @@
 import { el, fmt, pct } from '../core/dom.js';
 import { loadStructure } from '../core/data.js';
 import { PLDDT_BANDS, plddtBand } from '../core/palette.js';
+import { onDispose } from '../core/lifecycle.js';
 
 // ---- 3D model (TODO 34) ----
 // A Calpha trace, not the full-atom model: the genome's full-atom models are 2.3 GB gzipped,
@@ -98,6 +99,10 @@ async function openModel(geneId, holder) {
     () => { readout.textContent = readoutDefault; });
   v.zoomTo();
   v.render();
+  onDispose(holder, () => {
+    try { v.clear(); } catch { /* viewer may already be gone */ }
+    if (liveViewer === v) liveViewer = null;
+  });
 }
 
 // The five re-searched datasets, and the species whose sample the spectra came from. Three
@@ -229,7 +234,9 @@ async function openCurves(geneId, holder) {
       + ` · hydropathy ${hyd[i].toFixed(2)} · ${SS_NAME[m.ss[i]] || 'coil'}`;
   };
   canvas.addEventListener('pointermove', onMove);
-  new ResizeObserver(() => { geom = drawCurves(canvas, m, hyd); }).observe(canvas);
+  const ro = new ResizeObserver(() => { geom = drawCurves(canvas, m, hyd); });
+  ro.observe(canvas);
+  onDispose(holder, () => ro.disconnect());
   holder.append(el('p', { class: 'muted', style: 'margin:7px 0 0;font-size:12px' },
     'Top: the model\u2019s own per-residue confidence, in AlphaFold\u2019s colours. Middle: '
     + 'Kyte\u2013Doolittle hydropathy over a 9-residue window, positive being hydrophobic. '

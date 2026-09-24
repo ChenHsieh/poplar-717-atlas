@@ -2,6 +2,10 @@
 
 **Written:** 2026-09-04 · **Status of record:** `TODO.md` (task-level), this file (direction-level).
 
+> **Historical planning record.** The build, range-storage, and GitHub Pages release rules
+> in [`README.md`](../README.md) and [`HANDOFF.md`](HANDOFF.md) supersede dated gaps and
+> instructions below. This document preserves the decisions and priorities that led here.
+
 ## 1. What this is
 
 One artifact, two audiences, and they pull differently:
@@ -13,7 +17,7 @@ One artifact, two audiences, and they pull differently:
 
 Design principles that stay fixed: **the gene is the primitive; modules are facets; the study is the citation unit; the gene ID encodes its shard; no server, no build step.**
 
-## 2. Where it stands (2026-09-05, after v0.3)
+## 2. Historical snapshot (2026-09-05, after v0.3)
 
 **Live and public: https://chenhsieh.github.io/poplar-717-atlas/** — private repo, public site,
 `noindex` on until the chapter publishes.
@@ -40,12 +44,12 @@ purge, which matters because the build is not reproducible from a clone by desig
 1. **The gene page is not yet a hub.** A community user's first three questions — *what is this gene, where is its other allele, is it in P. trichocarpa* — are unanswered. All three are cheap: `annotation_info.txt` (Pfam / Panther / KOG / GO / best Arabidopsis hit with defline; 48,502 HAP1 transcripts carry an AT hit) is on-cluster; the 25,931-pair HAP1↔HAP2 syntelog map with Ka/Ks is on disk; the 12-genome presence list is already in every record (`of_genomes`). For a *haplotype-resolved* atlas, the missing allele link is the single most embarrassing gap.
 2. **Search is ID-only.** A compact index (id, AT hit, defline, Pfam ids; ~2 MB gzipped, lazy-loaded) makes "LEA", "AT1G06515", "PF11779" all resolve — with no server.
 3. **Nothing feeds the GeneSet store.** The cross-module payoff — PS ≥ 18 ∩ private ∩ τ ≥ 0.8 → export — needs a facet index (one row per gene: hap, chr, class, PS, τ, top tissue, tandem; ~3 MB gzipped) and a browse view. Everything else is already in place.
-4. **Publication readiness is undefined.** A public site from a private repo needs an explicit policy: computational layers public; wet-lab private; **candidate labels (LSG1–6 / GOI names) held until the chapter is out** — gene IDs and PS ranks are fine, the names tie to unpublished phenotypes. Plus data versioning with a CHANGELOG, a human-readable provenance page, a license (code MIT, data CC-BY 4.0 proposed), `CITATION.cff`, and a Zenodo DOI at v1.
+4. **Publication readiness was undefined.** The current release path has an explicit public-artifact policy, data versioning, a changelog, provenance sidecars, `LICENSE`, and `CITATION.cff`. Candidate labels and group names remain held until the chapter is out.
 5. **Operational risks.**
    - **Sources live on `/scratch`, which purges at 30 days.** The build is not reproducible from a clone by design — so if `ms2_genespace/` and `expression/` purge, the committed `data/` is the only copy. Archive both to `/work/cjtlab` now.
    - Every rebuild rewrites ~250 MB; git history will bloat. Decide: squash-on-data-release, or a separate data branch.
-   - Pages activation is gated on the plan upgrade propagating; the Artifact preview is the interim public face.
-   - No `.nojekyll` — add before Pages goes live so Jekyll never touches the JSON tree.
+   - **Resolved:** Pages publishes only an exact, checked `HEAD` snapshot from a successful `checks` run on `main`; it does not publish the repository root.
+   - **Resolved:** the staged artifact includes `.nojekyll` and the release gate checks it.
 
 ## 4. Architecture — keep what works, extend the record
 
@@ -75,7 +79,7 @@ Each phase ships when `check.mjs` is green, build asserts pass, and one screensh
 |---|---|---|
 | ~~v0.2~~ | ~~Gene page becomes a hub~~ | **DONE** — allele link, annotation + search, presence, cross-links, publish hygiene, sources archived |
 | ~~v0.3~~ | ~~Query~~ | **DONE early** — facet index, browse builder, gene sets, TSV export, phylostrat module |
-| ~~v0.4~~ | ~~Depth~~ | **MOSTLY DONE** — study sample tables, condition means, tandem-array identity, duplication class all shipped in v0.3. Remaining: ComBat cross-study view after a 63,960-gene rebuild |
+| ~~v0.4~~ | ~~Depth~~ | **DONE** — study sample tables, condition means, tandem-array identity, duplication class, and the eligible-gene ComBat view shipped |
 | **v0.5** | Hybrid-specific | ASE module (needs a per-gene table from `ase_analysis/`) · cross-species *P. trichocarpa* xylem (377 samples) via synteny orthologs · allele-level expression once ASE lands |
 | **v1.0** | Release | Zenodo DOI · `noindex` removed with the chapter · CC BY 4.0 activated on the data · docs |
 
@@ -84,8 +88,8 @@ first: a gene page answers what the gene is, where its allele is, how old it is,
 have it, where it is expressed, and what it duplicated from — and browse answers the same
 questions across all 63,960 genes at once.
 
-The single highest-value remaining item is not on the list above: **turn Pages on.** Everything
-is built and checked; the site simply is not reachable by anyone but its author.
+Pages is now live. Its deployment uses the exact commit that passed `checks`, then rebuilds and
+validates the same staged artifact before upload.
 
 ## 6. Decisions that are Chen's
 
@@ -93,8 +97,8 @@ is built and checked; the site simply is not reachable by anyone but its author.
 - License: MIT code / CC-BY 4.0 data?
 - Repo growth: squash on data release, or a separate data branch?
 - Domain: `chenhsieh.github.io/poplar-717-atlas` or a custom one?
-- Already decided, stays: 12-genome panel, no *P. alba*; raw TPM primary, ComBat deferred.
+- Already decided, stays: 12-genome panel, no *P. alba*; raw TPM primary, ComBat opt-in for genes eligible in the upstream model.
 
 ## 7. What will not happen without asking
 
-Enabling Pages (the API call is classifier-blocked in this session — run it with `!`), deleting anything, changing the chapter's definitions (private rule, τ tissues), or publishing any wet-lab data.
+Changing the Pages deployment policy, deleting source or release data, changing the chapter's definitions (private rule, τ tissues), or publishing any wet-lab data.

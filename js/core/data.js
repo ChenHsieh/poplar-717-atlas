@@ -44,10 +44,12 @@ export function structKey(geneId) {
 
 const structCache = new Map();
 function fetchStructBucket(key) {
-  if (!structCache.has(key)) {
-    const p = fetch(`data/struct/${key}.bin.gz`)
+  const path = `data/struct/${key}.bin.gz`;
+  const cacheKey = dataCacheKey(path);
+  if (!structCache.has(cacheKey)) {
+    const p = fetch(dataURL(path))
       .then((r) => {
-        if (!r.ok) throw new Error(`${r.status} data/struct/${key}.bin.gz`);
+        if (!r.ok) throw new Error(`${r.status} ${path}`);
         return r.arrayBuffer();
       })
       .then((buf) => {
@@ -57,15 +59,16 @@ function fetchStructBucket(key) {
         if (b[0] !== 0x1f || b[1] !== 0x8b) return buf;
         return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
       })
-      .catch((e) => { structCache.delete(key); throw e; });
-    structCache.set(key, p);
+      .catch((e) => { structCache.delete(cacheKey); throw e; });
+    structCache.set(cacheKey, p);
   }
-  return structCache.get(key);
+  return structCache.get(cacheKey);
 }
 
 /** One gene's model: {n, ca: Float32Array(3n) in Angstrom, pl: Float32Array(n), seq, ss}.
  *  Null when the gene has no ESMFold model. */
 export async function loadStructure(geneId) {
+  await loadManifest();
   const key = structKey(geneId);
   if (!key) return null;
   const buf = await fetchStructBucket(key);
@@ -104,53 +107,79 @@ const inflight = new Map();
 // yet, and returns a confidently wrong count rather than an error. That is not hypothetical:
 // it is how a reader on data 0.11.2 saw 191 from a link that serves 229.
 //
-// So the manifest is always revalidated (cheap: an ETag 304 costs a round trip and no body),
-// and every other data URL carries the version the manifest just reported. A new release
-// changes those URLs, so a stale copy can never be served alongside a fresh manifest.
+// The manifest is fetched with `no-store` once per page load, and every other data URL carries
+// the version it reports. A new release changes those URLs, so a stale copy can never be served
+// alongside a fresh manifest.
 let DATA_VERSION = null;
 export const dataVersion = () => DATA_VERSION;
 
 const MANIFEST = 'data/meta/manifest.json';
+let SAMPLE_COUNT = null;
+let manifestPromise = null;
+
+function dataCacheKey(path) {
+  return DATA_VERSION && path.startsWith('data/') ? `${DATA_VERSION}:${path}` : path;
+}
+
+function dataURL(path) {
+  if (!DATA_VERSION || !path.startsWith('data/')) return path;
+  return path + (path.includes('?') ? '&' : '?') + `v=${encodeURIComponent(DATA_VERSION)}`;
+}
 
 async function fetchJSON(path, init) {
-  if (cache.has(path)) return cache.get(path);
-  if (inflight.has(path)) return inflight.get(path);
+  if (path === MANIFEST) return loadManifest();
+  let key = dataCacheKey(path);
+  if (cache.has(key)) return cache.get(key);
+  if (inflight.has(key)) return inflight.get(key);
   // Any data fetch that races the manifest would otherwise go out unstamped and could be
   // served from a stale cache. Wait for the version first -- every caller is already async,
   // and the manifest is one fetch that everything else needs anyway.
   if (path !== MANIFEST && path.startsWith('data/') && DATA_VERSION === null) {
     await loadManifest();
-    if (cache.has(path)) return cache.get(path);
-    if (inflight.has(path)) return inflight.get(path);
+    key = dataCacheKey(path);
+    if (cache.has(key)) return cache.get(key);
+    if (inflight.has(key)) return inflight.get(key);
   }
-  const url = (DATA_VERSION && path.startsWith('data/') && !path.includes('?'))
-    ? `${path}?v=${encodeURIComponent(DATA_VERSION)}`
-    : path;
-  const p = fetch(url, init)
+  const p = fetch(dataURL(path), init)
     .then((r) => {
       if (!r.ok) throw new Error(`${r.status} ${path}`);
       return r.json();
     })
     .then((j) => {
-      cache.set(path, j);
-      inflight.delete(path);
+      cache.set(key, j);
+      inflight.delete(key);
       return j;
     })
     .catch((e) => {
-      inflight.delete(path);
+      inflight.delete(key);
       throw e;
     });
-  inflight.set(path, p);
+  inflight.set(key, p);
   return p;
 }
 
 export const loadShard = (hap, key) => fetchJSON(`data/genes/${hap}/${key}.json`);
 export const loadManifest = async () => {
-  // no-store on the manifest itself: it is the thing that decides which version every other
-  // URL asks for, so it must never be the stale one. It is ~40 KB and fetched once per load.
-  const man = await fetchJSON(MANIFEST, { cache: 'no-store' });
-  if (man && man.data_version) DATA_VERSION = man.data_version;
-  return man;
+  // The manifest decides which version every other URL asks for. Fetch it fresh once per page
+  // load, then share that request among concurrent callers; caching it through fetchJSON would
+  // silently defeat `no-store` on later callers.
+  if (!manifestPromise) {
+    manifestPromise = fetch(MANIFEST, { cache: 'no-store' })
+      .then((r) => {
+        if (!r.ok) throw new Error(`${r.status} ${MANIFEST}`);
+        return r.json();
+      })
+      .then((man) => {
+        if (man && man.data_version) DATA_VERSION = man.data_version;
+        SAMPLE_COUNT = man && man.expression && man.expression.n_samples || null;
+        return man;
+      })
+      .catch((error) => {
+        manifestPromise = null;
+        throw error;
+      });
+  }
+  return manifestPromise;
 };
 
 /** One gene, one fetch. Returns null for an ID that does not exist.
@@ -174,7 +203,8 @@ export async function loadAllShards(onProgress) {
   const out = [];
   let done = 0;
   for (const k of keys) {
-    const [hap, key] = k.split('/');
+    const [hap, ...parts] = k.split('/');
+    const key = parts.join('/');
     const shard = await loadShard(hap, key);
     for (const id in shard) out.push({ ...shard[id], hap });
     if (onProgress) onProgress(++done, keys.length);
@@ -194,11 +224,11 @@ export const loadExprStudies = () => fetchJSON('data/expr/studies.json');
  *
  *  ~1.1 KB per gene instead of the 786 KB bucket that carried 250 genes to draw one card. */
 async function fetchRangeJSON(path, off, len) {
-  const key = `${path}#${off}+${len}`;
-  if (cache.has(key)) return cache.get(key);
   if (DATA_VERSION === null) await loadManifest();
-  const url = `${path}?v=${encodeURIComponent(DATA_VERSION)}`;
-  const r = await fetch(url, { headers: { Range: `bytes=${off}-${off + len - 1}` } });
+  const key = `${dataCacheKey(path)}#${off}+${len}`;
+  if (cache.has(key)) return cache.get(key);
+  const end = off + len - 1;
+  const r = await fetch(dataURL(path), { headers: { Range: `bytes=${off}-${end}` } });
   // A 206 is REQUIRED, not merely preferred. A server that ignores Range answers 200 with the
   // whole blob, whose first bytes are the FIRST gene's gzip member -- which inflates cleanly
   // and returns another gene's expression profile. Wrong data that renders perfectly is worse
@@ -206,6 +236,11 @@ async function fetchRangeJSON(path, off, len) {
   // falls back to the bucket path.
   if (r.status !== 206) throw new Error(`${r.status} for a Range request on ${path}: the host `
     + 'did not honour Range, so these bytes are not this gene');
+  const range = r.headers.get('Content-Range');
+  const expectedRange = `bytes ${off}-${end}/`;
+  if (!range || !range.startsWith(expectedRange)) {
+    throw new Error(`range gave ${range || 'no Content-Range'}, expected ${expectedRange}…`);
+  }
   const buf = await r.arrayBuffer();
   if (buf.byteLength !== len) throw new Error(`range gave ${buf.byteLength} B, expected ${len}`);
   const head = new Uint8Array(buf, 0, 2);
@@ -215,6 +250,10 @@ async function fetchRangeJSON(path, off, len) {
     ? await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
     : new TextDecoder().decode(buf);
   const j = JSON.parse(text);
+  if (!Array.isArray(j) || (SAMPLE_COUNT != null && j.length !== SAMPLE_COUNT)
+      || j.some((v) => typeof v !== 'number' || !Number.isFinite(v))) {
+    throw new Error(`range payload for ${path} is not a ${SAMPLE_COUNT || 'valid'}-sample numeric vector`);
+  }
   cache.set(key, j);
   return j;
 }

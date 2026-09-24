@@ -27,6 +27,7 @@
 import { el } from '../core/dom.js';
 import { getGene, loadLocusTile, loadFamilies } from '../core/data.js';
 import { palette } from '../core/palette.js';
+import { onDispose } from '../core/lifecycle.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const ROW_H = 84;          // px per locus track, label + genes + room for an arc to land
@@ -850,6 +851,7 @@ function geneCard(g) {
     status.replaceWith(leg, cap, howto, reset);
     const ro = new ResizeObserver(render);
     ro.observe(stage);
+    onDispose(stage, () => ro.disconnect());
     render();
 
     // --- the second haplotype, on request -------------------------------------------------
@@ -887,7 +889,9 @@ function geneCard(g) {
                 w2 = w;
                 stage2.replaceChildren(drawDiagram(other, b2, w).svg);
               };
-              new ResizeObserver(render2).observe(stage2);
+              const ro2 = new ResizeObserver(render2);
+              ro2.observe(stage2);
+              onDispose(stage2, () => ro2.disconnect());
               render2();
               // The asymmetry is the finding; state it rather than leaving it to be counted.
               // Rows here are LOCI, not layers -- array members share the focal gene's row --

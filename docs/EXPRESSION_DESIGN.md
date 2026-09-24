@@ -1,88 +1,104 @@
 # Expression module — design
 
-**Source:** `ms2_genespace/expression/` — the v3 rerun delivered 2026-08-14 (ID fix 2026-08-18),
-652 samples / 697 runs / 38 BioProjects / 28 curated studies, kallisto k21 against the combined
-HAP1+HAP2 v5.1 primary transcripts. This supersedes the 531-sample atlas; the site uses it.
+The atlas carries a curated expression release with 652 samples, 697 runs, 38 BioProjects, and
+28 studies. Quantification is kallisto k21 against the combined HAP1+HAP2 v5.1 primary
+transcript set. The sample vector order in `data/expr/samples.json` is fixed and is the order
+used by every stored profile.
 
-## What was verified before designing
+## What the release contains
 
-| check | result |
-|---|---|
-| TPM matrix shape | 63,960 rows × 653 cols, no ragged rows |
-| gene IDs | == the atlas BED set exactly (0 missing, 0 extra), no `.1` suffix |
-| sample columns | == `COLUMN_LEVEL_sample_metadata.csv` `sample_label` set exactly |
-| ComBat-seq v7 FPKM | **59,599 genes, IDs still `.1`-suffixed, accession-style headers** — an older generation |
-| metadata coverage | tissue 652/652, citation 652/652, DOI 547/652 (studies 2,3,4,5,8 have none) |
-| shard-size experiment | 250 genes × 652 samples: TPM 2dp **252 KB gz**; 1dp 175 KB; log2 1dp 126 KB |
+Raw TPM is the primary profile. ComBat-corrected TPM is an opt-in second profile for the 59,599
+genes that entered the upstream batch-correction model. The other 4,361 atlas genes were
+excluded by its low-count filter; a missing ComBat profile means that the model did not have
+enough signal to fit, not that the gene is absent from the atlas.
 
-## Decisions
+Every gene shard carries the no-extra-fetch summary:
 
-1. **Raw TPM at 2 decimals is the shipped value** — identical to the delivered file, so what a
-   visitor sees is what they download. README: raw for tau / PCC / magnitude; ComBat only for
-   cross-study visualisation. ComBat is **deferred** — it is a different gene set with stale IDs
-   and would need a rebuild on the 63,960-gene matrix first.
-2. **Two-level data: a small summary lives IN the gene shard; the full 652-vector is a second
-   fetch.** A gene page already loads its shard, so the baseline tissue view costs nothing extra.
-3. **Explicit shard pointer, not a second computable rule.** The gene record carries
-   `x.b = <bucket>`; the client never derives an expression path from an ID. One rule to keep in
-   sync (the gene→chr rule) is enough.
-4. **Study is the community-facing unit** — one page per curated study, the way GEO / ArrayExpress
-   / PopGenIE present data — with BioProject, citation + DOI, design factors, a sample table, and
-   external links. Study numbering (1–31, gaps = excluded) follows the delivery.
-5. **Baseline = median TPM across WT controls per tissue.** Counts per tissue are healthy for
-   leaf 77 / xylem 59 / bark 38 / root 27, thin for bud 5 / catkin 4 / stem 2 / callus 1, and the
-   n is shown beside every bar. **Tau** (Yanai) is computed over the 8 non-callus tissues, per
-   the delivery note that callus stays out of the manuscript panel; callus is still shown, flagged.
-6. **Study 29 (PRJNA752367) is flagged "prefer counts over TPM"** on its page, per the README's
-   effective-length caveat. Processing notes (188 samples, e.g. requantified unstranded) surface
-   in the sample table.
-7. **Bulk downloads ship as gzipped CSV** under `downloads/` — the 125 MB CSVs exceed GitHub's
-   100 MB file cap uncompressed. Pages serves them fine.
-
-## Data layout
-
-```
-data/expr/samples.json           652 rows, every metadata column, FIXED ORDER (= vector index)
-data/expr/studies.json           28 studies: bioprojects, n, tissues, factors, citation, doi, flags
-data/expr/{hap}/{chr}/{b}.json   {gene_id: [652 × TPM 2dp]}, 250 genes per bucket, ~250 KB gz
-data/genes/{hap}/{chr}.json      gene record gains
-                                   x: { b: bucket, t: {tissue: median TPM}, n: {tissue: n},
-                                        tau: 0.71, top: "xylem", max: 412.3 }
-downloads/tpm_k21.csv.gz, counts_k21.csv.gz, sample_metadata.csv, README.txt
+```text
+x.t       median raw TPM for each WT-control tissue
+x.n       WT-control sample count for each tissue
+x.tau     Yanai tissue-specificity score
+x.top     tissue with the largest median
+x.max     maximum raw TPM across the full profile
 ```
 
-~256 expression buckets, ~64 MB gzipped total, ~105 MB raw JSON in the repo. Acceptable for
-Pages; if rebuild churn bloats git history, squash — the committed data is the artifact, since
-the sources live on Sapelo2 and cannot be rebuilt in CI.
+The current WT-control panel has bark 38, bud 5, callus 1, catkin 4, leaf 55, leaf-old 11,
+leaf-young 11, root 27, stem 2, and xylem 59 samples. Tau excludes callus and uses the remaining
+nine analysis tissues. The display retains callus with its sample count.
 
-Build asserts: TPM/counts/efflength headers identical; every gene in the BED has a vector;
-`samples.json` order == vector order; every bucket referenced by a gene record exists.
+## Full-profile storage
+
+Full profiles are range-addressable, not one JSON bucket download per gene:
+
+```text
+x.o   [offset, length] in data/expr/raw_hap{1,2}.gzb
+x.co  [offset, length] in data/expr/cb_hap{1,2}.gzb
+x.b   former raw bucket key, retained for compatibility
+x.cb  former ComBat bucket key, retained for compatibility and source regeneration
+```
+
+Each range identifies one deterministic gzip member whose uncompressed bytes are the exact JSON
+array from the corresponding build bucket. This changes the container only; it neither rounds
+nor transforms expression values. The client accepts a profile only after an exact `206` range
+response has the requested `Content-Range`, byte length, and a valid numeric vector of the
+expected sample length.
+
+The released profile files are `raw_hap1.gzb`, `raw_hap2.gzb`, `cb_hap1.gzb`, and `cb_hap2.gzb`.
+Raw and ComBat bucket trees are temporary build inputs. `build_expr_ranges.py` stages both blob
+sets, validates every staged member against the input vector, stages changed shards and the
+manifest, then publishes them with rollback backups. It retires the bucket trees only after the
+whole publication succeeds. A failed pack or replacement preserves the previous release and both
+input trees. Pages explicitly excludes either bucket tree if one is left in a future checkout.
+
+`make_wgd_pairs_source.py` and `make_duplicate_coexpr_source.py` read ComBat vectors from `x.co`
+and the packed blobs. Their legacy-bucket fallback is intentionally narrow: it is used only when
+the packed pointer or blob is absent, and malformed packed data is an error rather than a silent
+substitution.
+
+## Data files
+
+```text
+data/expr/samples.json       one metadata row per vector position
+data/expr/studies.json       study metadata and citations
+data/expr/contrasts.json     contrast index
+data/expr/raw_hap*.gzb       raw TPM vectors, one gzip member per gene
+data/expr/cb_hap*.gzb        eligible ComBat TPM vectors, one gzip member per gene
+data/genes/.../*.json        gene summaries and range pointers
+```
+
+## Build and verification
+
+The ordered build is `scripts/build_all.sh`; do not invoke the expression writers as a substitute
+for the graph. `build_expression.py` writes raw summaries and bucket inputs, `build_combat.py`
+adds eligible ComBat inputs, and `build_expr_ranges.py` performs the final pack. The range packer
+is source-host dependent, like its inputs.
+
+After a complete build, run `python3 scripts/check_required_layers.py` and
+`python3 scripts/validate_data.py`. The required-layer check confirms blob sizes, pointer counts,
+and offsets. The regular validator samples ranges, decompresses them, and compares their vectors
+with shard summaries. The focused, source-free transaction fixture is:
+
+```bash
+python3 scripts/test_build_expr_ranges.py
+```
+
+Use `scripts/serve_ranges.py` for local browser testing. `python3 -m http.server` returns a full
+`200` response for a range request, which the profile loader deliberately rejects.
 
 ## Views
 
-| route | what |
+| route | content |
 |---|---|
-| `#/module/expression` | study catalogue (filter by panel type / tissue / genotype), tissue × panel matrix, downloads |
-| `#/study/<n>` | BioProject(s) → ENA/SRA links, citation + DOI, design factors, sample table (label, tissue, treatment, genotype, growth, runs, layout, reads, % pseudoaligned, notes) |
-| gene card | (a) baseline tissue bars from the shard, tau, n per bar; (b) "load full profile" → 652 samples grouped by study → condition, per-sample dots, hover tooltip |
-| `#/browse` | gains filters: tau ≥ x, top tissue = y, expressed (median TPM ≥ z) in tissue |
+| `#/module/expression` | study catalogue, tissue and panel summaries, contrasts |
+| `#/study/<n>` | BioProject links, citation, design factors, and sample metadata |
+| gene card | shard summary followed by an on-demand full raw or eligible ComBat profile |
+| `#/browse` | tau, top tissue, and expression filters |
 
-Chart rules (dataviz): the tissue baseline is ONE series of magnitudes → a single hue, tissue
-names as direct labels, no categorical palette needed. The profile view colours dots by
-control / perturbation only (two slots, both validated). Every chart has a table view.
+The baseline is a single magnitude series, so it uses direct tissue labels rather than a
+categorical colour encoding. The full-profile view provides a table as well as the chart.
 
-## What this enables across modules
+## Deferred work
 
-Filter to `private_no_ortholog` ∩ PS ≥ 18 → inspect their tissue baselines → export. The
-GeneSet store already exists; expression is the first module that makes it worth using.
-
-## Deferred, with reasons
-
-- **ComBat-seq cross-study view** — needs a 63,960-gene rebuild with fixed IDs.
-- **Allele-specific expression** — `ase_analysis/` holds per-chromosome separated reads, no
-  per-gene table yet. Distinctive for a haplotype-resolved hybrid; worth its own module later.
-- **P. trichocarpa xylem (GSE78953, 377 samples, Potri IDs)** — cross-species via the synteny
-  orthogroups. A real cross-module payoff, but a different genome; not v1.
-- **Extra 717 datasets not in the 652**: PRJEB37748 nitrogen leaves (26 runs, quantified,
-  `misc/RNA-Seq/`), heatSASalt (31 runs, PRJNA408736), 13 CJ_transcriptome runs. Add only after
-  the same curation pass the 652 received.
+Allele-specific expression still needs a per-gene result table. Additional 717 datasets and the
+*P. trichocarpa* xylem data need the same curation and provenance review before they join this
+release.

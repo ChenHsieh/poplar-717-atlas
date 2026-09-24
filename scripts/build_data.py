@@ -30,9 +30,11 @@ MS2  = "/scratch/ch29576/ms2_genespace"
 GENERA = "/scratch/ch29576/genera"
 HAPS = {"Ptrxalhap1": ("hap1", "PtXaTreH"), "Ptrxalhap2": ("hap2", "PtXaAlbH")}
 
-# Fields withheld from the public tier. Computational results are publishable; anything
-# tied to unpublished candidate selection or wet-lab is not.
-FIELD_TIERS = {"lsg": "private"}     # LSG-pool membership = the unpublished candidate list
+# Every currently shipped computational layer is public.  LSG membership remains public
+# because the displayed phylostratigraphic rank already makes pool membership inferable.
+# Candidate labels stay out of the data tree and are enforced by the release validator.
+# Add future embargoed wet-lab fields here before they enter public shards.
+FIELD_TIERS = {}
 
 SRC = {}
 def note(path):

@@ -2,74 +2,81 @@
 
 For whoever picks this up next, on any machine. Read this before touching `data/`.
 
-## The three things that will bite you
+## The operating rules
 
 ### 1. The build destroys before it creates
 
-**`scripts/build_data.py` wipes and rewrites `data/genes/`. Every later stage patches those
-shards.** Run it alone and you get a `data/` directory that looks fine, loads fine, and is
-silently missing a dozen layers.
+**`scripts/build_data.py` wipes and rewrites `data/genes/`. Later stages restore the fields,
+indexes, blobs, and overlays that the site needs.** Running a writer alone can leave a plausible
+`data/` tree with whole layers absent. Conversely, a stale key can survive until the next full
+rewrite because patchers normally add fields rather than remove them.
 
-The patchers only ADD keys — they never remove one. So if a layer is dropped from the build
-code, its old values survive in `data/` until a full rebuild wipes the shards. That actually
-happened: two audited-out layers stayed in the published JSON, invisible in the UI but
-downloadable, until a full rebuild purged them.
-
-Never run the build scripts individually. Use:
+Never run individual data writers. Use:
 
 ```bash
-scripts/build_all.sh        # every stage, in the only correct order
+scripts/build_all.sh
 ```
 
-### 2. No single machine can run every stage
+That graph invokes `build_data.py --tier public`; `manifest.tier` must remain `public` for a
+Pages artifact. Phylostratigraphic rank and LSG membership are intentionally public because the
+rank makes membership inferable. Candidate labels and group names remain embargoed and are
+rejected from the public artifact.
 
-The core stages read Sapelo2-local sources (`/scratch/ch29576`, `/work/cjtlab`). Four later
-stages read the OneDrive `MS1_2026` tree, which is on Chen's Mac and is **not** mounted on
-Sapelo2. So a complete `data/` is a two-machine sequence:
+Before `build_data.py` can touch the existing shards, that command runs
+`python3 scripts/check_stages.py`. The source-level gate requires `build_data.py` first,
+`build_facets.py` last, declared dependencies before their consumers, and every `build_*.py` and
+`patch_*.py` writer to be either a stage or an explicitly documented historical exception.
+`make_*_source.py` generators are classified separately because they create reviewed source
+artifacts, not final data.
+
+### 2. No single machine may have every source tree
+
+Core stages read Sapelo2-local inputs (`/scratch/ch29576`, `/work/cjtlab`); several stages read
+the OneDrive `MS1_2026` tree on Chen's Mac. A host with both can run the complete build. Otherwise
+the default command refuses to begin before it wipes anything. `--allow-partial` is the explicit
+opt-in to a two-machine handoff:
 
 ```bash
-# on Sapelo2
-scripts/build_all.sh --allow-partial   &&  git add -A data && git commit && git push
-# on the Mac
-git pull  &&  scripts/build_all.sh --allow-partial   # re-applies its stages, rewrites facets
+# On the machine with the first available source set
+scripts/build_all.sh --allow-partial
+# Review and commit the changed data, then transfer that commit.
+
+# On the machine with the remaining source set
+scripts/build_all.sh --allow-partial
 ```
 
-`build_all.sh` classifies every stage by which source tree it needs, probes what is present,
-and **refuses to start** unless it can finish — aborting *before* `build_data.py` wipes layers
-the current machine could not restore. `--allow-partial` is the explicit opt-in to doing half
-the job. If a tree does get wiped, `git checkout -- data/` restores it; the committed `data/`
-**is** the artifact.
+The second run skips only unavailable stages and rebuilds its own derived outputs, including the
+final facet index. Do **not** publish after the first half. Once all stages have run, require:
 
-`scripts/validate_data.py` is the backstop: it asserts the canonical per-layer counts (PAV
-805/859, TD 6663/6385, 191 contrasts, every gene has a `cre` record and a locus tile), so a
-partial build fails loudly rather than shipping.
+```bash
+python3 scripts/check_required_layers.py
+python3 scripts/validate_data.py
+```
 
-### 3. A patcher that is not a STAGE is an invisible hole (found 2026-09-18)
+`check_required_layers.py` is read-only and compares the current shards and artifacts with their
+source-backed contracts: range blobs and offsets, source-backed shard fields, derived indexes,
+structure buckets, and map overlays. It catches complete-but-absent layers that a field-level
+validator could otherwise pass vacuously. `build_all.sh` runs it after a complete build; a partial
+run reports whether it is still incomplete and intentionally skips the normal validation verdict.
+If a tree is accidentally wiped, `git checkout -- data/` restores the committed release artifact.
 
-`build_all.sh` is only as complete as its `STAGES` list, and **nothing checked that list against
-the scripts that exist**. `patch_duplicate_partners.py` was in neither the list nor either
-"DELIBERATELY NOT A STAGE" paragraph, so a full rebuild dropped `td.mem` and every `para[].r` --
-the array-member table and the duplicate co-expression on the Duplication card -- and every
-check passed. That is the difference between this and problem 1: problem 1 leaves a STALE value,
-which a recompute-and-diff gate catches (TODO 25). This leaves an ABSENT layer, and the
-validator's per-field checks ("is r inside [-1,1]", "does this partner id exist") are all
-vacuously true over zero rows. Only the count assertions above can see it, and there is no count
-assertion for most layers.
+### 3. Keep output reproducible and public release separate
 
-A one-minute sweep -- every `patch_*.py` in `scripts/` diffed against the STAGES list -- found
-**six more unowned patchers**: `patch_chromatin_profiles.py`, `patch_gene_model.py`,
-`patch_map_overlays.py`, `patch_peptide_detail.py`, `patch_promoter_pos.py`,
-`patch_structure.py`, `patch_wgd_pairs.py`. TODO 47 carries the list and the proposed
-`scripts/check_stages.py` gate. **Before trusting a rebuild, run that diff.**
+Stage ownership proves that every writer is scheduled; it does not prove that the writer produced
+the expected result. The required-layer gate and `validate_data.py` cover that second question.
+When a stage changes the bytes it writes, check a clean rerun before committing.
 
-### Determinism
+Writers must sort inputs before serialising. In particular, `build_expr_ranges.py` sorts bucket
+files and gene IDs, emits gzip members with a fixed timestamp, validates every staged member
+against its source vector, and transactionally replaces blobs, shard offsets, and the manifest.
+Only after that succeeds does it retire the raw and ComBat bucket trees. A malformed input or a
+publication failure leaves prior outputs and the input trees intact. Run its source-free fixture
+with `python3 scripts/test_build_expr_ranges.py`; it covers successful retirement, packed reads,
+legacy-bucket fallback, and an injected rollback.
 
-Two consecutive runs produce byte-identical output for all 277 gene shards and all 27 index
-files, so `git status` after a rebuild is a real signal. That was **not** true until
-2026-09-08: `build_annotation.py` iterated a `set` of locus ids, and Python randomises string
-hashing per process, so every build silently reshuffled the search index and redrew which of
-several conflicting descriptions labelled a PANTHER accession. Both are now sorted. If you
-add a stage, sort anything you iterate before it reaches a file.
+`make_wgd_pairs_source.py` and `make_duplicate_coexpr_source.py` read `x.co` from packed ComBat
+blobs. They retain a strict legacy-bucket fallback so a source can be regenerated from a checkout
+before packing, but bucket trees are not release assets.
 
 ## What this is
 
@@ -91,8 +98,8 @@ genes, and a general resource for anyone working in this clone. See `docs/ROADMA
 2. **A module is one file** exporting `{id, label, geneCard, overview, filters}`, registered in
    `js/core/registry.js`. Modules never import each other; they meet only through the
    `GeneSet` store. Adding one touches a single registry line.
-3. **No build step, no framework.** Vanilla ES modules and static JSON, served straight from
-   the repo root. `.nojekyll` keeps Jekyll away from the JSON tree.
+3. **No application build step or framework.** Vanilla ES modules and static JSON are served as a
+   static Pages artifact. `.nojekyll` keeps Jekyll away from that tree.
 
 ## Before you trust a data source
 
@@ -109,26 +116,52 @@ Standing verdicts:
 | **Read-only** | `ms2-lsg/pipeline/out/*.tsv` and `GOI_CANONICAL.tsv`, by Chen's standing instruction |
 | **Never publish** | LSG candidate labels (the `LSG<n>.<chr>g` names and the XO group names) while the chapter is unpublished, and curator identity or verbatim curation quotes. `build_layers.py:sanitise_note` enforces the second. `validate_data.py` enforces the first over the shards AND every tracked text file, because until 2026-09-21 Pages served the whole repo root (scripts/, docs/, sources/, CHANGELOG.md), and the names, two of them next to a gene ID, sat in files the site served while the shard-only check passed. Pages now publishes the site files only; the scan stays as the second guard. Never write a label into this repo, not even in a check |
 
-## Checks — run all three, they catch different things
+## Verification and release gates
+
+A complete source build invokes the build graph, required-layer gate, ordinary data validation,
+and project-specific aggregate, prose, version, and source-agreement checks in its defined order.
+The public release path has an additional requirement: validate the exact staged Pages tree rather
+than only the checkout.
 
 ```bash
-python3 scripts/validate_data.py                    # data-integrity gates, no browser
-python3 scripts/check_version.py                    # VERSION == manifest == CITATION.cff
-python3 scripts/check_ms2_canon.py                  # atlas vs ms2-lsg's canonical tables (needs ~/dev/ms2-lsg)
-python3 scripts/serve_ranges.py 8931 . &            # NOT http.server: it ignores Range
-node scripts/check.mjs                              # rendered views + driven interactions
-node scripts/check.mjs https://chenhsieh.github.io/poplar-717-atlas shots-live   # against live
+# Read-only source/data gates
+python3 scripts/check_stages.py
+python3 scripts/check_required_layers.py
+python3 scripts/validate_data.py
+python3 scripts/check_version.py
+
+# Reproduce the public artifact. Choose a path that does not yet exist.
+SITE_DIR=/tmp/poplar-atlas-site-next-release
+python3 scripts/assemble_site.py --output "$SITE_DIR"
+python3 scripts/validate_data.py \
+  --data-dir "$SITE_DIR/data" --source-root "$PWD" --scan-root "$SITE_DIR"
+python3 scripts/check_site_artifact.py \
+  --site "$SITE_DIR" --commit "$(git rev-parse HEAD)" --write-release
+python3 scripts/serve_ranges.py 8931 "$SITE_DIR" &
+node scripts/check.mjs
 ```
 
-CI runs all three on every push.
+`assemble_site.py` reads both the allowlist and file bytes from Git `HEAD`, ignoring dirty
+working-tree files, and refuses to reuse an output directory. Commit the candidate revision before
+using it as a release preview. `check_site_artifact.py` then verifies the allowlist, rejects
+hidden paths, symlinks, and unexpected files, requires `manifest.tier` to be `public`, checks the
+900 MiB budget and zero failed data gates, and generates
+`data/meta/site-release.json`. The generated record identifies the exact commit, data version,
+file count, and content digest of the staged tree; it is not committed back into `data/`.
 
-`check_version.py` exists because `data_version` was *read* in three places — the validator,
-the site footer, the About page — and *written* by nothing. It survived only as a hand-edit to
-the committed manifest, so the next full rebuild would have dropped it, and nothing would have
-failed: the footer hides the chip when the key is absent and About falls back to an em dash. A
-citable dataset would have quietly stopped saying which version it was. **To release: edit
-`VERSION`, add a `## X.Y.Z — date — title` entry to `CHANGELOG.md`, sync `CITATION.cff`, then
-rebuild** (`build_data.py` stamps `VERSION` into the manifest).
+Use `scripts/serve_ranges.py`, never `python3 -m http.server`, for a browser check. The profile
+loader requires an exact `206` range response; the standard local server ignores Range and returns
+`200` with a full blob, which the loader rejects.
+
+On pull requests and pushes to `main`, CI checks the version, assembles `_site`, validates the
+staged data and release artifact, and runs the browser suite against `_site`. A successful
+`checks` run on `main` is the only Pages trigger. The Pages workflow checks out that run's exact
+SHA, repeats the staging gates and browser test, then uploads that same directory. Cluster-only
+source builds and source-repository agreement checks remain outside CI.
+
+`check_version.py` keeps `VERSION`, `data/meta/manifest.json`, `CITATION.cff`, and the newest
+versioned `CHANGELOG.md` heading aligned. To release changed data, update the release metadata,
+run the full build and gates, then stage the public artifact as above.
 
 Three lessons already paid for:
 
@@ -183,9 +216,10 @@ If a rebuild moves any of these, something changed upstream — find out what be
 
 | | |
 |---|---|
-| Site | repo root — `index.html`, `js/`, `css/`. Published by `.github/workflows/pages.yml` only (since 2026-09-21): the site files plus `sources/*.provenance.json`, `LICENSE`, `CITATION.cff`, and only after `checks` passes. Anything else the site fetches must be added there |
-| Data | `data/` — committed, 303 MB, **the artifact** |
-| Build | `scripts/build_all.sh` (+ `preflight.py`) |
+| Site source | repo root — `index.html`, `js/`, and `css/` |
+| Public artifact | a fresh `_site` streamed from Git `HEAD` by `scripts/assemble_site.py`, validated by `scripts/check_site_artifact.py`, and deployed only from a successful `checks` run on `main` |
+| Data | `data/` — committed release artifact; its published size is gated at staging |
+| Build | `scripts/build_all.sh` (+ `preflight.py`, `check_stages.py`, and `check_required_layers.py`) |
 | Direction | `docs/ROADMAP.md` · tasks in `TODO.md` · history in `CHANGELOG.md` |
 | Data provenance | `docs/DATA_AUDIT.md`, and `data/meta/manifest.json` carries a sha256 per source |
 | Archived sources | `/work/cjtlab/ch29576_ms2/atlas_sources_20260904/` — `/scratch` purges at 30 days |

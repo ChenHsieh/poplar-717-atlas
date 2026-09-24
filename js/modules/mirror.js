@@ -15,6 +15,7 @@
 import { el } from '../core/dom.js';
 import { getGene, loadLocusTile } from '../core/data.js';
 import { palette, fillFor } from '../core/palette.js';
+import { onDispose } from '../core/lifecycle.js';
 
 const MB = 1_000_000;
 const MAX_DPR = 2;
@@ -178,6 +179,7 @@ function geneCard(g) {
     dropDpr = () => mq.removeEventListener('change', watchDpr);
     refresh();
   })();
+  onDispose(stage, () => { ro.disconnect(); dropDpr?.(); });
 
   const pick = (clientX, clientY) => {
     const r = canvas.getBoundingClientRect();
