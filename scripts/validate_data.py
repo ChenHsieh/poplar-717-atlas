@@ -686,7 +686,8 @@ def main():
 
     # ps.fnd is the founder family from the same genEra run as ps.rank (patch_founder_rerun.py).
     # Inside one run a family is never younger than a member; joining two runs broke that on 419
-    # genes until 2026-09-26. Every ranked gene has a family; no unranked gene has one.
+    # genes until 2026-09-26. Every ranked gene shows a family; no unranked gene does. Of the 45
+    # unranked, 6 have no family in the run and 39 have one but no gene age: not "no family".
     fnd_young, fnd_cover = [], []
     for gid, (_, _, rec) in genes.items():
         ps = rec.get("ps") or {}

@@ -135,7 +135,9 @@ function geneCard(g) {
   // The founder family comes from the same genEra run as the rank above (the rerun that added
   // Idesia; sources/founder_families_rerun.tsv.gz, from ms2-lsg). Until 2026-09-26 it came from
   // the frozen run, and the join made a family look younger than its own member on 419 genes.
-  // 45 genes (all unranked) have no family in that run: say so rather than leave a blank.
+  // Not shown on 45 genes, all with no rank in the pool's run: 6 have no family assignment and
+  // 39 have a family but no gene age. Neither is "no family" for all 45, so the card gives the
+  // one reason that is true of every one of them.
   if (p.fnd && p.rank != null && p.fnd.rank <= p.rank) {
     const s = p.fnd.fam, o = p.fnd.rank;
     add('Gene family',
@@ -152,7 +154,8 @@ function geneCard(g) {
             + 'of an old family, not a lineage-specific family.')
         : null);
   } else {
-    add('Gene family', el('span', { class: 'muted' }, 'not available in the current pool run'));
+    add('Gene family', el('span', { class: 'muted' },
+      'family origin not shown: the current pool run gives this gene no rank'));
   }
 
   const card = el('div', { class: 'card' },

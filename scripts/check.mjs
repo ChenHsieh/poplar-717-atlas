@@ -368,9 +368,14 @@ await check('gene-family-same-run', '#/gene/PtXaTreH.01G003100',
 await check('gene-family-young-in-old', '#/gene/PtXaTreH.11G057300',
   { expect: ['yes — PS18', '1,435 members', 'family originates at PS1',
              'A young gene in an older family', 'not a lineage-specific family'], wait: 900 });
-// An unranked gene has no family in the pool's run: said, not left blank.
-await check('gene-family-not-available', '#/gene/PtXaTreH.01G062500',
-  { expect: ['genEra returned no rank', 'Gene family', 'not available in the current pool run'],
+// Family origin cannot be shown on 45 unranked genes, two disjoint groups: 39 have a family but
+// no gene age (this one), 6 have no family assignment. The card gives the reason true of both.
+await check('gene-family-not-shown-no-age', '#/gene/PtXaTreH.01G062500',
+  { expect: ['genEra returned no rank', 'Gene family',
+             'family origin not shown: the current pool run gives this gene no rank'],
+    forbid: ['no family'], wait: 900 });
+await check('gene-family-not-shown-no-family', '#/gene/PtXaAlbH.01G053700',
+  { expect: ['Gene family', 'family origin not shown: the current pool run gives this gene no rank'],
     wait: 900 });
 await check('module-protein-gradient', '#/module/protein',
   { expect: ['1 of 776 HAP1 and 0 of 835 HAP2 lineage-specific pool genes',

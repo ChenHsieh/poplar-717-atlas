@@ -251,7 +251,7 @@
   {
    "name": "no embargoed LSG candidate label in any published file",
    "ok": true,
-   "detail": "1337 text files"
+   "detail": "1340 text files"
   },
   {
    "name": "ancestral karyotype counts match the route C coverage, per haplotype",

@@ -143,7 +143,7 @@ def main():
                   "family_size equals the family's row count",
                   "gene_rank equals the pool call's rank (lsg_pool_idesia.tsv.gz) on every ranked gene"],
         "not_available": {"no_gene_age": len(no_age), "no_family": len(no_family),
-                          "treatment": "the gene card says the family origin is not available; "
+                          "treatment": "the gene card says the family origin is not shown because the run gives the gene no rank (true of all 45; only 6 lack a family); "
                                        "nothing is filled in"},
         "read_this_before_writing_prose": "A pool gene (rank >= 18) can sit in a family that "
                                           "originates much earlier, down to cellular organisms: a "

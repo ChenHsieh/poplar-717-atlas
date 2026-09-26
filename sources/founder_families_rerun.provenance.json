@@ -17,7 +17,7 @@
  "not_available": {
   "no_gene_age": 39,
   "no_family": 6,
-  "treatment": "the gene card says the family origin is not available; nothing is filled in"
+  "treatment": "the gene card says the family origin is not shown because the run gives the gene no rank (true of all 45; only 6 lack a family); nothing is filled in"
  },
  "read_this_before_writing_prose": "A pool gene (rank >= 18) can sit in a family that originates much earlier, down to cellular organisms: a diverged or newly added member of an old family. That is a different claim from a lineage-specific family, and the gene card says so on those genes.",
  "rows": 63954,

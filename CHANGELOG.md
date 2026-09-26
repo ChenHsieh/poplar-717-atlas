@@ -44,8 +44,10 @@ DIAMOND-sensitivity note stay, listed as "Other evidence, not QC flags".
   committed to ms2-lsg for this (`data/founder_families_rerun_20260926/`, e05215e); new source
   `sources/founder_families_rerun.tsv.gz` via `make_founder_source.py`, applied by the new stage
   `patch_founder_rerun.py`. Gates: 0 families younger than a member across 15,040, and every
-  gene's rank in that table equals the pool call's. The 45 unranked genes have no family in that
-  run and say "not available in the current pool run". The 49 pool genes whose family is older
+  gene's rank in that table equals the pool call's. Family origin cannot be shown on 45 genes,
+  all with no rank in the pool's run: 6 with no family assignment, 39 whose gene age is missing
+  from the run (they do have a family). The card says "family origin not shown: the current pool
+  run gives this gene no rank", the reason true of all 45. The 49 pool genes whose family is older
   than the lineage (16 from cellular organisms) say they are a young member of an older family,
   not a lineage-specific family.
 - The Protein page's per-stratum peptide numbers are the owning analysis's, ranked by the rerun,

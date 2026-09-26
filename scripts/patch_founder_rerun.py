@@ -74,10 +74,12 @@ def main():
     assert not off, (f"GATE 1 FAILED: {len(off)} genes whose family table rank is not the served "
                      f"ps.rank, e.g. {off[:5]}. Run patch_lsg_pool.py first.")
     assert not young, f"GATE 2 FAILED: {len(young)} genes in a family younger than themselves: {young[:5]}"
-    assert missing == unranked, (f"GATE 3 FAILED: no-family genes {len(missing)} vs unranked genes "
+    assert missing == unranked, (f"GATE 3 FAILED: genes without a shown family {len(missing)} vs unranked "
                                  f"{len(unranked)}; differ on {sorted(missing ^ unranked)[:5]}")
+    no_row = sum(1 for g in missing if g not in src)
     print(f"ps.fnd from the pool's run on {sum(n.values())} genes ({dict(n)}); "
-          f"{changed} records changed; not available on {len(missing)} (all unranked)")
+          f"{changed} records changed; not shown on {len(missing)}, all unranked: "
+          f"{no_row} with no family assignment, {len(missing) - no_row} with a family but no gene age")
 
 
 if __name__ == "__main__":
