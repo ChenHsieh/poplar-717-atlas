@@ -1,6 +1,6 @@
 {
  "data_version": "0.16.0",
- "n_checks": 88,
+ "n_checks": 90,
  "n_failed": 0,
  "checks": [
   {
@@ -280,6 +280,16 @@
   },
   {
    "name": "no ps.rr left over from the 2026-09-21 arrangement",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "no gene's family is younger than the gene (ps.fnd.rank <= ps.rank)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "ps.fnd on every ranked gene and on no unranked one",
    "ok": true,
    "detail": ""
   },

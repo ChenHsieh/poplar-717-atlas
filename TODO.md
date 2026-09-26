@@ -548,7 +548,9 @@ only what still has no second layer after that gets folded into About.
       `patch_baseline_fresh_ambient.py`) on top of 0.16.0 as data 0.17.0. Its three local render
       failures (two copies-panel roundings, one phone nav) need rechecking there. The coordinator
       asked to be told before this starts, to record the claim.
-      (c) The family-origin rank (`ps.fnd`) comes from the frozen run and no rerun roll-up exists
+      (c) DONE same day, on the branch: `ps.fnd` now comes from the rerun's founder families
+      (ms2-lsg e05215e), gated and compared gene by gene; history below. The family-origin rank
+      (`ps.fnd`) came from the frozen run and no rerun roll-up existed
       (main ms2, 2026-09-26). The card withholds it on the 419 genes where it is younger than the
       gene. main ms2 asked the "ms2 sapelo2" session to look for genEra founder tables beside
       absense_20260901/hap{1,2}_idesia/pass2/ on scratch (30-day purge) and, if found, commit a

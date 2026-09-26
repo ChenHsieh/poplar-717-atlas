@@ -684,6 +684,22 @@ def main():
     check("no ps.rr left over from the 2026-09-21 arrangement", not rr_left,
           f"{len(rr_left)} records, e.g. {rr_left[:3]}" if rr_left else "")
 
+    # ps.fnd is the founder family from the same genEra run as ps.rank (patch_founder_rerun.py).
+    # Inside one run a family is never younger than a member; joining two runs broke that on 419
+    # genes until 2026-09-26. Every ranked gene has a family; no unranked gene has one.
+    fnd_young, fnd_cover = [], []
+    for gid, (_, _, rec) in genes.items():
+        ps = rec.get("ps") or {}
+        f = ps.get("fnd")
+        if (f is None) != (ps.get("rank") is None):
+            fnd_cover.append(gid)
+        elif f and f.get("rank") is not None and f["rank"] > ps["rank"]:
+            fnd_young.append(gid)
+    check("no gene's family is younger than the gene (ps.fnd.rank <= ps.rank)", not fnd_young,
+          f"{len(fnd_young)} genes, e.g. {fnd_young[:3]}" if fnd_young else "")
+    check("ps.fnd on every ranked gene and on no unranked one", not fnd_cover,
+          f"{len(fnd_cover)} genes, e.g. {fnd_cover[:3]}" if fnd_cover else "")
+
     # CRE / promoter layer: every gene must carry it, family counts must sum to the
     # stored total, and TATA position (when set) must lie inside the promoter window.
     cre_missing = [g for g, (_, _, r) in genes.items() if "cre" not in r]

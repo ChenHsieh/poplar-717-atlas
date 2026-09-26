@@ -318,6 +318,26 @@ def main():
     check(f"all {len(cells)} dataset x haplotype x class cells", not cbad,
           f"{len(cbad)} differ, e.g. {cbad[:3]}" if cbad else "")
 
+    # ---- 4. founder families: the same run as the pool --------------------------------------
+    FND = "data/founder_families_rerun_20260926/founder_family_per_gene.tsv.gz"
+    if FND in T:
+        print("\n[4] ps.fnd against founder_family_per_gene.tsv.gz (the pool's genEra run)")
+        fam = {r["gene_id"]: r for r in T[FND]}
+        fbad = collections.defaultdict(list)
+        for gid, (_, rec) in genes.items():
+            ps = rec.get("ps") or {}
+            r, f = fam.get(gid), ps.get("fnd")
+            if r is None or rank_of(r["gene_rank"]) is None:
+                if f is not None:
+                    fbad["a family where the run has none"].append(gid)
+                continue
+            if rank_of(r["gene_rank"]) != ps.get("rank"):
+                fbad["gene rank (a different run)"].append(gid)
+            if not f or f.get("rank") != rank_of(r["family_rank"]) or f.get("fam") != int(r["family_size"]):
+                fbad["family rank and size"].append(gid)
+        for k in ("gene rank (a different run)", "family rank and size", "a family where the run has none"):
+            check(f"per-gene fnd: {k}", not fbad[k], f"{len(fbad[k])}, e.g. {fbad[k][:3]}" if fbad[k] else "")
+
     print(f"\n{len(fails)} FAIL" + (f": {fails}" if fails else ""))
     return 1 if fails else 0
 

@@ -23,6 +23,7 @@ const KNOWN = [
   ['lsg_pool_frozen', 'The frozen genEra call (superseded)'],
   ['lsg_pool_idesia', 'LSG pool, the rerun that added Idesia'],
   ['lsg_qc_flags', 'LSG evidence quality'],
+  ['founder_families_rerun', 'Founder families, the pool’s genEra run'],
   ['kaks_ptri', 'Ka/Ks vs P. trichocarpa'],
   ['proteomics_ms_v2', 'Proteomics, re-searched'],
   ['chromatin_profiles', 'Chromatin profiles'],

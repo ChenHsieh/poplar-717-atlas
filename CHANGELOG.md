@@ -38,11 +38,16 @@ DIAMOND-sensitivity note stay, listed as "Other evidence, not QC flags".
   whose membership differs between the two calls (114 changed), and `validate_data.py` holds every
   tile mark equal to the gene's `ps.lsg`. Under 0.14.0 they disagreed with the gene pages on 114
   genes for eleven days and nothing noticed.
-- The family-origin rank is the frozen call's, and no rerun roll-up exists. On a gene whose
-  rank moved it is shown only where it can be read beside the current rank, labelled "in the
-  frozen call" (263 genes). On 419 genes it is younger than the gene itself, impossible inside
-  one run, so the card says "family origin not available in the current pool run" and keeps the
-  frozen value behind a "frozen call" toggle (main ms2's suggestion).
+- The gene family (size and origin stratum) now comes from the same genEra run as the gene's
+  rank. It came from the frozen run, and joined to the rerun's ranks it made a family look
+  younger than its own member on 419 genes. The rerun's founder families were rolled up and
+  committed to ms2-lsg for this (`data/founder_families_rerun_20260926/`, e05215e); new source
+  `sources/founder_families_rerun.tsv.gz` via `make_founder_source.py`, applied by the new stage
+  `patch_founder_rerun.py`. Gates: 0 families younger than a member across 15,040, and every
+  gene's rank in that table equals the pool call's. The 45 unranked genes have no family in that
+  run and say "not available in the current pool run". The 49 pool genes whose family is older
+  than the lineage (16 from cellular organisms) say they are a young member of an older family,
+  not a lineage-specific family.
 - The Protein page's per-stratum peptide numbers are the owning analysis's, ranked by the rerun,
   so they and the pool agree again (TODO 53 closes).
 
@@ -55,7 +60,8 @@ moved: pinning tables alone is what let C5 go unnoticed. It also pins the C5 ent
 so a failure says whether the ruling the atlas follows changed or the log merely grew, and it
 prints the headings added since the pin. Positive controls: a log pinned at the C4 commit fails
 and names C5 as new while the ruling check passes; an altered section hash and a missing heading
-each fail on the ruling.
+each fail on the ruling. The founder table is pinned by blob AND sha256 (its first commit had
+silently dropped the data file), and section 4 compares every gene's family with it.
 
 ## 0.15.0 - 2026-09-21 - The pool is the frozen genEra call again, and every check on it is a flag
 

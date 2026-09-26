@@ -53,6 +53,7 @@ STAGES=(
   "repo|patch_wgd_combined_call.py|patch_dup_v9_and_pav.py|route C combined Ks + topology WGD call"
   "repo|patch_lsg_pool.py|build_phylostrat.py|LSG pool (genEra rerun with Idesia) with the frozen call beside it"
   "repo|patch_lsg_qc.py|patch_lsg_pool.py|LSG evidence flags"
+  "repo|patch_founder_rerun.py|build_phylostrat.py,patch_lsg_pool.py|founder families from the pool's genEra run"
   "repo|patch_proteomics_v2.py|build_layers.py,patch_lsg_pool.py|proteomics re-search"
   "repo|patch_peptide_detail.py|patch_proteomics_v2.py|per-gene peptide provenance"
   "repo|patch_kaks.py|build_data.py|Ka/Ks vs P. trichocarpa"
@@ -78,7 +79,8 @@ STAGES=(
 # scripts/check_stages.py and is checked before every build:
 #   make_chromatin_source.py, make_copy_search_source.py,
 #   make_duplicate_coexpr_source.py, make_gene_model_source.py, make_kaks_source.py,
-#   make_karyotype_source.py, make_peptide_detail_source.py, make_pool_frozen_source.py,
+#   make_founder_source.py, make_karyotype_source.py, make_peptide_detail_source.py,
+#   make_pool_frozen_source.py,
 #   make_proteomics_v2_source.py, make_structure_source.py, make_td_pair_ks_source.py,
 #   make_wgd_combined_call_source.py, make_wgd_pairs_source.py.
 #

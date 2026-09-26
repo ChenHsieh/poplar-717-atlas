@@ -132,30 +132,27 @@ function geneCard(g) {
   if (g.qc) {
     kv.append(el('dt', {}, 'Evidence quality'), el('dd', {}, qcSummary(g.qc)));
   }
-  if (p.fnd) {
-    const s = p.fnd.fam;
-    // The family-origin rank was computed on the frozen call; no rerun roll-up exists (main ms2,
-    // 2026-09-26). Where the gene's own rank moved (p.frz), the frozen origin is shown only if it
-    // can be read beside the current rank, and labelled. On 419 genes it is YOUNGER than the gene
-    // itself, which cannot happen inside one run: that is an artefact of joining two runs, so the
-    // number is not shown by default (a reader takes the number and skips the note), only
-    // reachable behind "frozen call".
-    const o = p.fnd.rank;
-    let origin = null;
-    if (o != null && o !== p.rank) {
-      if (p.frz && p.rank != null && o > p.rank) {
-        origin = el('span', { class: 'muted' }, ' · family origin not available in the current pool run ',
-          el('details', { style: 'display:inline-block;vertical-align:top' },
-            el('summary', {}, 'frozen call'),
-            `PS${o} in the frozen 2026-04 call, which placed this gene itself at PS${p.frz.rank}. `
-            + 'It cannot be read beside the current call’s rank for this gene.'));
-      } else {
-        origin = el('span', { class: 'muted' },
-          ` · family originates at PS${o}${p.frz ? ' in the frozen call' : ''}`);
-      }
-    }
-    add('Gene family', s == null ? '—'
-      : el('span', {}, s === 1 ? el('strong', {}, 'singleton') : `${fmt(s)} members`, origin));
+  // The founder family comes from the same genEra run as the rank above (the rerun that added
+  // Idesia; sources/founder_families_rerun.tsv.gz, from ms2-lsg). Until 2026-09-26 it came from
+  // the frozen run, and the join made a family look younger than its own member on 419 genes.
+  // 45 genes (all unranked) have no family in that run: say so rather than leave a blank.
+  if (p.fnd && p.rank != null && p.fnd.rank <= p.rank) {
+    const s = p.fnd.fam, o = p.fnd.rank;
+    add('Gene family',
+      el('span', {}, s === 1 ? el('strong', {}, 'singleton') : `${fmt(s)} members`,
+        o != null && o !== p.rank
+          ? el('span', { class: 'muted' }, ` · family originates at PS${o}`)
+          : null),
+      // A lineage-specific gene in an old family is a diverged or newly added member of that
+      // family, not a new family: 49 pool genes, 16 of them in families from cellular organisms.
+      (p.lsg && o != null && o < LSG_MIN)
+        ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+            `A young gene in an older family: its own oldest detectable homolog is at PS${p.rank}, `
+            + `but its family in this genome goes back to PS${o}. That makes it a diverged or newly added member `
+            + 'of an old family, not a lineage-specific family.')
+        : null);
+  } else {
+    add('Gene family', el('span', { class: 'muted' }, 'not available in the current pool run'));
   }
 
   const card = el('div', { class: 'card' },

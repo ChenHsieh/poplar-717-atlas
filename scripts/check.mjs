@@ -353,15 +353,25 @@ await check('gene-lsg-qc-unstable', '#/gene/PtXaTreH.12G066000',
 await check('gene-left-the-pool', '#/gene/PtXaTreH.05G120200',
   { expect: ['no (pool is PS ≥ 18)', 'Frozen call', 'superseded as the pool, placed this gene at PS18',
              'left the pool', 'not by failing a QC check', 'not always due to Idesia',
-             // family origin is the frozen call's: PS18, younger than this gene's current PS17,
-             // which is impossible inside one run, so the number is withheld (419 genes)
-             'family origin not available in the current pool run'],
+             // the family now comes from the same run as the rank: 2 members, same stratum.
+             // From the frozen run it read "originates at PS18" beside the gene's PS17.
+             '2 members'],
     forbid: ['Evidence quality', 'withdrawn', 'Idesia-corrected panel', 'never evaluated',
-             'The gene stays in the pool', 'family originates at PS18'], wait: 900 });
-// A moved gene whose frozen family origin CAN be read beside its current rank: shown, labelled.
-await check('gene-family-origin-frozen', '#/gene/PtXaTreH.01G003100',
-  { expect: ['family originates at PS11 in the frozen call'],
-    forbid: ['family origin not available'], wait: 900 });
+             'The gene stays in the pool', 'family originates at PS18', 'not available'], wait: 900 });
+// Founder families from the pool's own run (2026-09-26). A moved gene: family read in the same run.
+await check('gene-family-same-run', '#/gene/PtXaTreH.01G003100',
+  { expect: ['4 members', 'family originates at PS11'],
+    // this gene left the pool, so its Frozen call row rightly says "in the frozen call"; only
+    // the family row's old qualifier is forbidden
+    forbid: ['originates at PS11 in the frozen call', 'not available'], wait: 900 });
+// A pool gene in a family from cellular organisms: not a lineage-specific family, and it says so.
+await check('gene-family-young-in-old', '#/gene/PtXaTreH.11G057300',
+  { expect: ['yes — PS18', '1,435 members', 'family originates at PS1',
+             'A young gene in an older family', 'not a lineage-specific family'], wait: 900 });
+// An unranked gene has no family in the pool's run: said, not left blank.
+await check('gene-family-not-available', '#/gene/PtXaTreH.01G062500',
+  { expect: ['genEra returned no rank', 'Gene family', 'not available in the current pool run'],
+    wait: 900 });
 await check('module-protein-gradient', '#/module/protein',
   { expect: ['1 of 776 HAP1 and 0 of 835 HAP2 lineage-specific pool genes',
              'Strata here are those of the genEra rerun that added Idesia, which defines the pool',

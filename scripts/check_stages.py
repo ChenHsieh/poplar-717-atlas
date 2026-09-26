@@ -31,6 +31,7 @@ SOURCE_GENERATORS = {
     "make_chromatin_source.py",
     "make_copy_search_source.py",
     "make_duplicate_coexpr_source.py",
+    "make_founder_source.py",
     "make_gene_model_source.py",
     "make_kaks_source.py",
     "make_karyotype_source.py",
