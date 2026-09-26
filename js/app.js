@@ -219,10 +219,11 @@ route(/^\/$/, async (navigation) => {
         el('dd', { class: 'muted' }, 'The box above takes a gene ID, a keyword, an Arabidopsis locus or a Pfam accession.'),
         // Was "PS18 Populus, drought-responsive in bark": "drought-responsive" rested on a
         // descriptive n=3 ratio the Contrasts view itself says is not a test. The pool is the
-        // frozen call (Chen, 2026-09-21), in which this gene is PS18; its flags are listed on it.
+        // rerun that added Idesia (C5, Chen 2026-09-21 evening), in which this gene is PS17 and
+        // out of the pool; the frozen call had it at PS18, and its page says so.
         el('dt', {}, el('a', { href: '#/gene/PtXaTreH.05G120200' }, 'PtXaTreH.05G120200')),
-        el('dd', { class: 'muted' }, 'An example gene page: a PS18 pool gene that carries four '
-          + 'evidence flags, one of them from the rerun that added Idesia.'),
+        el('dd', { class: 'muted' }, 'An example gene page, and one the Idesia rerun moved: '
+          + 'PS18 in the frozen genEra call, PS17 Saliceae in the current one.'),
         // Three examples, chosen because each shows a DIFFERENT shape of duplication rather
         // than three views of the same one. Every claim below is read off the shipped record.
         el('dt', {}, el('a', { href: '#/gene/PtXaTreH.08G070200' }, 'PtXaTreH.08G070200')),

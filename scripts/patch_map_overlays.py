@@ -12,9 +12,10 @@ the shards and compares them to the shipped file, bin for bin. If the reconstruc
 build_locus.py's own arithmetic is wrong, that shows up here and nothing is written.
 
 One mismatch IS expected and is allowed, for a stated reason: `lsg` counts genes with
-ps.lsg, and the pool patcher (patch_pool_frozen.py) can change ps.lsg after overview.json was
-written. It did twice: 2026-09-10 swapped in the Idesia rerun's pool (776/835), and 2026-09-21
-restored the frozen genEra call (842/883) on Chen's ruling. A mismatch confined to `lsg` is that
+ps.lsg, and the pool patcher (patch_lsg_pool.py) can change ps.lsg after overview.json was
+written. It did three times: 2026-09-10 swapped in the Idesia rerun's pool (776/835), 2026-09-21
+restored the frozen genEra call (842/883), and C5 (2026-09-26 on the atlas) made the rerun the
+pool again, each on Chen's ruling. A mismatch confined to `lsg` is that
 pool change reaching the map, and gets rewritten here from the shards. A mismatch in n, td or tau
 cannot be explained that way and means the reconstruction is wrong -- so those refuse.
 """
@@ -132,6 +133,50 @@ def main():
     with open(OV, "w") as fh:
         json.dump(ov, fh, separators=(",", ":"))
     print(f"wrote {OV}: {os.path.getsize(OV)/1e3:.0f} KB, 7 metrics per bin")
+    sync_tile_pool()
+
+
+def sync_tile_pool():
+    """The locus tiles' per-gene pool mark `l`, rewritten from ps.lsg.
+
+    build_locus.py writes `l` from the shards when it runs, but it needs the OneDrive tree, so
+    after a pool change on this machine the tiles keep the old pool. They did for eleven days
+    after 2026-09-10 (CHANGELOG 0.15.0), disagreeing with every gene page on 114 genes, and
+    nothing noticed. GATE: a tile may only change for a gene whose membership differs between
+    the pool's call and the frozen one (ps.frz); any other change means the tiles are wrong in a
+    way a pool change cannot explain, and nothing is written.
+    """
+    lsg, moved = {}, set()
+    for hap in ("hap1", "hap2"):
+        for p in shard_paths(os.path.join(DATA, "genes", hap)):
+            for gid, r in json.load(open(p)).items():
+                ps = r.get("ps") or {}
+                lsg[gid] = bool(ps.get("lsg"))
+                if ps.get("frz") and bool(ps["frz"].get("lsg")) != lsg[gid]:
+                    moved.add(gid)
+    tdir = os.path.join(DATA, "locus", "tile")
+    tiles, changed = {}, set()
+    for dp, _, fs in os.walk(tdir):
+        for fn in sorted(fs):
+            if not fn.endswith(".json"):
+                continue
+            p = os.path.join(dp, fn)
+            rows = json.load(open(p))
+            hit = [r for r in rows if r["l"] != lsg[r["g"]]]
+            if hit:
+                tiles[p] = rows
+                changed.update(r["g"] for r in hit)
+    unexplained = changed - moved
+    if unexplained:
+        raise SystemExit(f"REFUSING: {len(unexplained)} tile pool marks differ from ps.lsg on genes "
+                         f"whose membership did not change, e.g. {sorted(unexplained)[:3]}")
+    for p, rows in tiles.items():
+        for r in rows:
+            r["l"] = lsg[r["g"]]
+        with open(p, "w") as fh:
+            json.dump(rows, fh, separators=(",", ":"))
+    print(f"locus tiles: {len(changed)} pool marks rewritten from ps.lsg in {len(tiles)} tiles "
+          f"(all on genes whose membership differs from the frozen call)")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 {
  "purpose": "The frozen genEra call for every gene: the LSG pool is its rank >= 18 genes, 842 HAP1 + 883 HAP2, and it does not change (Chen, 2026-09-21). Every check on the pool, the rerun that added Idesia included, is a per-gene flag.",
+ "status_2026_09_26": "SUPERSEDED AS THE POOL (ms2-lsg docs/CORRECTIONS.md C5, 2026-09-21 evening, reconfirmed 2026-09-26). Kept as provenance: shown per gene under ps.frz wherever its rank differs from the pool's call (766 genes), so the 66 HAP1 + 48 HAP2 genes that left the pool say why. Never used for a filter, a count or a default view. The purpose and ruling lines below describe the 2026-09-21 morning arrangement (C4) and are kept as written.",
  "ruling": "Chen, 2026-09-21: \"the 842/883 is the frozen but the various QC steps from Idesia to synteny to abSENSE ... are all for flagging\". Recorded in MS2_2026 CLAUDE.md, commit 1e698f2.",
  "what_the_frozen_call_is": "genEra ranks from its NCBI nr search. Its configured comparison panel was never searched (genEra's own changelog); the rerun that added Idesia was the first run to search the full panel, which is why a rank change there is not always due to Idesia.",
  "tier": "public",
@@ -18,5 +19,5 @@
  "rows": 63960,
  "shipped_sha256": "7ac49ee7ec00baf3702f1b338d92532761fd226e6c3c514efe5ef82e3985fcff",
  "written": "2026-09-21T15:57:38Z",
- "applied_by": "scripts/patch_pool_frozen.py (build stage)"
+ "applied_by": "scripts/patch_lsg_pool.py (build stage)"
 }

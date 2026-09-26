@@ -53,11 +53,13 @@ GRADIENT_DATASET = "PXD025636"
 
 def rerun_rank(rec):
     """The gene's rank in the genEra rerun that added Idesia, which is the ranking the owning
-    analysis's published tables use. Since 2026-09-21 `ps.rank` is the frozen call (Chen's
-    ruling: the pool is the frozen 842/883) and the rerun's rank sits under `ps.rr` wherever it
-    differs, so the owner's numbers are reproduced from here, never from `ps.rank`."""
+    analysis's published tables use. Since C5 (Chen, 2026-09-21 evening, reconfirmed 2026-09-26)
+    that rerun is the pool again and `ps.rank` IS its rank; the frozen call sits under `ps.frz`.
+    From 2026-09-21 morning to 2026-09-26 the atlas had it the other way round (`ps.rr`), which is
+    why this is a function rather than a field read."""
     ps = rec.get("ps") or {}
-    return (ps.get("rr") or ps).get("rank")
+    assert "rr" not in ps, "ps.rr is the C4 arrangement; run patch_lsg_pool.py first"
+    return ps.get("rank")
 
 
 def gene_class(rank):

@@ -506,7 +506,7 @@ only what still has no second layer after that gets folded into About.
       the rerun also first searched the full comparison panel (the frozen call searched NCBI nr
       only).
 
-- [x] **51: DONE, data 0.15.0. The pool is the frozen genEra call; every check is a flag.** Chen,
+- [x] **51: DONE, data 0.15.0, then SUPERSEDED by 54 (C5 reversed C4). The pool is the frozen genEra call; every check is a flag.** Chen,
       2026-09-21 (plan settled with the main MS2 session first, published together with the
       matching ms2-lsg documentation). 842 HAP1 + 883 HAP2 everywhere; the rerun that added
       Idesia is `ps.rr` (information) and `qc.rr` (a flag on 66 HAP1 + 48 HAP2 pool genes); all
@@ -516,6 +516,40 @@ only what still has no second layer after that gets folded into About.
       MMseqs2 profile searches and the protein-structure searches exist only on ms2-lsg's unmerged
       gene-age-comparison branch. Add them as per-gene flags after Chen merges it, gated like the
       rest by check_ms2_canon.py.
-- [ ] **53: peptide numbers on frozen ranks.** The Protein page's per-stratum numbers are the owning
+- [x] **53: CLOSED by 54, nothing to do: the pool is ranked by the rerun again, which is the ranking the peptide numbers already use.** Original: peptide numbers on frozen ranks. The Protein page's per-stratum numbers are the owning
       analysis's, ranked by the Idesia rerun, and labelled so. Swap them in when that analysis
       publishes a recompute on the frozen ranks.
+
+## v0.16.0: the pool is the rerun that added Idesia again (2026-09-26, session "Gene atlas project review")
+
+- [x] **54: DONE on branch `chen-lsg-pool-c5`, data 0.16.0. NOT merged: the live site stays on
+      0.15.0 until Chen approves the merge (the coordinator's condition for a public deploy).**
+      ms2-lsg CORRECTIONS C5 (`8eb65b0`): pool 776/835, QC = abSENSE + synteny window search
+      only. Every per-gene comparison against ms2-lsg `0ddd994` passes, including the new
+      two-flag table; 140/140 render checks pass. See CHANGELOG 0.16.0. Also: locus tiles now
+      follow the pool (their mark had no check at all), and the family-origin rank is labelled as
+      the frozen call's on genes whose rank moved.
+      **The generalisable lesson, third time:** pinning the owner's TABLES does not pin the
+      owner's RULING. C4 -> C5 changed no table byte, so every check passed. check_ms2_canon.py
+      now fails when ms2-lsg's `docs/CORRECTIONS.md` moves on origin/main. It cannot fetch for
+      you: fetch ms2-lsg before running it, or it compares against a stale origin/main.
+
+- [ ] **55: found in the 2026-09-26 review, not started.**
+      (a) `check_facts.py` is itself stale. It expects PAV `pav_strict_postQC` 790/848 and pins
+      FACTS_v10, but MS1 canon is now master v11 + FACTS_v11 (`data/99_master_v11_20260923`), and
+      the coordinator lists 790/848 as superseded. CJ is choosing the PAV treatment from a tBLASTn
+      memo (options range from 1,623 to 63 genes), so HOLD every PAV-dependent change, and the
+      duplication v9 -> v11 move with it, until that lands. Then: re-pin to FACTS_v11, give
+      check_facts the same origin/main section check_ms2_canon now has.
+      (b) `baseline-fresh-ambient-20260921` (TODO 50a, Chen-approved 2026-09-21, never merged)
+      predates the Pages hardening squash (3e91e68), which rewrote files it also edits
+      (build_expr_ranges.py, check.mjs, validate_data.py), so expect conflicts, and it now also
+      collides with 0.16.0 on the version number. Re-apply its patch (`expr_baseline.py`,
+      `patch_baseline_fresh_ambient.py`) on top of 0.16.0 as data 0.17.0. Its three local render
+      failures (two copies-panel roundings, one phone nav) need rechecking there. The coordinator
+      asked to be told before this starts, to record the claim.
+      (c) The family-origin rank (`ps.fnd`) comes from the frozen run. The card now says so where
+      the gene's rank moved, but a rerun-based family origin needs the owner's roll-up; ask ms2-lsg.
+      (d) Stale remote branches: `codex/atlas-hardening-20260923` is fully squash-merged as
+      3e91e68; `pool-frozen-flags-20260921`, `ms2-canon-sync-20260921`, `pages-site-only`,
+      `chen-wgd-events` are all contained in main. Safe to delete; left for Chen.

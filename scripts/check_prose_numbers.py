@@ -55,9 +55,10 @@ def protein_claims():
                     continue
                 for rec in json.load(open(os.path.join(dp, fn))).values():
                     ps = rec.get("ps") or {}
-                    # the owning analysis ranks by the Idesia rerun: ps.rr where it differs from
-                    # the frozen call in ps.rank (since 2026-09-21), else ps.rank
-                    r = (ps.get("rr") or ps).get("rank")
+                    # the owning analysis ranks by the Idesia rerun, which is ps.rank again since
+                    # C5; a leftover ps.rr would mean the C4 arrangement and is refused
+                    assert "rr" not in ps, "ps.rr is the C4 arrangement; run patch_lsg_pool.py"
+                    r = ps.get("rank")
                     ms = (rec.get("prot") or {}).get("ms") or {}
                     hit = DEEPEST in (ms.get("ds") or [])
                     for name, f in classes:
@@ -75,7 +76,7 @@ def protein_claims():
     for c in ("conserved", "rosid", "Salicaceae"):
         wants.append(f"{pc('hap1', c)[:-1]}% and {pc('hap2', c)[:-1]}% of {c}")
     wants.append(f"{pool['hap1'][0]} of {pool['hap1'][1]:,} HAP1 and "
-                 f"{pool['hap2'][0]} of {pool['hap2'][1]:,} HAP2 genes at rank 18 or above")
+                 f"{pool['hap2'][0]} of {pool['hap2'][1]:,} HAP2 lineage-specific pool genes")
     wants.append(f"{union[('hap1', 18)][0]} of {union[('hap1', 18)][1]} HAP1 and "
                  f"{union[('hap2', 18)][0]} of {union[('hap2', 18)][1]} HAP2 PS18")
     wants.append(f"{union[('hap1', 19)][0]} of {union[('hap1', 19)][1]} HAP1 and "

@@ -268,26 +268,22 @@ def main():
     check("every PAV 'not confirmed' target names a real gene", not bad_target,
           f"{len(bad_target)} dangling, e.g. {bad_target[:3]}" if bad_target else "")
 
-    # LSG evidence flags (Chen's ruling, 2026-09-21: the pool is the frozen 842/883 and every
-    # check is a per-gene flag). Until that day the rerun flag and the post-QC set were FORBIDDEN
-    # here, because they encoded a pool change nobody had ruled on. Now they are wanted, so the
-    # check is the opposite one: both are present, and each says exactly what it claims.
-    #   qc.rr   == the gene is in the pool and falls below rank 18 in the rerun (ps.rr)
-    #   qc.post == passes all four checks: not rr, not tblastn, not abSENSE reject, not WGD-era
-    rr_bad, post_bad = [], []
+    # LSG QC flags (Chen, 2026-09-21 evening; ms2-lsg CORRECTIONS C5): only abSENSE and the
+    # synteny window search are QC checks. The C4 fields must be gone, not merely unread: qc.rr
+    # described genes that are no longer in the pool, and qc.wgd is a check C5 removed.
+    #   qc.post == neither flag: not abSENSE reject, not the synteny window search
+    stale_qc, post_bad = [], []
     for gid, (_, _, rec) in genes.items():
         q = rec.get("qc")
         if not q:
             continue
-        rr = (rec.get("ps") or {}).get("rr")
-        if q.get("rr") != bool(rr and not rr.get("lsg")):
-            rr_bad.append(gid)
-        if q.get("post") != (not q.get("rr") and not q.get("ret") and not q.get("abs")
-                             and not q.get("wgd")):
+        if "rr" in q or "wgd" in q:
+            stale_qc.append(gid)
+        if q.get("post") != (not q.get("ret") and not q.get("abs")):
             post_bad.append(gid)
-    check("every qc.rr flag agrees with the rerun rank on the same gene", not rr_bad,
-          f"{len(rr_bad)} records, e.g. {rr_bad[:3]}" if rr_bad else "")
-    check("every qc.post is exactly 'passes all four checks'", not post_bad,
+    check("no qc record carries a flag C5 removed (rr, wgd)", not stale_qc,
+          f"{len(stale_qc)} records, e.g. {stale_qc[:3]}" if stale_qc else "")
+    check("every qc.post is exactly 'neither QC flag'", not post_bad,
           f"{len(post_bad)} records, e.g. {post_bad[:3]}" if post_bad else "")
 
     # Genome map (section 2.4): the overview's 100kb bins and the per-chromosome index
@@ -356,7 +352,7 @@ def main():
     check("manifest lsg_qc.pool_genes matches the shard count", want_qc == n_qc,
           f"manifest {want_qc} vs {n_qc} genes carrying qc")
 
-    # ---- the LSG pool: the frozen genEra call (Chen, 2026-09-21) ---------------------------
+    # ---- the LSG pool: the rerun that added Idesia (C5, Chen 2026-09-21 evening) ----------
     # The atlas once shipped a pool its source had changed, for four days, because nothing
     # compared the manifest's AGGREGATES against the per-gene records they summarise. So every
     # aggregate is recomputed here from the shards, per haplotype, never trusted.
@@ -368,8 +364,8 @@ def main():
     check("manifest lsg_pool matches the shard pool, per haplotype",
           (lp.get("hap1"), lp.get("hap2")) == (pool_by_hap["hap1"], pool_by_hap["hap2"]),
           f"manifest {lp.get('hap1')}/{lp.get('hap2')} vs shards {dict(pool_by_hap)}")
-    check("the pool is the frozen genEra call, 842 HAP1 + 883 HAP2",
-          (pool_by_hap["hap1"], pool_by_hap["hap2"]) == (842, 883), f"{dict(pool_by_hap)}")
+    check("the pool is the genEra rerun that added Idesia, 776 HAP1 + 835 HAP2",
+          (pool_by_hap["hap1"], pool_by_hap["hap2"]) == (776, 835), f"{dict(pool_by_hap)}")
     check("every pool gene carries its qc flags", n_qc == sum(pool_by_hap.values()),
           f"{n_qc} qc records for {sum(pool_by_hap.values())} pool genes")
 
@@ -675,17 +671,18 @@ def main():
           f"{len(kar_slot_bad)} problems, e.g. {kar_slot_bad[:3]}" if kar_slot_bad
           else f"{len(kar_tables)} ancestral-gene tables")
 
-    # ps.rr is the rerun that added Idesia, kept only where its rank differs from the frozen call
-    # (ps.rank). ps.frz was the reverse arrangement, used 2026-09-10 to 09-21, and must be gone.
-    rr_genes = [gid for gid, (_, _, rec) in genes.items() if (rec.get("ps") or {}).get("rr")]
-    rr_same = [gid for gid in rr_genes
-               if genes[gid][2]["ps"]["rr"].get("rank") == genes[gid][2]["ps"].get("rank")]
-    frz_left = [gid for gid, (_, _, rec) in genes.items() if "frz" in (rec.get("ps") or {})]
-    check("ps.rr appears only where the rerun's rank differs from the frozen call", not rr_same,
-          f"{len(rr_same)} genes carry an rr identical to their rank" if rr_same
-          else f"{len(rr_genes)} genes differ in the rerun")
-    check("no ps.frz left over from the 2026-09-10 arrangement", not frz_left,
-          f"{len(frz_left)} records, e.g. {frz_left[:3]}" if frz_left else "")
+    # ps.frz is the frozen 2026-04 call, superseded as the pool (C5), kept only where its rank
+    # differs from the rerun's (ps.rank), as provenance. ps.rr was the reverse arrangement, used
+    # 2026-09-21 to 09-26 (C4), and must be gone.
+    frz_genes = [gid for gid, (_, _, rec) in genes.items() if (rec.get("ps") or {}).get("frz")]
+    frz_same = [gid for gid in frz_genes
+                if genes[gid][2]["ps"]["frz"].get("rank") == genes[gid][2]["ps"].get("rank")]
+    rr_left = [gid for gid, (_, _, rec) in genes.items() if "rr" in (rec.get("ps") or {})]
+    check("ps.frz appears only where the frozen call's rank differs from the rerun", not frz_same,
+          f"{len(frz_same)} genes carry a frz identical to their rank" if frz_same
+          else f"{len(frz_genes)} genes differ in the frozen call")
+    check("no ps.rr left over from the 2026-09-21 arrangement", not rr_left,
+          f"{len(rr_left)} records, e.g. {rr_left[:3]}" if rr_left else "")
 
     # CRE / promoter layer: every gene must carry it, family counts must sum to the
     # stored total, and TATA position (when set) must lie inside the promoter window.
@@ -712,12 +709,14 @@ def main():
     # segment outside the span draws off the end of the gene.
     ldir = f"{DATA}/locus/tile"
     if os.path.isdir(ldir):
-        seen, bad_seg, bad_span = {}, [], []
+        seen, bad_seg, bad_span, bad_pool = {}, [], [], []
         for dp, _, fs in os.walk(ldir):
             for fn in (f for f in fs if f.endswith(".json")):
                 for r in json.load(open(os.path.join(dp, fn))):
                     seen.setdefault(r["g"], 0)
                     seen[r["g"]] += 1
+                    if r["g"] in genes and r.get("l") != bool((genes[r["g"]][2].get("ps") or {}).get("lsg")):
+                        bad_pool.append(r["g"])
                     span = r["e"] - r["s"]
                     for off, ln, _k in r["f"]:
                         if off < 0 or off + ln > span + 1:
@@ -733,6 +732,11 @@ def main():
         check("locus structure lies inside the gene span", not bad_seg,
               f"{len(bad_seg)} genes with a stray segment, e.g. {bad_seg[:3]}")
         check("locus gene spans are positive", not bad_span, f"{len(bad_span)} bad")
+        # The tiles' pool mark disagreed with every gene page on 114 genes for eleven days after
+        # 2026-09-10, because build_locus.py cannot run where the pool patcher runs. A pool
+        # change now reaches the tiles through patch_map_overlays.py, and this holds them equal.
+        check("every locus tile's pool mark equals the gene's ps.lsg", not bad_pool,
+              f"{len(bad_pool)} genes, e.g. {bad_pool[:3]}" if bad_pool else "")
 
     # Allele links must point at a real gene, in the OTHER haplotype, and be reciprocal.
     dangling = [g for g, (_, _, r) in genes.items()

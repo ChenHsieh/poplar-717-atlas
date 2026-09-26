@@ -61,10 +61,10 @@ function overview(man) {
         el('tbody', {}, ...[
           ['Synteny class', man.n_genes, 'Every gene is classified.'],
           // Was `n_genes - (by_rank ? 0 : 0)`, which is always n_genes, beside a hand-typed "50".
-          // Both now come from by_rank, which is the frozen genEra call (Chen, 2026-09-21).
+          // Both now come from by_rank, which is the pool's call, the rerun that added Idesia (C5).
           ['Phylostratum', man.n_genes - unplaced.hap1 - unplaced.hap2,
             `genEra returned no rank for ${fmt(unplaced.hap1)} HAP1 and ${fmt(unplaced.hap2)} HAP2 `
-            + 'genes in the frozen call; they are excluded from the pool, not defaulted.'],
+            + 'genes in the current call; they are excluded from the pool, not defaulted.'],
           ['Expression baseline', (man.expression || {}).n_genes_with_baseline || null,
             'A gene with an all-zero baseline has no tissue profile and no \u03c4.'],
           ['Ka/Ks vs P. trichocarpa', (man.kaks || {}).n_genes,

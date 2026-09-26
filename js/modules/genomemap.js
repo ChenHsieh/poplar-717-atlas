@@ -38,7 +38,7 @@ const METRICS = {
 const METRIC_NOTE = {
   genes: 'Genes per 100 kb bin.',
   tandem: 'Share of genes in the bin that belong to a tandem array.',
-  lsg: 'Share in the lineage-specific pool (PS \u2265 18 in the frozen genEra call).',
+  lsg: 'Share in the lineage-specific pool (PS \u2265 18 in the genEra rerun that added Idesia).',
   tau: 'Mean tissue-specificity of genes in the bin that have a baseline at all.',
   omega: 'Mean Ka/Ks over the genes in the bin that HAVE a reciprocal-best P. trichocarpa '
     + 'ortholog \u2014 81.7% of genes, and the ones without are the youngest, so a bin\u2019s '

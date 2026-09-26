@@ -22,7 +22,7 @@ GATES, all of which must pass or nothing is written:
     (lsg_pool_idesia.tsv.gz) for every gene: two ms2-lsg tables, one frozen call.
 
 NOT A BUILD STAGE. Like the other make_*_source.py scripts it regenerates a committed source by
-hand; the stage that applies it is patch_pool_frozen.py. Needs a clone of ms2-lsg (private).
+hand; the stage that applies it is patch_lsg_pool.py. Needs a clone of ms2-lsg (private).
 """
 import csv
 import gzip
@@ -120,7 +120,7 @@ def main():
         "rows": len(frozen),
         "shipped_sha256": hashlib.sha256(data).hexdigest(),
         "written": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "applied_by": "scripts/patch_pool_frozen.py (build stage)",
+        "applied_by": "scripts/patch_lsg_pool.py (build stage)",
     }
     with open(PROV, "w") as fh:
         json.dump(prov, fh, indent=1)

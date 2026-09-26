@@ -199,7 +199,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.15.0",
+ "data_version": "0.16.0",
  "duplicate_coexpr": {
   "basis": "Pearson r on log2(ComBat-corrected TPM + 1) over 652 samples -- the same matrix the neighbour co-expression (nb) uses, because a 652-sample correlation spans 28 studies and is therefore a cross-study comparison.",
   "coverage": "A pair needs BOTH partners in the ComBat matrix (59,599 of 63,960 genes), so 7,707 of 32,333 duplicate pairs have no value. Absence means 'not comparable', not 'uncorrelated'.",
@@ -300,7 +300,7 @@
   }
  },
  "facets": {
-  "bytes": 2932464,
+  "bytes": 2932396,
   "cols": [
    "hap",
    "chr",
@@ -600,39 +600,39 @@
   "proteomics_note": "Three independent PXD datasets, reported separately. Detection rates differ ~4x (3,989 / 18,739 / 21,449 genes), so a gene absent from one is not undetected."
  },
  "lsg_pool": {
-  "never": "PS18 and PS19 are never pooled without their split.",
-  "pool": {
-   "call": "the frozen genEra call (an NCBI nr search; its configured comparison panel was never searched)",
-   "hap1": 842,
-   "hap2": 883,
+  "frozen": {
+   "at_rank_18_or_above": {
+    "hap1": 842,
+    "hap2": 883
+   },
+   "genes_with_a_different_rank": 766,
+   "left_the_pool": {
+    "hap1": 66,
+    "hap2": 48
+   },
+   "note": "Provenance only, never a filter, count or default view. Numbers published against this call are correct statements about it and are not retracted. A rank change is not always due to Idesia: the rerun was also the first to search the comparison panel at all.",
    "ps18_ps19": {
     "HAP1_PS18": 392,
     "HAP1_PS19": 450,
     "HAP2_PS18": 454,
     "HAP2_PS19": 429
    },
-   "total": 1725
+   "what": "the frozen 2026-04 genEra call (an NCBI nr search; its configured comparison panel was never searched), superseded as the pool"
   },
-  "rerun": {
-   "at_rank_18_or_above": {
-    "hap1": 776,
-    "hap2": 835
-   },
-   "genes_with_a_different_rank": 766,
-   "note": "These are pass counts of one check, not a pool. A rank change here is not always due to Idesia, because the frozen call never searched the panel at all.",
-   "pool_genes_below_rank_18": {
-    "hap1": 66,
-    "hap2": 48
-   },
+  "never": "PS18 and PS19 are never pooled without their split.",
+  "pool": {
+   "call": "the genEra rerun that added Idesia polycarpa and was the first run to search the full comparison panel",
+   "hap1": 776,
+   "hap2": 835,
    "ps18_ps19": {
     "HAP1_PS18": 433,
     "HAP1_PS19": 343,
     "HAP2_PS18": 497,
     "HAP2_PS19": 338
    },
-   "what": "the genEra rerun that added Idesia polycarpa and was the first to search the full comparison panel"
+   "total": 1611
   },
-  "ruling": "Chen, 2026-09-21: the pool is the frozen 842/883 and does not change; every check on it, the rerun that added Idesia included, is a per-gene flag. MS2_2026 CLAUDE.md, commit 1e698f2."
+  "ruling": "Chen, 2026-09-21 evening, reconfirmed 2026-09-26: the pool is the rerun that added Idesia, 776/835, and only abSENSE and the synteny check are QC steps; a flag never changes the pool. ms2-lsg docs/CORRECTIONS.md C5, commit 8eb65b0."
  },
  "lsg_qc": {
   "absense_calibration": {
@@ -658,49 +658,47 @@
    },
    "headline": "abSENSE flags are worst calibrated at exactly the boundary that defines this pool, and biased in the direction that over-calls a young gene. Quote the flag with this number, never alone.",
    "measured": "2026-09-09, abSENSE --predall over 868,127 predicted-vs-observed bitscore pairs (ms2-lsg analyses/absense_hdf, jobs 48015768_1/_2)",
-   "not_retracted": "Nothing in the QC layer is withdrawn by this, and neither the pool nor the Idesia-rerun flag rests on abSENSE: both come from genEra ranks. What is qualified is the per-gene HDF flag and any statement resting on it.",
+   "not_retracted": "Nothing in the QC layer is withdrawn by this, and the pool does not rest on abSENSE: it comes from genEra ranks. What is qualified is the per-gene abSENSE flag and any statement resting on it.",
    "this_is_the_optimistic_bound": "It is measured in-sample, and on the wrong genes: a Salix pair only exists for a gene that HAS a Salix homolog, which by definition is not an LSG. For a real PS18 gene the Salix prediction is pure out-of-sample extrapolation. 0.59-0.61 is what the model achieves at that boundary on the easy cases."
   },
-  "note": "Flags, not filters. Every one of the 1,725 pool genes carries its flags; nothing here removes, renumbers or filters a gene. The chapter's post-QC set (passes all four checks: the Idesia rerun, tblastn, abSENSE, WGD-era Ks) is used for its group comparisons; on a gene page it is one line under the flags. Counts are pass or flag counts, never a pool.",
+  "note": "Flags, not filters. Every one of the 1,611 pool genes carries its flags; nothing here removes, renumbers or filters a gene. Two QC checks (Chen, 2026-09-21 evening; ms2-lsg CORRECTIONS C5): abSENSE and the synteny window search. The chapter's post-QC set is the genes with neither flag, used for its group comparisons; on a gene page it is one line under the flags. WGD-era Ks is no longer a QC flag. Counts are pass or flag counts, never a pool.",
   "per_haplotype": {
    "absense_reject": {
-    "HAP1": 135,
-    "HAP2": 146
+    "HAP1": 84,
+    "HAP2": 106
    },
-   "diamond_sensitivity_unstable": {
-    "HAP1": 4,
-    "HAP2": 6
-   },
-   "falls_below_18_in_the_idesia_rerun": {
-    "HAP1": 66,
-    "HAP2": 48
+   "both_flags": {
+    "HAP1": 6,
+    "HAP2": 10
    },
    "in_the_chapter_post_qc_set": {
-    "HAP1": 589,
-    "HAP2": 625
+    "HAP1": 602,
+    "HAP2": 635
+   },
+   "other_evidence_not_qc_flags": {
+    "diamond_sensitivity_unstable": {
+     "HAP1": 4,
+     "HAP2": 6
+    },
+    "short_orf": {
+     "HAP1": 220,
+     "HAP2": 261
+    },
+    "synteny_contested_any": {
+     "HAP1": 29,
+     "HAP2": 41
+    }
    },
    "pool": {
-    "HAP1": 842,
-    "HAP2": 883
+    "HAP1": 776,
+    "HAP2": 835
    },
-   "short_orf": {
-    "HAP1": 242,
-    "HAP2": 275
-   },
-   "synteny_contested_any": {
-    "HAP1": 53,
-    "HAP2": 53
-   },
-   "tblastn_retract": {
-    "HAP1": 116,
-    "HAP2": 112
-   },
-   "wgd_flagged": {
-    "HAP1": 22,
-    "HAP2": 23
+   "synteny_window_search": {
+    "HAP1": 96,
+    "HAP2": 104
    }
   },
-  "pool_genes": 1725
+  "pool_genes": 1611
  },
  "modules": [
   "core",
@@ -721,54 +719,54 @@
  "phylostrat": {
   "by_rank": {
    "hap1": {
-    "1": 22769,
-    "10": 789,
-    "11": 856,
-    "12": 279,
-    "13": 110,
-    "14": 33,
-    "15": 73,
-    "16": 105,
-    "17": 154,
-    "18": 392,
-    "19": 450,
+    "1": 22770,
+    "10": 763,
+    "11": 862,
+    "12": 273,
+    "13": 126,
+    "14": 31,
+    "15": 71,
+    "16": 216,
+    "17": 92,
+    "18": 433,
+    "19": 343,
     "2": 2422,
     "3": 507,
     "4": 519,
     "5": 381,
-    "6": 1268,
-    "7": 209,
-    "8": 134,
-    "9": 655,
-    "NA": 32
+    "6": 1415,
+    "7": 164,
+    "8": 105,
+    "9": 617,
+    "NA": 27
    },
    "hap2": {
     "1": 22538,
-    "10": 746,
-    "11": 859,
-    "12": 276,
-    "13": 113,
-    "14": 30,
-    "15": 61,
-    "16": 100,
-    "17": 171,
-    "18": 454,
-    "19": 429,
+    "10": 727,
+    "11": 856,
+    "12": 271,
+    "13": 131,
+    "14": 26,
+    "15": 55,
+    "16": 208,
+    "17": 98,
+    "18": 497,
+    "19": 338,
     "2": 2386,
     "3": 503,
     "4": 523,
     "5": 355,
-    "6": 1257,
-    "7": 201,
-    "8": 127,
-    "9": 676,
+    "6": 1395,
+    "7": 164,
+    "8": 103,
+    "9": 631,
     "NA": 18
    }
   },
   "ladder": {
    "hap1": [
     {
-     "n": 22769,
+     "n": 22770,
      "name": "cellular organisms",
      "rank": 1
     },
@@ -793,72 +791,72 @@
      "rank": 5
     },
     {
-     "n": 1268,
+     "n": 1415,
      "name": "Embryophyta",
      "rank": 6
     },
     {
-     "n": 209,
+     "n": 164,
      "name": "Tracheophyta",
      "rank": 7
     },
     {
-     "n": 134,
+     "n": 105,
      "name": "Euphyllophyta",
      "rank": 8
     },
     {
-     "n": 655,
+     "n": 617,
      "name": "Spermatophyta",
      "rank": 9
     },
     {
-     "n": 789,
+     "n": 763,
      "name": "Magnoliopsida",
      "rank": 10
     },
     {
-     "n": 856,
+     "n": 862,
      "name": "Mesangiospermae",
      "rank": 11
     },
     {
-     "n": 279,
+     "n": 273,
      "name": "Pentapetalae",
      "rank": 12
     },
     {
-     "n": 110,
+     "n": 126,
      "name": "rosids",
      "rank": 13
     },
     {
-     "n": 33,
+     "n": 31,
      "name": "fabids",
      "rank": 14
     },
     {
-     "n": 73,
+     "n": 71,
      "name": "Malpighiales",
      "rank": 15
     },
     {
-     "n": 105,
+     "n": 216,
      "name": "Salicaceae",
      "rank": 16
     },
     {
-     "n": 154,
+     "n": 92,
      "name": "Saliceae",
      "rank": 17
     },
     {
-     "n": 392,
+     "n": 433,
      "name": "Populus",
      "rank": 18
     },
     {
-     "n": 450,
+     "n": 343,
      "name": "Populus tremula x Populus alba",
      "rank": 19
     }
@@ -890,72 +888,72 @@
      "rank": 5
     },
     {
-     "n": 1257,
+     "n": 1395,
      "name": "Embryophyta",
      "rank": 6
     },
     {
-     "n": 201,
+     "n": 164,
      "name": "Tracheophyta",
      "rank": 7
     },
     {
-     "n": 127,
+     "n": 103,
      "name": "Euphyllophyta",
      "rank": 8
     },
     {
-     "n": 676,
+     "n": 631,
      "name": "Spermatophyta",
      "rank": 9
     },
     {
-     "n": 746,
+     "n": 727,
      "name": "Magnoliopsida",
      "rank": 10
     },
     {
-     "n": 859,
+     "n": 856,
      "name": "Mesangiospermae",
      "rank": 11
     },
     {
-     "n": 276,
+     "n": 271,
      "name": "Pentapetalae",
      "rank": 12
     },
     {
-     "n": 113,
+     "n": 131,
      "name": "rosids",
      "rank": 13
     },
     {
-     "n": 30,
+     "n": 26,
      "name": "fabids",
      "rank": 14
     },
     {
-     "n": 61,
+     "n": 55,
      "name": "Malpighiales",
      "rank": 15
     },
     {
-     "n": 100,
+     "n": 208,
      "name": "Salicaceae",
      "rank": 16
     },
     {
-     "n": 171,
+     "n": 98,
      "name": "Saliceae",
      "rank": 17
     },
     {
-     "n": 454,
+     "n": 497,
      "name": "Populus",
      "rank": 18
     },
     {
-     "n": 429,
+     "n": 338,
      "name": "Populus tremula x Populus alba",
      "rank": 19
     }
@@ -964,7 +962,7 @@
   "lsg_rank_min": 18,
   "n_ambiguous": 44,
   "n_founder": 63954,
-  "note": "LSG pool = rank >= 18 in the frozen genEra call (PS18 Populus + PS19 hybrid-only): 842 HAP1 + 883 HAP2, and it does not change (Chen, 2026-09-21). Ranks here are that call. The rerun that added Idesia and searched the full comparison panel is kept per gene under ps.rr wherever its rank differs, and is a flag on pool genes, not the pool."
+  "note": "LSG pool = rank >= 18 in the genEra rerun that added Idesia polycarpa and searched the full comparison panel (PS18 Populus + PS19 hybrid-only): 776 HAP1 + 835 HAP2 (Chen, 2026-09-21 evening; ms2-lsg CORRECTIONS C5). Ranks here are that call. The frozen 2026-04 call is superseded and kept per gene under ps.frz wherever its rank differs, as provenance only."
  },
  "proteomics": {
   "age_gradient_pct": {
@@ -1454,26 +1452,26 @@
   },
   "changed": 12878,
   "ps_rank": {
-   "1": 45307,
-   "10": 1535,
-   "11": 1715,
-   "12": 555,
-   "13": 223,
-   "14": 63,
-   "15": 134,
-   "16": 205,
-   "17": 325,
-   "18": 846,
-   "19": 879,
+   "1": 45308,
+   "10": 1490,
+   "11": 1718,
+   "12": 544,
+   "13": 257,
+   "14": 57,
+   "15": 126,
+   "16": 424,
+   "17": 190,
+   "18": 930,
+   "19": 681,
    "2": 4808,
    "3": 1010,
    "4": 1042,
    "5": 736,
-   "6": 2525,
-   "7": 410,
-   "8": 261,
-   "9": 1331,
-   "None": 50
+   "6": 2810,
+   "7": 328,
+   "8": 208,
+   "9": 1248,
+   "None": 45
   },
   "synteny_class": {
    "core_syntenic": 47328,

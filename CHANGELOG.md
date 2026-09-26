@@ -9,6 +9,48 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.16.0 - 2026-09-26 - The pool is the rerun that added Idesia again (776/835), and two checks flag it
+
+ms2-lsg's corrections log, C5 (commit `8eb65b0`): "make the new canon with the idesia included run
+as the canon, and only AbSENSE and synteny check are the QC steps" (Chen, 2026-09-21 evening,
+reconfirmed to two sessions on 2026-09-26). C5 reverses C4, the ruling 0.15.0 implemented. The
+chapter, its figures and the files with the advisor moved to 776/835 on 2026-09-21; this site
+served the reversed pool for five days, with every check green, because every table it pinned was
+byte-identical upstream: only the ruling on them had changed.
+
+**The pool.** 776 HAP1 + 835 HAP2 genes (PS18/PS19: 433/343 and 497/338), rank 18 or above in
+the genEra rerun that added Idesia polycarpa and first searched the full comparison panel, on
+every page: gene pages, the home page, the phylostratigraphy page, Browse, the genome map and the
+locus tiles. `ps` is that call; the frozen 2026-04 call sits under `ps.frz` on the 766 genes where
+its rank differs, shown on the gene card as "Frozen call ... superseded as the pool", and used for
+nothing else. The 66 HAP1 + 48 HAP2 genes that left the pool say so and why (a rank change, not a
+failed check), and carry no QC record. `ps.rr` is gone.
+
+**Two QC checks.** The evidence card flags abSENSE (84 HAP1 + 106 HAP2) and the synteny window
+search (96 + 104); 6 + 10 carry both. "In the chapter's post-QC set (neither QC flag)" is one line
+under them (602 + 635). Gone: the Idesia-rerun flag (the rerun is the pool now) and WGD-era Ks
+(C5 removed it; duplication is its own card). The synteny-contest routes, short ORFs and the
+DIAMOND-sensitivity note stay, listed as "Other evidence, not QC flags".
+
+**Also fixed.**
+- The locus tiles carry their own pool mark and cannot be rebuilt on the cluster. They are now
+  rewritten from the shards by `patch_map_overlays.py`, gated so a mark may only change on a gene
+  whose membership differs between the two calls (114 changed), and `validate_data.py` holds every
+  tile mark equal to the gene's `ps.lsg`. Under 0.14.0 they disagreed with the gene pages on 114
+  genes for eleven days and nothing noticed.
+- The family-origin rank is the frozen call's. On a gene whose rank moved it now says "in the
+  frozen call"; unqualified, 419 genes read as belonging to a family that originates after them.
+- The Protein page's per-stratum peptide numbers are the owning analysis's, ranked by the rerun,
+  so they and the pool agree again (TODO 53 closes).
+
+**Checks.** `patch_pool_frozen.py` became `patch_lsg_pool.py`. `check_ms2_canon.py` pins ms2-lsg
+`0ddd994`, adds `pipeline/out/lsg_pool_flags_newpool.tsv` (the two C5 flags, committed upstream
+today) and compares every pool gene's rank, membership, frozen call and flags with it, gene by
+gene; it no longer pins the four-check `lsg_pool_qc.tsv`. New section 0 compares each pinned
+table and ms2-lsg's `docs/CORRECTIONS.md` with the clone's origin/main and fails when the log has
+moved: pinning tables alone is what let C5 go unnoticed. Positive control: with the corrections
+log pinned at the C4 commit it fails by name.
+
 ## 0.15.0 - 2026-09-21 - The pool is the frozen genEra call again, and every check on it is a flag
 
 Chen's ruling, 2026-09-21: "the 842/883 is the frozen but the various QC steps from Idesia to

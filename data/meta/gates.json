@@ -1,6 +1,6 @@
 {
- "data_version": "0.15.0",
- "n_checks": 87,
+ "data_version": "0.16.0",
+ "n_checks": 88,
  "n_failed": 0,
  "checks": [
   {
@@ -74,12 +74,12 @@
    "detail": ""
   },
   {
-   "name": "every qc.rr flag agrees with the rerun rank on the same gene",
+   "name": "no qc record carries a flag C5 removed (rr, wgd)",
    "ok": true,
    "detail": ""
   },
   {
-   "name": "every qc.post is exactly 'passes all four checks'",
+   "name": "every qc.post is exactly 'neither QC flag'",
    "ok": true,
    "detail": ""
   },
@@ -126,22 +126,22 @@
   {
    "name": "manifest lsg_qc.pool_genes matches the shard count",
    "ok": true,
-   "detail": "manifest 1725 vs 1725 genes carrying qc"
+   "detail": "manifest 1611 vs 1611 genes carrying qc"
   },
   {
    "name": "manifest lsg_pool matches the shard pool, per haplotype",
    "ok": true,
-   "detail": "manifest 842/883 vs shards {'hap1': 842, 'hap2': 883}"
+   "detail": "manifest 776/835 vs shards {'hap1': 776, 'hap2': 835}"
   },
   {
-   "name": "the pool is the frozen genEra call, 842 HAP1 + 883 HAP2",
+   "name": "the pool is the genEra rerun that added Idesia, 776 HAP1 + 835 HAP2",
    "ok": true,
-   "detail": "{'hap1': 842, 'hap2': 883}"
+   "detail": "{'hap1': 776, 'hap2': 835}"
   },
   {
    "name": "every pool gene carries its qc flags",
    "ok": true,
-   "detail": "1725 qc records for 1725 pool genes"
+   "detail": "1611 qc records for 1611 pool genes"
   },
   {
    "name": "phylostrat ladder counts match the shard ranks, every stratum",
@@ -274,12 +274,12 @@
    "detail": "16405 ancestral-gene tables"
   },
   {
-   "name": "ps.rr appears only where the rerun's rank differs from the frozen call",
+   "name": "ps.frz appears only where the frozen call's rank differs from the rerun",
    "ok": true,
-   "detail": "766 genes differ in the rerun"
+   "detail": "766 genes differ in the frozen call"
   },
   {
-   "name": "no ps.frz left over from the 2026-09-10 arrangement",
+   "name": "no ps.rr left over from the 2026-09-21 arrangement",
    "ok": true,
    "detail": ""
   },
@@ -317,6 +317,11 @@
    "name": "locus gene spans are positive",
    "ok": true,
    "detail": "0 bad"
+  },
+  {
+   "name": "every locus tile's pool mark equals the gene's ps.lsg",
+   "ok": true,
+   "detail": ""
   },
   {
    "name": "allele links point at existing genes",

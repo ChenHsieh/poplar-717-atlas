@@ -185,10 +185,11 @@ If a rebuild moves any of these, something changed upstream — find out what be
 |---|---|
 | gene models | 63,960 (HAP1 32,137 / HAP2 31,823) |
 | `private_no_ortholog` | 1,642 |
-| private ∩ PS ≥ 18 (browse query) | **923** (445 HAP1 + 478 HAP2), on the frozen call; matches the step-7 report's 275 + 648 |
-| LSG pool = rank ≥ 18 in the frozen genEra call (Chen, 2026-09-21: it does not change) | 1,725 = 842 HAP1 (392 PS18 + 450 PS19) + 883 HAP2 (454 + 429) |
-| pool genes at rank ≥ 18 in the rerun that added Idesia (a pass count, not a pool; `ps.rr`, `qc.rr`) | 776 HAP1 + 835 HAP2; 66 + 48 fall below |
-| pool genes in the chapter's post-QC set (`qc.post`, passes all four checks) | 589 HAP1 + 625 HAP2 |
+| private ∩ PS ≥ 18 (browse query) | **902** (433 HAP1 + 469 HAP2), on the pool's call (C5). It was 923 (445 + 478) on the frozen call, which matched the step-7 report's 275 + 648 |
+| LSG pool = rank ≥ 18 in the genEra rerun that added Idesia (ms2-lsg CORRECTIONS C5, Chen 2026-09-21 evening, reconfirmed 2026-09-26) | 1,611 = 776 HAP1 (433 PS18 + 343 PS19) + 835 HAP2 (497 + 338). Never quote the sum without the split |
+| the frozen 2026-04 genEra call, superseded (`ps.frz`, provenance only) | 842 HAP1 + 883 HAP2 at rank ≥ 18; 66 + 48 left the pool; 766 genes have a different rank |
+| QC flags on the pool (C5: abSENSE `qc.abs`, synteny window search `qc.ret`) | 84 + 106 and 96 + 104; both 6 + 10 |
+| pool genes in the chapter's post-QC set (`qc.post`, neither flag) | 602 HAP1 + 635 HAP2 |
 | HAP1↔HAP2 allele pairs | 51,862 |
 | expression | 652 samples, 28 studies, 38 BioProjects |
 | P. trichocarpa reciprocal 1:1 | 46,141 |
