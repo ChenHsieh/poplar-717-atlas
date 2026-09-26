@@ -38,8 +38,11 @@ DIAMOND-sensitivity note stay, listed as "Other evidence, not QC flags".
   whose membership differs between the two calls (114 changed), and `validate_data.py` holds every
   tile mark equal to the gene's `ps.lsg`. Under 0.14.0 they disagreed with the gene pages on 114
   genes for eleven days and nothing noticed.
-- The family-origin rank is the frozen call's. On a gene whose rank moved it now says "in the
-  frozen call"; unqualified, 419 genes read as belonging to a family that originates after them.
+- The family-origin rank is the frozen call's, and no rerun roll-up exists. On a gene whose
+  rank moved it is shown only where it can be read beside the current rank, labelled "in the
+  frozen call" (263 genes). On 419 genes it is younger than the gene itself, impossible inside
+  one run, so the card says "family origin not available in the current pool run" and keeps the
+  frozen value behind a "frozen call" toggle (main ms2's suggestion).
 - The Protein page's per-stratum peptide numbers are the owning analysis's, ranked by the rerun,
   so they and the pool agree again (TODO 53 closes).
 
@@ -48,8 +51,11 @@ DIAMOND-sensitivity note stay, listed as "Other evidence, not QC flags".
 today) and compares every pool gene's rank, membership, frozen call and flags with it, gene by
 gene; it no longer pins the four-check `lsg_pool_qc.tsv`. New section 0 compares each pinned
 table and ms2-lsg's `docs/CORRECTIONS.md` with the clone's origin/main and fails when the log has
-moved: pinning tables alone is what let C5 go unnoticed. Positive control: with the corrections
-log pinned at the C4 commit it fails by name.
+moved: pinning tables alone is what let C5 go unnoticed. It also pins the C5 entry's own hash,
+so a failure says whether the ruling the atlas follows changed or the log merely grew, and it
+prints the headings added since the pin. Positive controls: a log pinned at the C4 commit fails
+and names C5 as new while the ruling check passes; an altered section hash and a missing heading
+each fail on the ruling.
 
 ## 0.15.0 - 2026-09-21 - The pool is the frozen genEra call again, and every check on it is a flag
 

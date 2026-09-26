@@ -548,8 +548,17 @@ only what still has no second layer after that gets folded into About.
       `patch_baseline_fresh_ambient.py`) on top of 0.16.0 as data 0.17.0. Its three local render
       failures (two copies-panel roundings, one phone nav) need rechecking there. The coordinator
       asked to be told before this starts, to record the claim.
-      (c) The family-origin rank (`ps.fnd`) comes from the frozen run. The card now says so where
-      the gene's rank moved, but a rerun-based family origin needs the owner's roll-up; ask ms2-lsg.
+      (c) The family-origin rank (`ps.fnd`) comes from the frozen run and no rerun roll-up exists
+      (main ms2, 2026-09-26). The card withholds it on the 419 genes where it is younger than the
+      gene. main ms2 asked the "ms2 sapelo2" session to look for genEra founder tables beside
+      absense_20260901/hap{1,2}_idesia/pass2/ on scratch (30-day purge) and, if found, commit a
+      per-gene roll-up to ms2-lsg. UPDATE, same day: ms2-lsg 7077b38 carries
+      `data/founder_families_rerun_20260926/README.md` and `founder_rollup.py`, but NOT the table
+      (`.gitignore` dropped the .gz silently); the Sapelo2 session is re-adding it. main ms2 reports
+      family origin and gene age come from the same rerun, 0 violations across 15,040 families,
+      join key = bare locus. When the table is on main: pin the FILE by blob and sha256 (not the
+      commit), patch ps.fnd from it (restore the field, drop the withholding), and show the 39
+      genes in a family with no age row and the 6 with an age but no family as "not available".
       (d) Stale remote branches: `codex/atlas-hardening-20260923` is fully squash-merged as
       3e91e68; `pool-frozen-flags-20260921`, `ms2-canon-sync-20260921`, `pages-site-only`,
       `chen-wgd-events` are all contained in main. Safe to delete; left for Chen.

@@ -28,6 +28,7 @@ Needs a clone of ChenHsieh/ms2-lsg (private), so it runs on a maintainer's machi
 import collections
 import glob
 import gzip
+import hashlib
 import json
 import os
 import subprocess
@@ -91,8 +92,29 @@ def load_tables():
            "Fetch it (safe: this reads a commit, not HEAD).")
 
 
+def ruling_section(text, heading_prefix):
+    """The corrections-log entry the atlas follows: its heading line through the line before the
+    next `---` rule or `## ` heading. None if the heading is gone."""
+    lines = text.splitlines()
+    start = next((i for i, ln in enumerate(lines) if ln.startswith(heading_prefix)), None)
+    if start is None:
+        return None
+    end = next((i for i in range(start + 1, len(lines))
+                if lines[i].strip() == "---" or lines[i].startswith("## ")), len(lines))
+    return "\n".join(lines[start:end]).strip() + "\n"
+
+
+def section_sha(text, heading_prefix):
+    sec = ruling_section(text, heading_prefix)
+    return None if sec is None else hashlib.sha256(sec.encode()).hexdigest()
+
+
 def upstream_moved(root, pin):
-    """Section 0: has ms2-lsg main moved past the pin in a way that touches the atlas?"""
+    """Section 0: has ms2-lsg main moved past the pin in a way that touches the atlas?
+
+    Two separate questions, so a failure says which: did the RULING the atlas follows change
+    (the pinned section's own hash), and did the log merely GROW (the file's blob). Both fail;
+    the second prints the headings added since the pin, so a re-pin is a short read."""
     print("[0] the pin against ms2-lsg origin/main (the owner's current state)")
     head = subprocess.run(["git", "-C", root, "rev-parse", "--verify", "-q", "origin/main"],
                           capture_output=True, text=True).stdout.strip()
@@ -103,6 +125,23 @@ def upstream_moved(root, pin):
     age = (f"last fetch {(time.time() - os.path.getmtime(fh)) / 3600:.1f} h ago"
            if os.path.exists(fh) else "never fetched")
     print(f"      origin/main = {head[:9]} ({age}); pin = {pin['ms2_lsg_commit'][:9]}")
+    blob_text = lambda ref: subprocess.run(["git", "-C", root, "cat-file", "-p", ref],
+                                           capture_output=True, text=True).stdout
+    rs = pin.get("ruling_section")
+    if rs:
+        log_path = next(iter(pin["corrections_log"]))
+        now_sha = section_sha(blob_text(f"{head}:{log_path}"), rs["heading_prefix"])
+        check(f"the ruling the atlas follows is unchanged on origin/main ({rs['heading_prefix'][3:]})",
+              now_sha == rs["sha256"],
+              "" if now_sha == rs["sha256"] else
+              ("its heading is gone from the log" if now_sha is None
+               else "its text changed: read it before anything else"))
+    for path, blob in (pin.get("corrections_log") or {}).items():
+        old = {ln for ln in blob_text(blob).splitlines() if ln.startswith("## ")}
+        new = [ln for ln in blob_text(f"{head}:{path}").splitlines()
+               if ln.startswith("## ") and ln not in old]
+        for ln in new:
+            print(f"      new in {path}: {ln[3:]}")
     watched = dict(pin["tables"])
     watched.update(pin.get("corrections_log") or {})
     for path, blob in watched.items():

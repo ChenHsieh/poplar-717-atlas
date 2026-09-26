@@ -134,15 +134,28 @@ function geneCard(g) {
   }
   if (p.fnd) {
     const s = p.fnd.fam;
-    // The family-origin rank was computed on the frozen call and has not been recomputed on
-    // the rerun. Where the gene's own rank moved (p.frz), say so: otherwise 419 genes read as
-    // belonging to a family that originates AFTER the gene itself.
+    // The family-origin rank was computed on the frozen call; no rerun roll-up exists (main ms2,
+    // 2026-09-26). Where the gene's own rank moved (p.frz), the frozen origin is shown only if it
+    // can be read beside the current rank, and labelled. On 419 genes it is YOUNGER than the gene
+    // itself, which cannot happen inside one run: that is an artefact of joining two runs, so the
+    // number is not shown by default (a reader takes the number and skips the note), only
+    // reachable behind "frozen call".
+    const o = p.fnd.rank;
+    let origin = null;
+    if (o != null && o !== p.rank) {
+      if (p.frz && p.rank != null && o > p.rank) {
+        origin = el('span', { class: 'muted' }, ' · family origin not available in the current pool run ',
+          el('details', { style: 'display:inline-block;vertical-align:top' },
+            el('summary', {}, 'frozen call'),
+            `PS${o} in the frozen 2026-04 call, which placed this gene itself at PS${p.frz.rank}. `
+            + 'It cannot be read beside the current call’s rank for this gene.'));
+      } else {
+        origin = el('span', { class: 'muted' },
+          ` · family originates at PS${o}${p.frz ? ' in the frozen call' : ''}`);
+      }
+    }
     add('Gene family', s == null ? '—'
-      : el('span', {}, s === 1 ? el('strong', {}, 'singleton') : `${fmt(s)} members`,
-          p.fnd.rank != null && p.fnd.rank !== p.rank
-            ? el('span', { class: 'muted' }, ` · family originates at PS${p.fnd.rank}`
-                + (p.frz ? ' in the frozen call' : ''))
-            : null));
+      : el('span', {}, s === 1 ? el('strong', {}, 'singleton') : `${fmt(s)} members`, origin));
   }
 
   const card = el('div', { class: 'card' },

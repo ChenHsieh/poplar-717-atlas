@@ -353,10 +353,15 @@ await check('gene-lsg-qc-unstable', '#/gene/PtXaTreH.12G066000',
 await check('gene-left-the-pool', '#/gene/PtXaTreH.05G120200',
   { expect: ['no (pool is PS ≥ 18)', 'Frozen call', 'superseded as the pool, placed this gene at PS18',
              'left the pool', 'not by failing a QC check', 'not always due to Idesia',
-             // family origin is the frozen call's; unqualified it read as younger than the gene
-             'family originates at PS18 in the frozen call'],
+             // family origin is the frozen call's: PS18, younger than this gene's current PS17,
+             // which is impossible inside one run, so the number is withheld (419 genes)
+             'family origin not available in the current pool run'],
     forbid: ['Evidence quality', 'withdrawn', 'Idesia-corrected panel', 'never evaluated',
-             'The gene stays in the pool'], wait: 900 });
+             'The gene stays in the pool', 'family originates at PS18'], wait: 900 });
+// A moved gene whose frozen family origin CAN be read beside its current rank: shown, labelled.
+await check('gene-family-origin-frozen', '#/gene/PtXaTreH.01G003100',
+  { expect: ['family originates at PS11 in the frozen call'],
+    forbid: ['family origin not available'], wait: 900 });
 await check('module-protein-gradient', '#/module/protein',
   { expect: ['1 of 776 HAP1 and 0 of 835 HAP2 lineage-specific pool genes',
              'Strata here are those of the genEra rerun that added Idesia, which defines the pool',

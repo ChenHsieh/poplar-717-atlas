@@ -9,6 +9,11 @@
  "corrections_log": {
   "docs/CORRECTIONS.md": "52bb6956ed9a693f13275427d518a715c47f7424"
  },
+ "ruling_section": {
+  "heading_prefix": "## 2026-09-21 evening: C5",
+  "sha256": "c51bd7eb6b42fae97eeedcd441aae24a5abafaf6fd87213b3a02bf6acfc051ea",
+  "why": "Separates 'the rule that governs the atlas changed' from 'the log grew' (main ms2's suggestion, 2026-09-26). sha256 of the entry from its heading to the next --- rule or ## heading, computed by check_ms2_canon.ruling_section. Both failures stay failures."
+ },
  "tables": {
   "pipeline/out/lsg_pool_idesia.tsv.gz": "7dccc0e7caa3cb67466388ad147a3e0a4f5153bf",
   "pipeline/out/lsg_pool_flags_newpool.tsv": "175f95da0e2f5723de6d1db701f3ecf2f1fa5f78",
