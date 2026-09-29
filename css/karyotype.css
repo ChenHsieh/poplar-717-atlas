@@ -41,7 +41,7 @@
 .kp-figs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
 .kp-hap h3 { margin: 0 0 6px; font-size: 15px; }
 .kp-svgbox { overflow-x: auto; max-width: 100%; border: 1px solid var(--line); background: var(--panel); }
-.kp-svgbox svg { display: block; width: 100%; min-width: 520px; height: auto; }
+.kp-svgbox svg { display: block; width: 100%; min-width: 640px; height: auto; }
 .kp-svg text { font-family: var(--mono); font-size: 10px; fill: var(--ink-2); }
 .kp-svg .kp-bg { fill: var(--panel-2); stroke: var(--line-2); stroke-width: .6; }
 .kp-svg .kp-tick { stroke: var(--line); stroke-width: 1; }
