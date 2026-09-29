@@ -165,3 +165,7 @@ footer.bot { border-top: 1.5px solid var(--ink); font-size: 12.5px; color: var(-
 /* Uppercase headers turn tau and omega into T and a capital Omega; keep Greek column heads as written. */
 table.data th.greek, table.data th.greek .bz-sort { text-transform: none; font-size: 13px; }
 table.compare td.bz-desc { max-width: 260px; }
+
+/* Form controls do not inherit the page font by default; the map toggles and every module button
+   fell back to the system UI font against the herbarium type. */
+button, select, input, textarea { font-family: inherit; }
