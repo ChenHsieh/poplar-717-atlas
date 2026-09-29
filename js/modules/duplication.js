@@ -376,7 +376,10 @@ function geneCard(g) {
   if (td) {
     const kv = el('dl', { class: 'kv' });
     kv.append(el('dt', {}, 'Tandem array'),
-      el('dd', {}, el('span', { class: 'mono' }, td.aid || '—'),
+      el('dd', {}, td.aid
+        ? el('a', { href: `#/array/${td.aid}`, class: 'mono', 'data-array-link': td.aid,
+            title: 'open the array page: members to scale, divergence, expression' }, td.aid)
+        : el('span', { class: 'mono' }, '—'),
         el('span', { class: 'muted' }, `  ${td.n} member${td.n === 1 ? '' : 's'}`),
         td.age ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
           `age bin ${td.age}${td.ks != null ? ` · array median Ks ${td.ks}` : ''}`) : null));

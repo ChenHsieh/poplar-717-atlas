@@ -15,6 +15,7 @@
 // two-column layout reads as "nothing there" instead of "not measured".
 import { el, fmt } from '../core/dom.js';
 import { getGene, hapLabel, loadExprVector } from '../core/data.js';
+import { svgEl, genesIn, tileRecord, matchingRegion, drawTracks, tissueList, tissueN } from '../core/locusfig.js';
 
 const pct = (x) => `${(x * 100).toFixed(0)}%`;
 
@@ -44,7 +45,7 @@ function row(label, a, b, get, opts = {}) {
     ? el('td', { class: 'muted', title: opts.absent || 'not measured for this haplotype' },
         opts.absentLabel || 'not measured')
     : el('td', {}, v));
-  return el('tr', { style: differ ? 'background:var(--panel-2)' : null },
+  return el('tr', { class: differ ? 'pr-differ' : null, 'data-pair-row': label },
     el('th', { style: 'text-align:left;font-weight:500' }, label),
     cell(va), cell(vb),
     el('td', { style: 'width:1%;white-space:nowrap' }, differ && !missing(va) && !missing(vb)
@@ -65,12 +66,21 @@ function comparisonTable(a, b) {
     // a finding, a gene half the length of its allele is.
     row('Span', a, b, (g) => `${((g.end - g.start) / 1000).toFixed(2)} kb`,
       { differs: (x, y) => Math.abs((x.end - x.start) - (y.end - y.start)) > 0.1 * (x.end - x.start) }),
+    row('Description', a, b, (g) => ((g.ann || {}).d || null), { absentLabel: 'no description' }),
     row('Exons', a, b, (g) => (g.gs ? g.gs.ex : null)),
+    row('Protein length (aa)', a, b, (g) => (g.prot && g.prot.ss && g.prot.ss.n ? g.prot.ss.n : null),
+      { absentLabel: 'no protein model' }),
+    row('Predicted structure pLDDT', a, b, (g) => (g.prot && g.prot.ss && g.prot.ss.plddt != null ? g.prot.ss.plddt.toFixed(1) : null),
+      { absentLabel: 'no protein model', differs: (x, y) => false }),
+    row('Disordered fraction', a, b, (g) => (g.prot && g.prot.dis != null ? pct(g.prot.dis) : null),
+      { absentLabel: 'no protein model', differs: (x, y) => false }),
     row('Synteny class', a, b, (g) => (g.syn ? (g.syn.cls || '').replace(/_/g, ' ') : null)),
     row('Phylostratum', a, b, (g) => (g.ps && g.ps.rank != null ? `PS${g.ps.rank} · ${g.ps.name}` : null)),
-    row('Duplication', a, b, (g) => dupWords(g.dup)),
-    row('Tandem array', a, b, (g) => (g.td ? `${g.td.aid} · ${g.td.n} members` : 'not in one'),
-      { absentLabel: 'not in one' }),
+    row('Duplication (canonical v9)', a, b, (g) => dupWords(g.dup)),
+    row('Tandem array', a, b, (g) => (g.td ? el('a', { href: `#/array/${g.td.aid}`, class: 'mono' }, `${g.td.aid} · ${g.td.n} members`) : 'not in one'),
+      { absentLabel: 'not in one',
+        // array ids differ by construction (one per haplotype); membership and size do not
+        differs: (x, y) => !!x.td !== !!y.td || (!!x.td && x.td.n !== y.td.n) }),
     row('Peak tissue', a, b, t),
     row('τ (tissue specificity)', a, b, (g) => (g.x && g.x.tau != null ? g.x.tau.toFixed(2) : null)),
     row('Max TPM (652 samples)', a, b, (g) => (g.x && g.x.max != null ? g.x.max.toFixed(1) : null)),
@@ -86,25 +96,125 @@ function comparisonTable(a, b) {
     el('tbody', {}, ...rows)));
 }
 
-/** Per-tissue medians for both alleles, side by side, on one shared scale. */
+/** Per-tissue medians for both alleles on ONE shared linear TPM axis: paired horizontal bars,
+ *  HAP1 above HAP2 in each tissue, sample n per tissue beside the label. SVG, classes only. */
 function tissueCompare(a, b) {
+  const tissues = tissueList([a, b]);
+  if (!tissues.length) return null;
   const ta = (a.x || {}).t || {};
   const tb = (b.x || {}).t || {};
-  const tissues = [...new Set([...Object.keys(ta), ...Object.keys(tb)])];
-  if (!tissues.length) return null;
-  const max = Math.max(...tissues.flatMap((k) => [ta[k] || 0, tb[k] || 0]), 0.01);
-  const bar = (v, colour) => el('div', { style: 'display:flex;align-items:center;gap:6px' },
-    el('div', { class: 'bar', style: `width:${Math.max((v / max) * 100, v > 0 ? 1.5 : 0)}%;background:${colour}` }),
-    el('span', { class: 'num', style: 'font-size:11.5px' }, v == null ? '—' : v.toFixed(2)));
-  return el('table', { class: 'data' },
-    el('thead', {}, el('tr', {}, el('th', {}, 'Tissue'),
-      el('th', {}, 'HAP1 (TreH)'), el('th', {}, 'HAP2 (AlbH)'))),
-    el('tbody', {}, ...tissues.map((k) => el('tr', {},
-      el('td', {}, k),
-      el('td', { style: 'width:42%' }, bar(ta[k], 'var(--c-core)')),
-      el('td', { style: 'width:42%' }, bar(tb[k], 'var(--c-priv)'))))));
+  const { n, disagree } = tissueN([a, b], tissues);
+  const max = Math.max(0.01, ...tissues.flatMap((k) => [ta[k] || 0, tb[k] || 0]));
+  const W = 640;
+  const L = 150;
+  const R = 70;
+  const rowH = 30;
+  const H = 18 + tissues.length * rowH + 30;
+  const X = (v) => L + (v / max) * (W - L - R);
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, class: 'pr-expr', role: 'img', 'data-pair-expr': '' });
+  tissues.forEach((t, i) => {
+    const y = 14 + i * rowH;
+    svg.append(svgEl('text', { x: L - 8, y: y + 11, class: 'pr-tl', 'text-anchor': 'end' }, t.replace(/_/g, ' ')));
+    svg.append(svgEl('text', { x: L - 8, y: y + 23, class: 'pr-tn', 'text-anchor': 'end' }, n[t] == null ? 'n —' : `n ${n[t]}`));
+    [[ta[t], 'hap1', 0], [tb[t], 'hap2', 13]].forEach(([v, h, dy]) => {
+      if (v == null) {
+        svg.append(svgEl('text', { x: L + 4, y: y + dy + 10, class: 'pr-tn' }, 'no value'));
+        return;
+      }
+      svg.append(svgEl('rect', { x: L, y: y + dy + 1, width: Math.max(v > 0 ? 1.5 : 0, X(v) - L), height: 10, class: `pr-bar ${h}` },
+        svgEl('title', {}, `${h === 'hap1' ? a.id : b.id} ${t}: ${v} TPM`)));
+      svg.append(svgEl('text', { x: X(v) + 4, y: y + dy + 10, class: 'pr-tv' }, v.toFixed(1)));
+    });
+  });
+  const yA = 14 + tissues.length * rowH + 4;
+  svg.append(svgEl('line', { x1: L, x2: W - R, y1: yA, y2: yA, class: 'lf-axis' }));
+  [0, 0.5, 1].forEach((f) => svg.append(svgEl('text', { x: X(max * f), y: yA + 14, class: 'pr-tn', 'text-anchor': 'middle' },
+    (max * f).toFixed(max * f >= 10 ? 0 : 1))));
+  svg.append(svgEl('text', { x: W - R, y: yA + 26, class: 'pr-tn', 'text-anchor': 'end' }, 'median TPM (linear, shared axis)'));
+  return el('div', {},
+    el('div', { class: 'arr-legend' }, el('span', { class: 'arr-key hap1' }, ''), ` ${hapLabel('hap1')} ${a.id}   `,
+      el('span', { class: 'arr-key hap2' }, ''), ` ${hapLabel('hap2')} ${b.id}`),
+    el('div', { class: 'scroll-x' }, svg),
+    el('p', { class: 'arr-note' }, `${tissues.length} tissues; n beside each tissue is the number of samples its median is taken over`
+      + (disagree ? ' (the two records disagree on n; the first is shown)' : '')
+      + '. Both alleles are drawn on the same axis, never normalised to each other.'));
 }
 
+/** Both gene models on one axis, each drawn 5' to 3' from its own start, so exon structure
+ *  lines up for comparison regardless of strand. Exon features come from the locus tiles. */
+async function modelsFigure(a, b, holder) {
+  try {
+    const [ra, rb] = await Promise.all([tileRecord(a), tileRecord(b)]);
+    const len = (g) => g.end - g.start;
+    const span = Math.max(len(a), len(b));
+    const W = 760;
+    const L = 150;
+    const R = 20;
+    const X = (v) => L + (v / span) * (W - L - R);
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} 110`, class: 'lf-svg', role: 'img', 'data-pair-models': '' });
+    const missing = [];
+    [[a, ra, 'hap1', 18], [b, rb, 'hap2', 58]].forEach(([g, r, h, y]) => {
+      svg.append(svgEl('text', { x: 4, y: y + 10, class: `lf-lab ${h}` }, hapLabel(h).split(' ')[0]));
+      svg.append(svgEl('text', { x: 4, y: y + 24, class: 'lf-sub' }, `${g.strand} strand · ${(len(g) / 1000).toFixed(2)} kb`));
+      const gg = svgEl('g', { class: 'lf-gene on' });
+      gg.append(svgEl('line', { x1: X(0), x2: X(len(g)), y1: y + 8, y2: y + 8, class: 'lf-intron' }));
+      let feats = r && r.f && r.f.length ? r.f : null;
+      if (!feats) { missing.push(g.id); feats = [[0, len(g), 1]]; }
+      for (const [off, l, cds] of feats) {
+        // reverse-strand genes are flipped so both read 5' -> 3' left to right
+        const s = g.strand === '-' ? len(g) - off - l : off;
+        svg.append(gg);
+        gg.append(svgEl('rect', { x: X(s), y: cds ? y + 2 : y + 5, width: Math.max(1, X(s + l) - X(s)), height: cds ? 12 : 6,
+          class: cds ? 'lf-cds' : 'lf-utr' }));
+      }
+    });
+    svg.append(svgEl('line', { x1: L, x2: W - R, y1: 96, y2: 96, class: 'lf-axis' }));
+    svg.append(svgEl('text', { x: L, y: 108, class: 'lf-tick' }, "5′  0 kb"));
+    svg.append(svgEl('text', { x: W - R, y: 108, class: 'lf-tick', 'text-anchor': 'end' }, `${(span / 1000).toFixed(2)} kb  3′`));
+    holder.replaceChildren(el('div', { class: 'scroll-x' }, svg),
+      el('p', { class: 'arr-note' }, 'Both models share one axis in base pairs, each starting at its own 5′ end. Tall blocks are '
+        + 'coding exons, short blocks untranslated exon parts, lines introns. '
+        + `Exon counts: ${a.gs ? a.gs.ex : '—'} and ${b.gs ? b.gs.ex : '—'}.`
+        + (missing.length ? ` No exon structure is available for ${missing.join(' and ')}; drawn as one block.` : '')));
+  } catch (e) {
+    holder.replaceChildren(el('p', { class: 'muted' }, `Gene models unavailable: ${e.message}`));
+  }
+}
+
+/** Neighbourhood on both haplotypes for a gene with no allele. */
+async function soloNeighbourhood(g, holder) {
+  try {
+    const wide = await genesIn(g.hap, g.chr, g.start - 3e5, g.end + 3e5);
+    const i = wide.findIndex((r) => r.g === g.id);
+    const lo = wide[Math.max(0, i - 6)];
+    const hi = wide[Math.min(wide.length - 1, i + 6)];
+    const own = await genesIn(g.hap, g.chr, lo.s, hi.e);
+    const region = await matchingRegion(g.hap, wide, [g.id], 6);
+    const tracks = [{ label: hapLabel(g.hap).split(' ')[0], chr: g.chr, hapClass: g.hap, from: lo.s - 2000, to: hi.e + 2000,
+      rows: own, mark: new Set([g.id]) }];
+    let links = [];
+    if (region) {
+      const rows = await genesIn(region.hap, region.chr, region.from - 2000, region.to + 2000);
+      tracks.push({ label: hapLabel(region.hap).split(' ')[0], chr: region.chr, hapClass: region.hap,
+        from: region.from - 2000, to: region.to + 2000, rows, mark: new Set() });
+      links = region.anchors;
+    }
+    const other = g.hap === 'hap1' ? 'hap2' : 'hap1';
+    holder.replaceChildren(el('div', { class: 'scroll-x lf-box' },
+      drawTracks(tracks, links, { onGene: (id) => { location.hash = `#/gene/${id}`; } })),
+    el('p', { class: 'arr-note' }, `Top: ${own.length} genes around ${g.id} (filled). `
+      + (region ? `Bottom: the matching stretch of ${hapLabel(region.hap)} ${region.chr}, placed by the alleles of `
+        + `${region.anchors.length} flanking genes (joined by lines). Where the gap between those flanks holds no `
+        + 'gene, the other parent has nothing annotated in that position.'
+        : `No flanking gene within 6 genes has an allele, so the matching region on ${hapLabel(other)} cannot be placed.`)
+      + ' Click a gene to open it.'),
+    el('p', { style: 'margin:6px 0 0' },
+      el('a', { href: `#/map/${g.hap}/${g.chr}` }, `${g.chr} on the genome map →`),
+      region ? el('a', { href: `#/map/${region.hap}/${region.chr}`, style: 'margin-left:14px' }, `${region.chr} on ${hapLabel(region.hap)} →`) : null));
+  } catch (e) {
+    holder.replaceChildren(el('p', { class: 'muted' }, `Neighbourhood unavailable: ${e.message}`));
+  }
+}
 /** Correlation of the two alleles across all 652 samples, computed here from the two vectors.
  *  Stated as what it is: a descriptive number on raw TPM, not an allele-specific expression
  *  result -- ASE needs read-level phasing-aware quantification, which this atlas does not
@@ -156,7 +266,10 @@ export async function pairView(id) {
   }
   if (res.solo) {
     const g = res.solo;
-    return el('div', {},
+    const nb = el('div', { 'data-pair-neighbourhood': '' }, el('p', { class: 'muted' }, 'Drawing the neighbourhood on both haplotypes…'));
+    soloNeighbourhood(g, nb);
+    return el('div', { 'data-pair-solo': g.id },
+      el('div', { class: 'kicker' }, `Allele pair · ${hapLabel(g.hap)}`),
       el('h1', {}, 'No allele pair'),
       el('p', { class: 'sub' }, el('span', { class: 'mono' }, g.id),
         ' has no allele in the other haplotype.'),
@@ -169,7 +282,12 @@ export async function pairView(id) {
         el('p', { style: 'margin:10px 0 0' },
           el('a', { href: `#/gene/${g.id}` }, 'Open the gene page →'), '  ',
           el('a', { href: '#/browse?allele=no', style: 'margin-left:14px' },
-            'Browse all genes with no allele →'))));
+            'Browse all genes with no allele →'))),
+      el('div', { class: 'card' },
+        el('h2', {}, 'Where it sits, on both haplotypes'),
+        nb),
+      g.td ? el('div', { class: 'card' }, el('p', { style: 'margin:0' }, 'This gene is a member of tandem array ',
+        el('a', { href: `#/array/${g.td.aid}`, class: 'mono' }, g.td.aid), ` (${g.td.n} members).`)) : null);
   }
 
   const { a, b, ks } = res;
@@ -178,7 +296,10 @@ export async function pairView(id) {
   alleleCorrelation(a, b, corr);
 
   const tc = tissueCompare(a, b);
-  return el('div', {},
+  const models = el('div', {}, el('p', { class: 'muted' }, 'Drawing both gene models…'));
+  modelsFigure(a, b, models);
+  return el('div', { 'data-pair': `${a.id}|${b.id}` },
+    el('div', { class: 'kicker' }, 'Allele pair · HAP1 and HAP2'),
     el('h1', {}, 'Allele pair'),
     el('p', { class: 'sub' },
       el('span', { class: 'mono' }, a.id), ' · ', el('span', { class: 'mono' }, b.id),
@@ -192,11 +313,18 @@ export async function pairView(id) {
       el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.w != null ? ks.w.toFixed(3) : '—'),
         el('div', { class: 'l' }, 'ω')),
     ),
+    el('p', { class: 'arr-note' }, 'dS, dN and ω are for this allele pair (HAP1 against HAP2). '
+      + (ks && ks.w == null ? 'ω is not given where dS is zero or not estimable, since the ratio is undefined. ' : '')
+      + 'The per-gene ω against P. trichocarpa is a different comparison and sits in the table below.'),
+
+    el('div', { class: 'card' },
+      el('h2', {}, 'Gene models', el('span', { class: 'tag' }, 'shared axis, 5′ to 3′')),
+      models),
 
     el('div', { class: 'card' },
       el('h2', {}, 'Side by side', el('span', { class: 'tag' }, 'rows that differ are marked')),
       comparisonTable(a, b),
-      el('p', { class: 'muted', style: 'font-size:11.5px;margin:10px 0 0' },
+      el('p', { class: 'arr-note' },
         'A shaded row means the two alleles differ. "not measured" is not "absent": HAP2 '
         + 'domain annotation is thinner than HAP1 for release reasons, so an empty Pfam cell '
         + 'on the right is a gap in the annotation, not a protein without domains.')),
