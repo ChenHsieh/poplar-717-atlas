@@ -2271,6 +2271,94 @@ for (const scheme of ['light', 'dark']) {
   }
 }
 
+// #/array/<id>, #/arrays and the deeper #/pair: member count re-derived from arrays.json here
+// (not a snapshot), a driven click from a gene's Duplication card, pair pages with and without
+// an allele, and a phone fit. Elements are found by data- attributes only.
+{
+  const ap = await browser.newPage({ viewport: { width: 1180, height: 1000 } });
+  const aerrs = [];
+  ap.on('pageerror', (e) => aerrs.push(e.message));
+  ap.on('console', (m) => { if (m.type() === 'error') aerrs.push('console: ' + m.text()); });
+  const arrays = await (await fetch(`${base}/data/index/arrays.json`)).json();
+  // the tandem gene used by gene-tandem-array above; find its array by membership
+  const gid = 'PtXaTreH.01G330700';
+  const aid = Object.keys(arrays).find((k) => arrays[k].includes(gid));
+  const want = aid ? arrays[aid].length : -1;
+  await ap.goto(base + '/#/gene/' + gid, { waitUntil: 'networkidle' });
+  await ap.waitForTimeout(1400);
+  await revealViewPanels(ap);
+  const link = ap.locator(`[data-card="duplication"] [data-array-link="${aid}"]`).first();
+  const hasLink = await link.count() > 0;
+  if (hasLink) { await link.scrollIntoViewIfNeeded(); await link.click(); }
+  await ap.waitForSelector('[data-arr-page]', { timeout: 15000 }).catch(() => aerrs.push('array page did not render'));
+  await ap.waitForSelector('[data-arr-locus] svg', { timeout: 15000 }).catch(() => aerrs.push('no locus figure'));
+  const got = await ap.evaluate(() => ({
+    hash: location.hash,
+    n: document.querySelectorAll('[data-arr-member]').length,
+    attr: Number((document.querySelector('[data-arr-page]') || {}).dataset?.arrN),
+    heat: document.querySelectorAll('[data-arr-heat-row]').length,
+    marked: document.querySelectorAll('[data-arr-locus] .lf-gene.on').length,
+    text: document.getElementById('view').innerText,
+  }));
+  await ap.screenshot({ path: `${outdir}/array-page.png`, fullPage: true });
+  await ap.goto(base + '/#/arrays', { waitUntil: 'networkidle' });
+  await ap.waitForTimeout(800);
+  const idx = await ap.evaluate(() => ({
+    rows: document.querySelectorAll('[data-arrays-row]').length,
+    count: (document.querySelector('[data-arrays-count]') || {}).textContent || '' }));
+  await ap.locator('[data-arrays-sort="n"]').click();          // toggles to ascending
+  const firstAsc = await ap.evaluate(() => document.querySelector('[data-arrays-row] td:nth-child(4)').textContent);
+  const nArrays = Object.keys(arrays).length;
+  const ok = !aerrs.length && hasLink && want > 1 && got.hash === `#/array/${aid}`
+    && got.n === want && got.attr === want && got.heat === want && got.marked >= want
+    && /no ks estimate|have none/i.test(got.text) && /n \d+/.test(got.text)
+    && idx.rows > 0 && idx.count.includes(`of ${nArrays} arrays`) && firstAsc === '2';
+  if (!ok) failures++;
+  console.log(`\n### array:page-from-duplication-card  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${aid}: ${got.n} member rows, heat rows ${got.heat}, want ${want} (from arrays.json); `
+    + `link ${hasLink}; index ${idx.rows} rows, "${idx.count.slice(0, 40)}"; smallest-first ${firstAsc}`);
+  aerrs.forEach((e) => console.log('   !! ' + e));
+  await ap.close();
+
+  // pair pages: with an allele (models + expression figure), without one (neighbourhood)
+  const pp = await browser.newPage({ viewport: { width: 1180, height: 1000 } });
+  const perr = [];
+  pp.on('pageerror', (e) => perr.push(e.message));
+  pp.on('console', (m) => { if (m.type() === 'error') perr.push('console: ' + m.text()); });
+  await pp.goto(base + '/#/pair/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
+  await pp.waitForSelector('[data-pair-models]', { timeout: 15000 }).catch(() => perr.push('no gene models'));
+  const withA = await pp.evaluate(() => ({
+    pair: (document.querySelector('[data-pair]') || {}).dataset?.pair,
+    bars: document.querySelectorAll('[data-pair-expr] .pr-bar').length,
+    ns: document.querySelectorAll('[data-pair-expr] .pr-tn').length,
+    desc: !!document.querySelector('[data-pair-row="Description"]') }));
+  await pp.goto(base + '/#/pair/PtXaTreH.01G175200', { waitUntil: 'networkidle' });
+  await pp.waitForSelector('[data-pair-neighbourhood] svg', { timeout: 15000 }).catch(() => perr.push('no neighbourhood'));
+  const solo = await pp.evaluate(() => ({
+    id: (document.querySelector('[data-pair-solo]') || {}).dataset?.pairSolo,
+    tracks: document.querySelectorAll('[data-pair-neighbourhood] .lf-lab').length }));
+  const pok = !perr.length && withA.pair === 'PtXaTreH.05G120200|PtXaAlbH.05G122300' && withA.bars >= 2
+    && withA.ns > 0 && withA.desc && solo.id === 'PtXaTreH.01G175200' && solo.tracks >= 1;
+  if (!pok) failures++;
+  console.log(`\n### pair:models-expression-neighbourhood  ${pok ? 'OK' : 'FAIL'}`);
+  console.log(`   pair ${withA.pair}, ${withA.bars} bars; solo tracks ${solo.tracks}`);
+  perr.forEach((e) => console.log('   !! ' + e));
+  await pp.close();
+
+  // phone fit: no horizontal PAGE scroll on the new pages
+  const mp = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const fits = [];
+  for (const h of [`#/array/${aid}`, '#/arrays', '#/pair/PtXaTreH.05G120200', '#/pair/PtXaTreH.01G175200']) {
+    await mp.goto(base + '/' + h, { waitUntil: 'networkidle' });
+    await mp.waitForTimeout(1500);
+    fits.push([h, await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2)]);
+  }
+  const fok = fits.every(([, f]) => f);
+  if (!fok) failures++;
+  console.log(`\n### array-pair:fits-a-phone  ${fok ? 'OK' : 'FAIL'}  ${fits.map(([h, f]) => `${h}=${f}`).join(' ')}`);
+  await mp.close();
+}
+
 // The home page overflowed a 375px phone by 74px (the question list). Held at phone width now.
 {
   const p = await browser.newPage({ viewport: { width: 375, height: 800 } });
