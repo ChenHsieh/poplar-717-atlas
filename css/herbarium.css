@@ -155,3 +155,9 @@ footer.bot { border-top: 1.5px solid var(--ink); font-size: 12.5px; color: var(-
   main { padding: 18px 14px 60px; }
 }
 @media (prefers-reduced-motion: reduce) { .bz-group > summary::before { transition: none; } }
+
+/* The copies figure lays rows out at fixed pixel offsets measured with the system sans;
+   Source Sans 3 has taller ascent/descent metrics and made the stacked labels collide.
+   The figure keeps the font it was measured with. */
+.cp-svg text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+.cp-svg .cp-id, .cp-svg .cp-pos { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }

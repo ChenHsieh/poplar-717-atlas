@@ -2050,7 +2050,10 @@ for (const scheme of ['light', 'dark']) {
     const card = document.querySelector('#view .card');
     const probe = document.createElement('a');
     probe.href = '#'; probe.id = '__contrast_probe'; probe.textContent = 'probe';
-    probe.style.color = sch === 'dark' ? '#3987e5' : '#2a78d6';   // the OLD, failing colour
+    // A colour that must FAIL on this scheme's panels. Dark: the light theme's moss link colour
+    // leaking into dark mode (the old #3987e5 passes on the darker herbarium panels, so it
+    // stopped being a control). Light: the pre-2026-09-20 link blue, still 4.3:1 on paper.
+    probe.style.color = sch === 'dark' ? '#3f5a2a' : '#2a78d6';
     probe.style.fontSize = '12px';
     card.appendChild(probe);
     const rgb = (s) => (s.match(/[\d.]+/g) || []).slice(0, 4).map(Number);

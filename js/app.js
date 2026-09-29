@@ -520,8 +520,10 @@ function sectionNav(bands) {
       if (on) {
         const pad = 12;
         if (on.offsetLeft < nav.scrollLeft + pad) nav.scrollLeft = Math.max(0, on.offsetLeft - pad);
+        // Align the chip's START, not its end: the row snaps to chip starts (scroll-snap-align),
+        // so an end-aligned scrollLeft was pulled back by the snap and left the chip half off.
         else if (on.offsetLeft + on.offsetWidth > nav.scrollLeft + nav.clientWidth - pad)
-          nav.scrollLeft = on.offsetLeft + on.offsetWidth - nav.clientWidth + pad;
+          nav.scrollLeft = on.offsetLeft;
       }
     }
   };
