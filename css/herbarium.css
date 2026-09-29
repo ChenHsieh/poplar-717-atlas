@@ -161,3 +161,7 @@ footer.bot { border-top: 1.5px solid var(--ink); font-size: 12.5px; color: var(-
    The figure keeps the font it was measured with. */
 .cp-svg text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 .cp-svg .cp-id, .cp-svg .cp-pos { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+/* Uppercase headers turn tau and omega into T and a capital Omega; keep Greek column heads as written. */
+table.data th.greek, table.data th.greek .bz-sort { text-transform: none; font-size: 13px; }
+table.compare td.bz-desc { max-width: 260px; }

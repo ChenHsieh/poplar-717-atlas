@@ -209,11 +209,11 @@ const COLUMNS = [
   { id: 'chr', label: 'Chr', key: (r) => r.chr },
   { id: 'cls', label: 'Synteny class', key: (r) => r.cls },
   { id: 'ps', label: 'PS', num: true, key: (r) => r.ps, title: 'phylostratum (genEra rank)' },
-  { id: 'tau', label: '\u03c4', num: true, key: (r) => r.tau, title: 'tissue specificity' },
+  { id: 'tau', label: '\u03c4', num: true, greek: true, key: (r) => r.tau, title: 'tissue specificity' },
   { id: 'top', label: 'Peak tissue', key: (r) => r.top },
   { id: 'npres', label: 'Genomes', num: true, key: (r) => r.npres || null,
     title: 'genomes in the orthogroup, of 12' },
-  { id: 'w', label: '\u03c9', num: true, key: (r) => (r.w >= 0 ? r.w : null),
+  { id: 'w', label: '\u03c9', num: true, greek: true, key: (r) => (r.w >= 0 ? r.w : null),
     title: 'Ka/Ks against the best P. trichocarpa ortholog' },
   { id: 'ms', label: 'MS', num: true, key: (r) => (r.ms > 0 ? r.ms : null),
     title: 'mass-spec datasets with a peptide, of 5' },
@@ -266,7 +266,7 @@ function resultsTable(state, onSort) {
   const head = COLUMNS.map((c) => {
     const on = state.sort.col === c.id;
     const arrow = on ? (state.sort.dir > 0 ? ' \u2191' : ' \u2193') : '';
-    const cls = [c.num ? 'num' : '', c.key ? 'sortable' : '', on ? 'on' : ''].join(' ').trim();
+    const cls = [c.num ? 'num' : '', c.key ? 'sortable' : '', on ? 'on' : '', c.greek ? 'greek' : ''].join(' ').trim();
     return el('th', { class: cls || null, title: c.title || null, scope: 'col',
       'aria-sort': on ? (state.sort.dir > 0 ? 'ascending' : 'descending') : null },
       c.key ? el('button', { type: 'button', class: 'bz-sort', onclick: () => onSort(c.id) }, c.label + arrow)
