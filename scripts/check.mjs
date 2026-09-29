@@ -1862,7 +1862,11 @@ await check('map-hap2', '#/map/hap2',
   // invisible to innerText -- only assert on real DOM text here.
   const hasChr = chrText.includes('Chr19') && chrText.includes('HAP1 (TreH)')
     && chrText.includes('← genome');
-  await mp.click('.locus-canvas', { position: { x: 400, y: 84 } });
+  // Click the gene the view itself reports at data-probe-x/y (changed 2026-09-29 from a fixed
+  // position: the chromosome view became a multi-track browser and its layout moved).
+  const probe = await mp.$eval('[data-map-view="chromosome"] .map-stage',
+    (s) => ({ x: +s.dataset.probeX, y: +s.dataset.probeY }));
+  await mp.click('[data-map-view="chromosome"] .map-canvas', { position: probe });
   await mp.waitForTimeout(900);
   const afterClick = mp.url();
   const navigated = /#\/(gene\/PtXaTreH\.19|map\/hap1$)/.test(afterClick);
@@ -1872,6 +1876,78 @@ await check('map-hap2', '#/map/hap2',
   console.log(`   chromosome view rendered: ${hasChr}   url after click: ${afterClick}`);
   merrs.forEach((e) => console.log('   !! ' + e));
   await mp.close();
+}
+
+// Genome map track browser (2026-09-29): renders both haplotypes with a legend that
+// states n; a driven zoom narrows the window (positive control: the whole-chromosome gene
+// count must be LARGER than the zoomed count, and the URL must carry start/end); at gene
+// level the probed gene opens its page; a shared ?start=&end= URL restores that window;
+// and at 390 px the page does not scroll sideways and every map button is >= 44 px.
+{
+  const mp = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+  const errs = [];
+  mp.on('pageerror', (e) => errs.push(e.message));
+  mp.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+  // Chr08 has a gene-free stretch near its middle, so zoom from a window that starts gene-rich.
+  await mp.goto(base + '/#/map/hap1/Chr08', { waitUntil: 'networkidle' });
+  await mp.waitForSelector('[data-map-view="chromosome"] .map-stage[data-tiles="ready"]', { timeout: 15000 });
+  await mp.waitForTimeout(300);
+  const t0 = await viewText(mp);
+  const rendered = ['HAP1 (TreH)', 'HAP2 (AlbH)', 'Duplication', 'Synteny', 'LSG pool', 'allele links drawn']
+    .every((x) => t0.includes(x));
+  const nWhole = await mp.$eval('.map-stage', (s) => +s.dataset.genesInView);
+  const linksWhole = +(t0.match(/(\d+) allele links drawn/) || [0, 0])[1];
+  for (let i = 0; i < 3; i++) { await mp.click('[data-map-zoom="in"]'); await mp.waitForTimeout(60); }
+  for (let i = 0; i < 3; i++) { await mp.click('[data-map-pan="left"]'); await mp.waitForTimeout(60); }
+  for (let i = 0; i < 4; i++) { await mp.click('[data-map-zoom="in"]'); await mp.waitForTimeout(60); }
+  await mp.waitForTimeout(300);
+  const nZoom = await mp.$eval('.map-stage', (s) => +s.dataset.genesInView);
+  const url = mp.url();
+  const urlOk = /\?start=\d+&end=\d+/.test(url);
+  // brush: drag across part of the tracks with the mouse, the window must shrink again
+  const box = await (await mp.$('.map-canvas')).boundingBox();
+  await mp.mouse.move(box.x + 300, box.y + 120);
+  await mp.mouse.down();
+  await mp.mouse.move(box.x + 500, box.y + 120, { steps: 5 });
+  await mp.mouse.up();
+  await mp.waitForTimeout(300);
+  const nBrush = await mp.$eval('.map-stage', (s) => +s.dataset.genesInView);
+  // shared URL restores the window
+  const p2 = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+  await p2.goto(url, { waitUntil: 'networkidle' });
+  await p2.waitForTimeout(800);
+  const nShared = await p2.$eval('.map-stage', (s) => +s.dataset.genesInView);
+  await p2.close();
+  const probe = await mp.$eval('.map-stage', (s) => ({ x: +s.dataset.probeX, y: +s.dataset.probeY, g: s.dataset.probeGene }));
+  await mp.click('.map-canvas', { position: { x: probe.x, y: probe.y } });
+  await mp.waitForTimeout(800);
+  const opened = mp.url().endsWith('#/gene/' + probe.g);
+  const ok = rendered && nWhole > nZoom && nZoom > 0 && nBrush <= nZoom && nBrush > 0 && urlOk
+    && nShared === nZoom && linksWhole > 0 && opened && !errs.length;
+  if (!ok) failures++;
+  console.log(`\n### map:track-browser  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   rendered=${rendered} genes whole=${nWhole} zoomed=${nZoom} brushed=${nBrush} shared=${nShared}`
+    + ` links=${linksWhole} urlOk=${urlOk} opened ${probe.g}=${opened}`);
+  errs.forEach((e) => console.log('   !! ' + e));
+  await mp.close();
+}
+for (const hash of ['#/map', '#/map/hap2/Chr19?start=1000000&end=1200000']) {
+  const pp = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  await pp.goto(base + '/' + hash, { waitUntil: 'networkidle' });
+  await pp.waitForTimeout(1200);
+  const m = await pp.evaluate(() => {
+    const btns = [...document.querySelectorAll('.map-btn, .map-metric')];
+    const small = btns.filter((b) => { const r = b.getBoundingClientRect(); return r.width < 44 || r.height < 44; }).length;
+    const cv = document.querySelector('.map-canvas');
+    return { fits: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      nBtns: btns.length, small, canvasW: cv ? cv.getBoundingClientRect().width : 0,
+      touch: cv ? getComputedStyle(cv).touchAction : '' };
+  });
+  const ok = m.fits && m.nBtns > 0 && m.small === 0 && m.canvasW > 200 && m.canvasW <= 390 && m.touch === 'pan-y';
+  if (!ok) failures++;
+  console.log(`\n### map:phone ${hash}  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${JSON.stringify(m)}`);
+  await pp.close();
 }
 
 // Phytozome links (fixed 2026-09-08): the previous constant had no genome segment at
