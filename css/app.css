@@ -2,44 +2,68 @@
    (light: worst adjacent CVD dE 9.1, normal-vision 19.6; dark: 8.4 / 19.3).
    Light mode puts aqua/yellow/magenta under 3:1 on the surface, so the RELIEF RULE
    applies: every class swatch is shipped with its text label, never color alone. */
+/* Herbarium theme (2026-09-29). Paper, ink and a moss accent, chosen by Chen from three
+   mocked directions. The DATA palette (--c-core ... --c-tandem) is unchanged: it is the
+   CVD-validated categorical set (light: worst adjacent CVD dE 9.1, normal-vision 19.6; dark:
+   8.4 / 19.3), and under the RELIEF RULE every class swatch still ships with its text label.
+   Only the chrome moved. Text colours were measured against all three surfaces:
+   --ink-2 on --panel-2 >= 7:1, --accent-ink on --panel-2 >= 6.5:1 (light), and check.mjs
+   re-measures every visible link in both schemes. */
 :root {
   color-scheme: light;
-  --surface: #fcfcfb; --panel: #ffffff; --panel-2: #f5f5f3;
-  --line: #e2e1dd; --line-2: #cfceca;
-  --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #86847e;
-  --accent: #2a78d6;
-  --accent-ink: #2468bd;
+  --surface: #f3eee2; --panel: #fffdf7; --panel-2: #f6f1e5;
+  --line: #e0d7c3; --line-2: #c3b596;
+  --ink: #1d1b16; --ink-2: #4c4333; --ink-3: #7d705a;
+  --accent: #3f5a2a;
+  --accent-ink: #3a5426;
+  --accent-soft: #e6ead9; --on-accent: #ffffff;
+  --stamp: #9b3b24;
+  --hap1: #3f5a2a; --hap2: #a97f2e;
   --c-core: #2a78d6; --c-disp: #eb6834; --c-nonsyn: #1baf7a;
   --c-priv: #eda100; --c-tandem: #e87ba4;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --serif: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --sans: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --dot: #e3dbc8;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --surface: #1a1a19; --panel: #232322; --panel-2: #2b2b29;
-    --line: #38382f; --line-2: #4a4a40;
-    --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #8f8e84;
-    --accent: #3987e5;
-    --accent-ink: #5b9fee;
+    --surface: #17160f; --panel: #201e16; --panel-2: #29261c;
+    --line: #37332a; --line-2: #564f3f;
+    --ink: #f1ead8; --ink-2: #cdc3ab; --ink-3: #9a8f78;
+    --accent: #8fae6c;
+    --accent-ink: #a8c687;
+    --accent-soft: #2c3322; --on-accent: #17160f;
+    --stamp: #e0876c;
+    --hap1: #8fae6c; --hap2: #d8b060;
     --c-core: #3987e5; --c-disp: #d95926; --c-nonsyn: #199e70;
     --c-priv: #c98500; --c-tandem: #d55181;
+    --dot: #221f17;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --surface: #1a1a19; --panel: #232322; --panel-2: #2b2b29;
-  --line: #38382f; --line-2: #4a4a40;
-  --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #8f8e84;
-  --accent: #3987e5;
-  --accent-ink: #5b9fee;
+  --surface: #17160f; --panel: #201e16; --panel-2: #29261c;
+  --line: #37332a; --line-2: #564f3f;
+  --ink: #f1ead8; --ink-2: #cdc3ab; --ink-3: #9a8f78;
+  --accent: #8fae6c;
+  --accent-ink: #a8c687;
+  --accent-soft: #2c3322; --on-accent: #17160f;
+  --stamp: #e0876c;
+  --hap1: #8fae6c; --hap2: #d8b060;
   --c-core: #3987e5; --c-disp: #d95926; --c-nonsyn: #199e70;
   --c-priv: #c98500; --c-tandem: #d55181;
+  --dot: #221f17;
 }
 
 * { box-sizing: border-box; }
 body {
   margin: 0; background: var(--surface); color: var(--ink);
-  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font: 15px/1.55 var(--sans);
+  /* herbarium mounting-board dots; purely decorative, fixed so it never scrolls with content */
+  background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+  background-size: 22px 22px; background-attachment: fixed;
 }
 /* Links use --accent-ink, NOT --accent. Measured 2026-09-20: #2a78d6 is 4.30:1 on --surface,
    4.42 on --panel, 4.04 on --panel-2 -- under WCAG AA's 4.5:1 for 14px text on EVERY

@@ -129,6 +129,24 @@ def main():
         "vocab": {"chr": chrs, "cls": clss, "top": tops, "xin": XIN_TISSUES},
         "rows": rows,
     }
+    # Short gene descriptions for the Browse table, aligned with genes.json like the rows
+    # above. The Phytozome description first; where there is none, the Arabidopsis best hit's
+    # own defline, prefixed so it is never read as this gene's annotation. Empty string when
+    # neither exists: a named absence, and the client shows a dash.
+    desc = []
+    for gid in order:
+        ann = recs[gid][1].get("ann") or {}
+        if ann.get("d"):
+            desc.append(ann["d"])
+        elif ann.get("atd"):
+            desc.append(f"similar to {ann.get('at', 'Arabidopsis')}: {ann['atd']}")
+        else:
+            desc.append("")
+    dp = f"{data}/index/desc.json"
+    with open(dp, "w") as fh:
+        json.dump(desc, fh, separators=(",", ":"), ensure_ascii=False)
+    print(f"desc: {sum(1 for d in desc if d)} of {len(desc)} genes described -> "
+          f"{os.path.getsize(dp)/1e6:.2f} MB raw")
     p = f"{data}/index/facets.json"
     with open(p, "w") as fh:
         json.dump(out, fh, separators=(",", ":"))

@@ -5,7 +5,7 @@
 // shards -- a filter that had to read 39 MB of shards plus 208 MB of expression buckets would
 // not be a filter anyone waits for.
 import { el, clear, fmt } from './dom.js';
-import { loadFacets, facetRow, loadGeneIndex, dataVersion } from './data.js';
+import { loadFacets, facetRow, loadGeneIndex, loadDescIndex, dataVersion } from './data.js';
 import { query, setQuery } from './router.js';
 import { onDispose } from './lifecycle.js';
 import {
@@ -105,6 +105,56 @@ export const FILTERS = [
     test: (r, v) => r.xin.includes(v) },
 ];
 
+
+// Where each filter sits in the sidebar, and the one-line hint shown under its label. Kept
+// beside FILTERS rather than inside it so the predicates above stay exactly what the home page
+// counts with. `adv` filters live in the folded "Disputed and exploratory" group, which opens by
+// itself when a deep link sets one of them.
+export const FILTER_GROUPS = [
+  { id: 'where', label: 'Genome', ids: ['hap', 'chr', 'allele'] },
+  { id: 'age', label: 'Age and conservation', ids: ['ps_min', 'cls'] },
+  { id: 'dup', label: 'Duplication', ids: ['tandem', 'wgd'] },
+  { id: 'expr', label: 'Expression', ids: ['xin', 'top', 'tau_min'] },
+  { id: 'func', label: 'Function and protein', ids: ['at', 'ms'] },
+  { id: 'sel', label: 'Selection against P. trichocarpa', ids: ['w_min', 'w_max'] },
+  { id: 'adv', label: 'Disputed and exploratory calls', ids: ['ps', 'wgd_disputed', 'wgd9', 'aek'], adv: true },
+];
+const HINTS = {
+  hap: 'HAP1 is the tremula haplotype, HAP2 alba',
+  cls: 'GENESPACE class across the 12-genome panel',
+  ps_min: '18 and 19 are the lineage-specific strata',
+  ps: 'one stratum exactly',
+  tau_min: 'tissue specificity, 0 (even) to 1 (one tissue)',
+  top: 'tissue with the highest median TPM',
+  xin: 'median above 1 TPM in that tissue',
+  allele: 'a syntenic partner on the other haplotype',
+  at: 'a best hit in Arabidopsis',
+  tandem: 'the curated union set, 13,048 genes',
+  wgd: 'retained from a whole-genome duplication (route C)',
+  wgd_disputed: 'route C and v9 disagree for this gene',
+  wgd9: 'the canonical v9 letters',
+  aek: 'ancestral eudicot chromosome and copy',
+  w_min: 'Ka/Ks to the reciprocal-best ortholog',
+  w_max: 'Ka/Ks to the reciprocal-best ortholog',
+  ms: 'a peptide in any of 5 public datasets',
+};
+// Fast value extraction for the per-option counts; a filter absent here shows no counts.
+const KEYS = {
+  hap: (r) => [r.hap], cls: (r) => [r.cls], top: (r) => [r.top], chr: (r) => [r.chr],
+  allele: (r) => [r.allele ? 'yes' : 'no'], at: (r) => [r.at ? 'yes' : 'no'],
+  tandem: (r) => [r.tandem ? 'yes' : 'no'], ms: (r) => [r.ms > 0 ? 'yes' : 'no'],
+  wgd_disputed: (r) => [r.ccd ? 'yes' : 'no'], xin: (r) => r.xin,
+  wgd: (r) => wgdKeys(r.wgd), wgd9: (r) => wgdKeys(r.wgd9),
+};
+function wgdKeys(w) {
+  const k = [];
+  if (w & 1) k.push('salicoid');
+  if (w & 2) k.push('gamma');
+  if (w === 3) k.push('both');
+  k.push(w > 0 ? 'either' : 'neither');
+  return k;
+}
+
 function filterOptions(filter, facets) {
   const values = filter.id === 'top' ? facets.vocab?.top : filter.options;
   // Preserve the vocabulary's data order: it is the release's declared category order.
@@ -151,18 +201,55 @@ function applyFilters(state, navigation) {
   return true;
 }
 
-function resultsTable(state) {
+// Sortable columns. `key` is what a click sorts by; nulls always sink to the bottom whichever
+// way the column runs, because "no ortholog" is not the smallest omega.
+const COLUMNS = [
+  { id: 'gene', label: 'Gene', key: (r, i) => i },
+  { id: 'desc', label: 'Description', key: null },
+  { id: 'chr', label: 'Chr', key: (r) => r.chr },
+  { id: 'cls', label: 'Synteny class', key: (r) => r.cls },
+  { id: 'ps', label: 'PS', num: true, key: (r) => r.ps, title: 'phylostratum (genEra rank)' },
+  { id: 'tau', label: '\u03c4', num: true, key: (r) => r.tau, title: 'tissue specificity' },
+  { id: 'top', label: 'Peak tissue', key: (r) => r.top },
+  { id: 'npres', label: 'Genomes', num: true, key: (r) => r.npres || null,
+    title: 'genomes in the orthogroup, of 12' },
+  { id: 'w', label: '\u03c9', num: true, key: (r) => (r.w >= 0 ? r.w : null),
+    title: 'Ka/Ks against the best P. trichocarpa ortholog' },
+  { id: 'ms', label: 'MS', num: true, key: (r) => (r.ms > 0 ? r.ms : null),
+    title: 'mass-spec datasets with a peptide, of 5' },
+];
+
+function sortMatches(state) {
+  const col = COLUMNS.find((c) => c.id === state.sort.col);
+  if (!col || !col.key) return;
+  const dir = state.sort.dir;
+  const k = state.matches.map((i) => [i, col.key(state.rows[i], i)]);
+  k.sort((x, y) => {
+    const a = x[1]; const b = y[1];
+    if (a == null && b == null) return x[0] - y[0];
+    if (a == null) return 1;
+    if (b == null) return -1;
+    if (a < b) return -dir;
+    if (a > b) return dir;
+    return x[0] - y[0];
+  });
+  state.matches = k.map((x) => x[0]);
+}
+
+function resultsTable(state, onSort) {
   const start = state.page * PAGE;
   const slice = state.matches.slice(start, start + PAGE);
   const body = slice.map((i) => {
     const r = state.rows[i];
+    const d = state.desc ? state.desc[i] : '';
     return el('tr', {},
       el('td', {}, el('a', { href: `#/gene/${state.ids[i]}`, class: 'mono' }, state.ids[i])),
-      el('td', {}, r.chr || '—'),
-      el('td', {}, r.cls ? r.cls.replace(/_/g, ' ') : '—'),
-      el('td', { class: 'num' }, r.ps == null ? '—' : 'PS' + r.ps),
-      el('td', { class: 'num' }, r.tau == null ? '—' : r.tau.toFixed(2)),
-      el('td', {}, r.top || '—'),
+      el('td', { class: 'bz-desc', title: d || '' }, d ? d.toLowerCase() : el('span', { class: 'muted' }, '\u2014')),
+      el('td', {}, r.chr || '\u2014'),
+      el('td', {}, r.cls ? r.cls.replace(/_/g, ' ') : '\u2014'),
+      el('td', { class: 'num' }, r.ps == null ? '\u2014' : 'PS' + r.ps),
+      el('td', { class: 'num' }, r.tau == null ? '\u2014' : r.tau.toFixed(2)),
+      el('td', {}, r.top || '\u2014'),
       el('td', { class: 'num' }, r.npres === 0
         ? el('span', { class: 'muted', title: 'OrthoFinder assigned no orthogroup' }, 'none')
         : r.npres + '/12'),
@@ -174,15 +261,19 @@ function resultsTable(state) {
             r.w === -1 ? 'no ortholog' : 'n/e')),
       el('td', { class: 'num' }, r.ms > 0
         ? `${r.ms}/5`
-        : el('span', { class: 'muted' }, '—')));
+        : el('span', { class: 'muted' }, '\u2014')));
   });
-  return el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
-    el('thead', {}, el('tr', {}, el('th', {}, 'Gene'), el('th', {}, 'Chr'),
-      el('th', {}, 'Synteny class'), el('th', { class: 'num' }, 'PS'),
-      el('th', { class: 'num' }, 'τ'), el('th', {}, 'Peak tissue'),
-      el('th', { class: 'num' }, 'Genomes'),
-      el('th', { class: 'num', title: 'Ka/Ks against the best P. trichocarpa ortholog' }, 'ω'),
-      el('th', { class: 'num', title: 'mass-spec datasets with a peptide, of 5' }, 'MS'))),
+  const head = COLUMNS.map((c) => {
+    const on = state.sort.col === c.id;
+    const arrow = on ? (state.sort.dir > 0 ? ' \u2191' : ' \u2193') : '';
+    const cls = [c.num ? 'num' : '', c.key ? 'sortable' : '', on ? 'on' : ''].join(' ').trim();
+    return el('th', { class: cls || null, title: c.title || null, scope: 'col',
+      'aria-sort': on ? (state.sort.dir > 0 ? 'ascending' : 'descending') : null },
+      c.key ? el('button', { type: 'button', class: 'bz-sort', onclick: () => onSort(c.id) }, c.label + arrow)
+        : c.label);
+  });
+  return el('div', { class: 'scroll-x bz-tablewrap' }, el('table', { class: 'data compare bz-table' },
+    el('thead', {}, el('tr', {}, ...head)),
     el('tbody', {}, ...body)));
 }
 
@@ -235,91 +326,143 @@ export function browseHref(params) {
 export async function browseView(navigation) {
   // State belongs to one rendered Browse view. A module-level singleton made a stale URL
   // retain filters from a previous visit and let overlapping loads rewrite each other's state.
-  const state = { values: {}, page: 0, rows: null, ids: null, matches: [] };
-  const root = el('div', {},
-    el('h1', {}, 'Browse'),
-    el('p', { class: 'sub' },
-      'Filter all 63,960 genes across every module at once, then export the selection or keep '
-      + 'it as a named set. Filtering runs entirely in the browser over a 274 KB index.'),
-    // The omega and MS columns are the two here that are easiest to over-read, so the caveat
-    // sits next to the numbers rather than only in the provenance page.
-    el('p', { class: 'muted', style: 'font-size:12px;margin:-6px 0 14px' },
-      el('strong', {}, 'MS is indirect. '),
-      'It counts public Populus mass-spec datasets with a peptide matching this gene, not '
-      + 'observations of this gene\u2019s own protein: 94% of those peptides are also in the '
-      + 'P. trichocarpa proteome and only 12% match exactly one 717 gene. Open a gene to see '
-      + 'which kind of evidence it has. ',
-      el('strong', {}, '\u03c9 is Nei\u2013Gojobori against P. trichocarpa'),
-      ', blank where the gene has no reciprocal-best ortholog \u2014 a measured absence, not '
-      + 'missing data.'));
+  const state = { values: {}, page: 0, rows: null, ids: null, desc: null, matches: [],
+    sort: { col: 'gene', dir: 1 } };
+  const root = el('div', { class: 'bz' },
+    el('div', { class: 'page-head' },
+      el('div', { class: 'kicker' }, 'Query builder'),
+      el('h1', {}, 'Browse'),
+      el('p', { class: 'sub' },
+        'Filter all 63,960 genes across every layer at once, then export the selection or keep '
+        + 'it as a named set. Each option shows how many genes it would leave.')));
   navigation?.track?.(root);
 
-  const summary = el('div', { class: 'stat-row' });
+  const summary = el('div', { class: 'stat-row bz-count' });
   const tableHolder = el('div', {});
-  const pager = el('div', { style: 'display:flex;gap:9px;align-items:center;margin-top:12px' });
+  const pager = el('div', { class: 'bz-pager' });
   const setsHolder = el('div', {});
   const savedSetStatus = el('p', {
     class: 'muted', role: 'status', 'aria-live': 'polite',
     style: 'min-height:18px;margin:8px 0 0;font-size:12px',
   });
 
+  const onSort = (col) => {
+    if (state.sort.col === col) state.sort.dir = -state.sort.dir;
+    else state.sort = { col, dir: 1 };
+    sortMatches(state);
+    state.page = 0;
+    render();
+  };
+
+  // Per-option counts: for filter f, count rows that pass every OTHER active filter. One pass
+  // over the rows: a row failing no filter counts for every f, a row failing exactly one
+  // filter counts only for that one, anything else counts for nothing.
+  const drawCounts = () => {
+    const active = FILTERS.filter((f) => state.values[f.id] !== undefined && state.values[f.id] !== '');
+    const counted = FILTERS.filter((f) => KEYS[f.id] && inputs.has(f.id));
+    const tally = new Map(counted.map((f) => [f.id, new Map()]));
+    const add = (f, r) => {
+      const t = tally.get(f.id);
+      for (const k of KEYS[f.id](r)) t.set(k, (t.get(k) || 0) + 1);
+    };
+    const totals = new Map(counted.map((f) => [f.id, 0]));
+    for (const r of state.rows) {
+      let failed = null; let nfail = 0;
+      for (const f of active) {
+        if (!f.test(r, state.values[f.id])) { failed = f; if (++nfail > 1) break; }
+      }
+      if (nfail === 0) { for (const f of counted) { add(f, r); totals.set(f.id, totals.get(f.id) + 1); } }
+      else if (nfail === 1 && tally.has(failed.id)) { add(failed, r); totals.set(failed.id, totals.get(failed.id) + 1); }
+    }
+    for (const f of counted) {
+      const t = tally.get(f.id);
+      const sel = inputs.get(f.id);
+      for (const o of sel.options) {
+        const base = o.dataset.label ?? (o.dataset.label = o.textContent);
+        const n = o.value === '' ? totals.get(f.id) : (t.get(o.value) || 0);
+        o.textContent = `${base}  (${fmt(n)})`;
+        o.disabled = n === 0 && o.value !== '' && o.value !== sel.value;
+      }
+    }
+  };
+
   const render = () => {
     if (navigation && !navigation.isCurrent()) return;
     drawChips();
+    drawCounts();
+    for (const g of groupNodes) {
+      const n = g.ids.filter((id) => state.values[id] !== undefined && state.values[id] !== '').length;
+      g.badge.textContent = n ? String(n) : '';
+      if (n) g.node.open = true;
+    }
+    const nActive = Object.keys(state.values).length;
+    sideToggle.textContent = nActive ? `Filters (${nActive} active)` : 'Filters';
     clear(summary).append(
       el('div', { class: 'stat' },
         el('div', { class: 'n' }, fmt(state.matches.length)),
         el('div', { class: 'l' }, `of ${fmt(state.rows.length)} genes match`)));
-    clear(tableHolder).append(state.matches.length ? resultsTable(state)
+    clear(tableHolder).append(state.matches.length ? resultsTable(state, onSort)
       : el('p', { class: 'muted', style: 'padding:14px 0' }, 'No gene matches every filter.'));
     const pages = Math.ceil(state.matches.length / PAGE);
     clear(pager);
     if (pages > 1) {
       const btn = (label, to, on) => el('button', {
-        onclick: () => { state.page = to; render(); },
-        style: `font-size:12px;padding:4px 10px;border:1px solid var(--line-2);border-radius:5px;`
-          + `background:var(--panel-2);color:var(--ink);cursor:${on ? 'pointer' : 'default'};`
-          + `opacity:${on ? 1 : 0.4}`,
+        type: 'button', class: 'btn', disabled: on ? null : 'disabled',
+        onclick: () => { state.page = to; render(); tableHolder.scrollIntoView({ block: 'nearest' }); },
       }, label);
       pager.append(
-        state.page > 0 ? btn('← Prev', state.page - 1, true) : btn('← Prev', state.page, false),
-        el('span', { class: 'muted', style: 'font-size:12px' },
-          `page ${state.page + 1} of ${fmt(pages)}`),
-        state.page < pages - 1 ? btn('Next →', state.page + 1, true) : btn('Next →', state.page, false));
+        btn('← Prev', state.page - 1, state.page > 0),
+        el('span', { class: 'muted', style: 'font-size:12.5px' },
+          `${fmt(state.page * PAGE + 1)}–${fmt(Math.min((state.page + 1) * PAGE, state.matches.length))} of ${fmt(state.matches.length)}`),
+        btn('Next →', state.page + 1, state.page < pages - 1));
     }
   };
 
-  const controls = el('div', {
-    style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px',
-  });
   const inputs = new Map();
-  for (const f of FILTERS) {
-    const onchange = (e) => {
-      const v = e.target.value;
-      if (v === '') delete state.values[f.id]; else state.values[f.id] = v;
-      if (!applyFilters(state, navigation)) return;
-      render();
-    };
+  const byId = new Map(FILTERS.map((f) => [f.id, f]));
+  const onchangeFor = (f) => (e) => {
+    const v = e.target.value;
+    if (v === '') delete state.values[f.id]; else state.values[f.id] = v;
+    if (!applyFilters(state, navigation)) return;
+    sortMatches(state);
+    render();
+  };
+  const makeInput = (f) => {
     const input = f.kind === 'select'
-      ? el('select', { onchange, style: 'width:100%;padding:5px;border:1px solid var(--line-2);border-radius:5px;background:var(--surface);color:var(--ink);font-size:12.5px' },
+      ? el('select', { onchange: onchangeFor(f) },
           el('option', { value: '' }, 'any'),
           ...((f.id === 'top' ? [] : f.options) || [])
             .map((o) => el('option', { value: o }, String(o).replace(/_/g, ' '))))
       : el('input', { type: 'number', step: f.step || '1', placeholder: f.placeholder || '',
-          oninput: onchange,
-          style: 'width:100%;padding:5px;border:1px solid var(--line-2);border-radius:5px;background:var(--surface);color:var(--ink);font-size:12.5px' });
+          inputmode: 'decimal', oninput: onchangeFor(f) });
     inputs.set(f.id, input);
-    controls.append(el('label', { style: 'display:block;font-size:11.5px;color:var(--ink-2)' },
-      f.label, el('div', { style: 'margin-top:3px' }, input)));
+    // The label's FIRST text node is the filter's name: check.mjs finds controls by it.
+    return el('label', { class: 'bz-field', 'data-filter': f.id },
+      f.label,
+      input,
+      HINTS[f.id] ? el('span', { class: 'bz-hint' }, HINTS[f.id]) : null);
+  };
+  const groupNodes = [];
+  const controls = el('div', { class: 'bz-groups' });
+  for (const g of FILTER_GROUPS) {
+    const badge = el('span', { class: 'bz-badge' });
+    const node = el('details', { class: 'bz-group' + (g.adv ? ' adv' : ''), open: g.adv ? null : 'open' },
+      el('summary', {}, el('span', {}, g.label), badge),
+      ...g.ids.map((id) => makeInput(byId.get(id))));
+    groupNodes.push({ node, badge, ids: g.ids });
+    controls.append(node);
   }
-
-
+  // Any filter a later edit adds to FILTERS but forgets to place still appears, in its own group.
+  const unplaced = FILTERS.filter((f) => !inputs.has(f.id));
+  if (unplaced.length) controls.append(el('details', { class: 'bz-group', open: 'open' },
+    el('summary', {}, 'Other'), ...unplaced.map(makeInput)));
+  const sideToggle = el('summary', { class: 'bz-sidetoggle' }, 'Filters');
 
   /** Active filters as removable chips. Without these, what is being filtered lives only in
    *  a grid of 15 inputs and a reader arriving from a chart link (or a pasted URL) cannot see
    *  why the count is 902 instead of 63,960. Removing a chip has to clear the widget too, not
    *  just the state, or the two disagree. */
-  const chipRow = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0' });
+  const chipRow = el('div', { class: 'bz-chips' });
   const drawChips = () => {
     clear(chipRow);
     const active = FILTERS.filter((f) => state.values[f.id] !== undefined
@@ -327,8 +470,7 @@ export async function browseView(navigation) {
     if (!active.length) return;
     for (const f of active) {
       const chip = el('button', {
-        class: 'locus-btn', type: 'button',
-        style: 'padding:0 9px;font-size:11.5px;height:26px',
+        class: 'chip', type: 'button',
         title: 'Remove this filter',
         onclick: () => {
           delete state.values[f.id];
@@ -341,8 +483,7 @@ export async function browseView(navigation) {
       chipRow.append(chip);
     }
     chipRow.append(el('button', {
-      class: 'locus-btn', type: 'button',
-      style: 'padding:0 9px;font-size:11.5px;height:26px',
+      class: 'chip clear', type: 'button',
       onclick: () => {
         for (const f of FILTERS) {
           delete state.values[f.id];
@@ -398,6 +539,7 @@ export async function browseView(navigation) {
       if (input) input.value = restored[filter.id] || '';
     }
     if (!applyFilters(state, navigation)) return;
+    sortMatches(state);
     render();
     const count = Object.keys(restored).length;
     setSavedSetStatus(`Restored ${count} filter${count === 1 ? '' : 's'} from “${set.name}”.`);
@@ -463,11 +605,11 @@ export async function browseView(navigation) {
   });
   onDispose(root, unsubscribeSets);
 
-  const actions = el('div', { style: 'display:flex;gap:9px;flex-wrap:wrap;margin-top:14px' },
+  const actions = el('div', { class: 'bz-actions' },
     el('button', {
       type: 'button',
+      class: 'btn primary',
       onclick: () => exportTSV(state),
-      style: 'font-size:12.5px;padding:6px 12px;border:1px solid var(--accent);border-radius:5px;background:var(--accent);color:#fff;cursor:pointer',
     }, 'Export TSV'),
     el('button', {
       type: 'button',
@@ -485,7 +627,7 @@ export async function browseView(navigation) {
           setSavedSetStatus(error?.message || 'Could not save this gene set.');
         }
       },
-      style: 'font-size:12.5px;padding:6px 12px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
+      class: 'btn',
     }, 'Save as set'),
     el('button', {
       type: 'button',
@@ -493,9 +635,10 @@ export async function browseView(navigation) {
         state.values = {};
         controls.querySelectorAll('select,input').forEach((n) => { n.value = ''; });
         if (!applyFilters(state, navigation)) return;
+        sortMatches(state);
         render();
       },
-      style: 'font-size:12.5px;padding:6px 12px;border:1px solid var(--line-2);border-radius:5px;background:transparent;color:var(--ink-2);cursor:pointer',
+      class: 'btn ghost',
     }, 'Reset'));
 
   const importInput = el('input', {
@@ -535,22 +678,47 @@ export async function browseView(navigation) {
         'application/json;charset=utf-8');
       setSavedSetStatus(`Downloaded ${allSets().length} saved set${allSets().length === 1 ? '' : 's'} as JSON.`);
     },
-    style: 'font-size:12.5px;padding:6px 12px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
+    class: 'btn',
   }, 'Export sets JSON'),
   el('button', {
     type: 'button', onclick: () => importInput.click(),
-    style: 'font-size:12.5px;padding:6px 12px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
+    class: 'btn',
   }, 'Import sets JSON'),
   importInput);
 
-  root.append(
-    el('div', { class: 'card' }, el('h2', {}, 'Filters'), controls, chipRow, actions),
-    summary,
-    el('div', { class: 'card' }, tableHolder, pager),
-    el('div', { class: 'card' }, el('h2', {}, 'Saved sets'),
-      el('p', { class: 'muted', style: 'margin:0;font-size:12.5px' },
-        'Each saved set keeps its gene IDs, filters, and atlas data version. JSON is portable between browsers.'),
-      savedSetActions, savedSetStatus, setsHolder));
+  // The column notes are the two readings easiest to get wrong, so they sit under the table
+  // rather than only on the provenance page.
+  const notes = el('div', { class: 'bz-notes' },
+    el('p', {}, el('strong', {}, 'MS is indirect. '),
+      'It counts public Populus mass-spec datasets with a peptide matching this gene, not '
+      + 'observations of this gene’s own protein: 94% of those peptides are also in the '
+      + 'P. trichocarpa proteome and only 12% match exactly one 717 gene. Open a gene to see '
+      + 'which kind of evidence it has.'),
+    el('p', {}, el('strong', {}, 'ω is Nei–Gojobori against P. trichocarpa'),
+      ', blank where the gene has no reciprocal-best ortholog — a measured absence, not '
+      + 'missing data.'));
+  const side = el('details', { class: 'bz-side', open: 'open' },
+    sideToggle,
+    el('div', { class: 'bz-sidebody' }, el('h2', { class: 'bz-sidehead' }, 'Filters'), controls));
+  // A phone gets the filters folded behind one button; a wide screen keeps them open beside
+  // the table. The <details> is the same element in both, so its state never forks.
+  const mq = window.matchMedia('(max-width: 860px)');
+  const syncSide = () => { side.open = !mq.matches; };
+  syncSide();
+  mq.addEventListener?.('change', syncSide);
+  onDispose(root, () => mq.removeEventListener?.('change', syncSide));
+  root.append(el('div', { class: 'bz-layout' },
+    side,
+    el('div', { class: 'bz-main' },
+      el('div', { class: 'bz-bar' }, summary, actions),
+      chipRow,
+      el('div', { class: 'card bz-results' }, tableHolder, pager),
+      notes,
+      el('details', { class: 'card-fold bz-sets' },
+        el('summary', {}, el('span', { class: 'fold-title' }, 'Saved sets'),
+          el('span', { class: 'fold-why' }, 'gene IDs, filters and data version, kept in this browser')),
+        el('div', { class: 'card' },
+          savedSetActions, savedSetStatus, setsHolder)))));
 
   const [facets, ids] = await Promise.all([loadFacets(), loadGeneIndex()]);
   if (navigation && !navigation.isCurrent()) return root;
@@ -578,7 +746,13 @@ export async function browseView(navigation) {
     if (input) input.value = value;
   }
   if (!applyFilters(state, navigation)) return root;
+  sortMatches(state);
   render();
   renderSets();
+  // Descriptions are a separate, larger file; the table is usable before it lands.
+  loadDescIndex().then((d) => {
+    if (navigation && !navigation.isCurrent()) return;
+    if (Array.isArray(d) && d.length === state.ids.length) { state.desc = d; render(); }
+  }).catch(() => { /* the column stays as dashes */ });
   return root;
 }

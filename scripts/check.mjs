@@ -1765,10 +1765,10 @@ for (const [label, vw, vh, dpr] of [['locus-desktop', 1180, 900, 1], ['locus-pho
   await bp.waitForTimeout(1500);
   const readCount = () => bp.$eval('.stat .n', (n) => n.textContent.trim());
   const all = await readCount();
-  await bp.selectOption('select >> nth=1', 'private_no_ortholog');   // synteny class
+  await bp.selectOption('label[data-filter="cls"] select', 'private_no_ortholog');   // synteny class, found by name not position
   await bp.waitForTimeout(400);
   const priv = await readCount();
-  await bp.fill('input[type=number] >> nth=0', '18');                // phylostratum >= 18
+  await bp.fill('label[data-filter="ps_min"] input', '18');   // phylostratum >= 18
   await bp.waitForTimeout(500);
   const privLsg = await readCount();
   await bp.screenshot({ path: `${outdir}/browse-query.png`, fullPage: true });

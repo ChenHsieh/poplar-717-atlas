@@ -310,6 +310,8 @@ export async function loadFamilies() {
 /* ---------- annotation, allele, search ---------- */
 export const loadTerms = () => fetchJSON('data/index/terms.json');
 export const loadGeneIndex = () => fetchJSON('data/index/genes.json');
+/** One short description per gene, aligned with genes.json (build_facets.py). Browse only. */
+export const loadDescIndex = () => fetchJSON('data/index/desc.json');
 /** Token index is sharded by first character so typing fetches one small file. */
 export const loadSearchShard = (c) => fetchJSON(`data/index/search/${c}.json`);
 
