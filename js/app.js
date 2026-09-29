@@ -16,6 +16,7 @@ import { karyotypeView } from './modules/karyotype.js';
 import { familyView } from './modules/family.js';
 import { statusView } from './modules/status.js';
 import { copiesView } from './modules/copies.js';
+import { arrayView, arraysIndexView } from './modules/arrays.js';
 
 const view = () => document.getElementById('view');
 const mountView = (node, navigation) => {
@@ -680,6 +681,20 @@ route(/^\/copies\/(.+)$/, async (slug, navigation) => {
   const { setView, loading } = scopedView(navigation);
   loading(`Loading ${slug}\u2026`);
   setView(await copiesView(slug, await loadManifest()));
+  markNav();
+});
+
+// #/array/<id> and #/arrays -- a curated tandem array on its own page, and the list of them.
+route(/^\/array\/(.+)$/, async (aid, navigation) => {
+  const { setView, loading } = scopedView(navigation);
+  loading(`Loading tandem array ${aid}\u2026`);
+  setView(await arrayView(aid));
+  markNav();
+});
+route(/^\/arrays$/, async (navigation) => {
+  const { setView, loading } = scopedView(navigation);
+  loading('Loading the tandem arrays\u2026');
+  setView(await arraysIndexView());
   markNav();
 });
 
