@@ -1829,6 +1829,7 @@ await check('map-hap2', '#/map/hap2',
   const errs = [];
   mp.on('pageerror', (e) => errs.push(e.message));
   mp.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+  // Chr08 has a gene-free stretch near its middle, so zoom from a window that starts gene-rich.
   await mp.goto(base + '/#/map/hap1/Chr08', { waitUntil: 'networkidle' });
   await mp.waitForSelector('[data-map-view="chromosome"] .map-stage[data-tiles="ready"]', { timeout: 15000 });
   await mp.waitForTimeout(300);
@@ -1837,7 +1838,9 @@ await check('map-hap2', '#/map/hap2',
     .every((x) => t0.includes(x));
   const nWhole = await mp.$eval('.map-stage', (s) => +s.dataset.genesInView);
   const linksWhole = +(t0.match(/(\d+) allele links drawn/) || [0, 0])[1];
-  for (let i = 0; i < 7; i++) { await mp.click('[data-map-zoom="in"]'); await mp.waitForTimeout(60); }
+  for (let i = 0; i < 3; i++) { await mp.click('[data-map-zoom="in"]'); await mp.waitForTimeout(60); }
+  for (let i = 0; i < 3; i++) { await mp.click('[data-map-pan="left"]'); await mp.waitForTimeout(60); }
+  for (let i = 0; i < 4; i++) { await mp.click('[data-map-zoom="in"]'); await mp.waitForTimeout(60); }
   await mp.waitForTimeout(300);
   const nZoom = await mp.$eval('.map-stage', (s) => +s.dataset.genesInView);
   const url = mp.url();

@@ -307,7 +307,7 @@ async function renderOverview(hap, onPickChr) {
 
   return el('div', { class: 'map-overview', 'data-map-view': 'overview' },
     el('div', { class: 'map-metrics', role: 'group', 'aria-label': 'Colour by' },
-      el('span', { class: 'kicker map-metrics-label' }, 'Colour by'), ...metricBtns),
+      el('label', { class: 'map-metrics-label' }, 'Colour by:'), ...metricBtns),
     metricNote,
     el('p', { class: 'map-count' },
       `${HAP_LABEL[hap]}: 19 chromosomes, ${nGenes.toLocaleString('en-US')} genes in ${overview.bin / 1000} kb bins.`),
@@ -523,8 +523,8 @@ function drawChrView(ctx, view, M) {
         ctx.fillStyle = T.accent;
         ctx.fillRect(x0, rr.y + 1, Math.max(3, gw), rr.h - 2);
       }
-      const yTop = Math.min(L.rows.lsg.y, L.rows.plus.y);
-      const yBot = Math.max(L.rows.lsg.y + L.rows.lsg.h, L.rows.minus.y + L.rows.minus.h);
+      const yTop = Math.min(...TRACKS.map((t) => L.rows[t.id].y));
+      const yBot = Math.max(...TRACKS.map((t) => L.rows[t.id].y + L.rows[t.id].h));
       if (hov) {
         ctx.strokeStyle = T.ink;
         ctx.lineWidth = 1.5;
@@ -630,7 +630,7 @@ async function renderChromosome(hap, chr, onBack) {
     const sw = (tok) => el('i', { class: `map-sw map-sw-${tok}`, 'aria-hidden': 'true' });
     const item = (tok, label, n) => el('span', { class: 'map-li' }, sw(tok), `${label} `, el('span', { class: 'mono' }, n));
     const synOf = (h) => (g) => (tiles[h].get(g.g) || {}).y;
-    const row = (name, ...items) => el('div', { class: 'map-lrow' }, el('span', { class: 'kicker' }, name), ...items);
+    const row = (name, ...items) => el('div', { class: 'map-lrow' }, el('span', { class: 'map-lname' }, name), ...items);
     const synA = synOf(hap), synB = synOf(other);
     return [
       el('p', { class: 'muted map-note' },
