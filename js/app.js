@@ -192,15 +192,48 @@ route(/^\/$/, async (navigation) => {
     about: 'Provenance, known limitations, and how to cite this.',
   };
 
-  setView(el('div', {},
-    el('h1', {}, 'Hybrid poplar 717 gene atlas'),
-    el('p', { class: 'sub' },
-      `${fmt(man.n_genes)} gene models across the two phased haplotypes of `,
-      el('em', {}, 'Populus tremula'), ' × ', el('em', {}, 'P. alba'),
-      ` clone INRA 717-1B4, v5.1. Every gene carries synteny across a 12-genome panel, a `
-      + `phylostratum, functional annotation, its allele, and an expression profile.`),
+  // A search box that belongs to the page, not the header: a first-time reader's first act.
+  // It submits to the same #/search route the header box uses, so there is one search.
+  const heroInput = el('input', {
+    type: 'search', placeholder: 'Gene ID, keyword, Arabidopsis locus or Pfam',
+    'aria-label': 'Search genes', autocomplete: 'off', spellcheck: 'false',
+  });
+  const heroSearch = el('form', {
+    class: 'hero-search', role: 'search',
+    onsubmit: (ev) => {
+      ev.preventDefault();
+      const q = heroInput.value.trim();
+      if (q) location.hash = '#/search/' + encodeURIComponent(q);
+    },
+  }, heroInput, el('button', { type: 'submit', class: 'btn primary' }, 'Search'));
+  const EXAMPLES = [['PtXaTreH.05G120200', '#/gene/PtXaTreH.05G120200'],
+    ['arabinogalactan', '#/search/arabinogalactan'], ['AT1G06515', '#/search/AT1G06515'],
+    ['PF00249', '#/search/PF00249']];
 
-    el('div', { class: 'stat-row' },
+  // Where to go next, as places rather than as the module list: each tile is a page.
+  const EXPLORE = [
+    ['#/browse', 'Browse', 'Filter every gene across every layer; export or save the set.'],
+    ['#/map', 'Genome map', 'Both haplotypes chromosome by chromosome, down to single genes.'],
+    ['#/karyotype', 'Ancestral karyotype', 'Where each gene came from in the eudicot ancestor.'],
+    ['#/module/expression', 'Expression', `${fmt(e.n_samples)} samples from ${e.n_studies} curated studies.`],
+    ['#/module/duplication', 'Duplication', 'Tandem arrays and whole-genome duplication partners.'],
+    ['#/module/phylostrat', 'Gene age', 'Phylostrata and the lineage-specific pool.'],
+  ];
+
+  setView(el('div', { class: 'home' },
+    el('section', { class: 'hero' },
+      el('div', { class: 'kicker' }, 'Clone INRA 717-1B4 · assembly v5.1 · two phased haplotypes'),
+      el('h1', {}, 'Hybrid poplar 717 gene atlas'),
+      el('p', { class: 'lede' },
+        `${fmt(man.n_genes)} gene models across the two phased haplotypes of `,
+        el('em', {}, 'Populus tremula'), ' × ', el('em', {}, 'P. alba'),
+        '. Every gene carries synteny across a 12-genome panel, a phylostratum, functional '
+        + 'annotation, its allele, and an expression profile.'),
+      heroSearch,
+      el('p', { class: 'hero-eg' }, 'Try ',
+        ...EXAMPLES.flatMap(([t, h]) => [el('a', { href: h, class: 'mono' }, t), ' ']))),
+
+    el('div', { class: 'stat-row home-stats' },
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(man.n_genes)), el('div', { class: 'l' }, 'gene models')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(a.n_allele)), el('div', { class: 'l' }, 'HAP1↔HAP2 allele pairs')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(e.n_samples)), el('div', { class: 'l' }, `RNA-seq samples, ${e.n_studies} studies`)),
@@ -210,44 +243,50 @@ route(/^\/$/, async (navigation) => {
 
     questionsCard(),
 
-    el('div', { class: 'card' },
-      el('h2', {}, 'Start here'),
-      el('div', { class: 'kv' },
-        el('dt', {}, el('a', { href: '#/browse' }, 'Browse all genes')),
-        el('dd', { class: 'muted' }, 'Filter across every module at once, then export or save the selection.'),
-        el('dt', {}, 'Search'),
-        el('dd', { class: 'muted' }, 'The box above takes a gene ID, a keyword, an Arabidopsis locus or a Pfam accession.'),
-        // Was "PS18 Populus, drought-responsive in bark": "drought-responsive" rested on a
-        // descriptive n=3 ratio the Contrasts view itself says is not a test. The pool is the
-        // rerun that added Idesia (C5, Chen 2026-09-21 evening), in which this gene is PS17 and
-        // out of the pool; the frozen call had it at PS18, and its page says so.
-        el('dt', {}, el('a', { href: '#/gene/PtXaTreH.05G120200' }, 'PtXaTreH.05G120200')),
-        el('dd', { class: 'muted' }, 'An example gene page, and one the Idesia rerun moved: '
-          + 'PS18 in the frozen genEra call, PS17 Saliceae in the current one.'),
-        // Three examples, chosen because each shows a DIFFERENT shape of duplication rather
-        // than three views of the same one. Every claim below is read off the shipped record.
-        el('dt', {}, el('a', { href: '#/gene/PtXaTreH.08G070200' }, 'PtXaTreH.08G070200')),
-        el('dd', { class: 'muted' }, 'All four duplication types at one locus: four tandem MYB '
-          + 'copies, a salicoid partner and a gamma partner. The other haplotype carries two '
-          + 'tandem copies, not four.'),
-        el('dt', {}, el('a', { href: '#/gene/PtXaTreH.10G046700' }, 'PtXaTreH.10G046700')),
-        el('dd', { class: 'muted' }, 'A seven-copy nucleoredoxin array with no one-to-one '
-          + 'allele called on the other haplotype — the pattern a hemizygous locus leaves, '
-          + 'though an uncalled allele is not by itself proof of one.'))),
+    el('section', { class: 'home-explore' },
+      el('h2', {}, 'Explore'),
+      el('div', { class: 'tiles' }, ...EXPLORE.map(([h, t, d]) =>
+        el('a', { class: 'tile', href: h }, el('span', { class: 'tile-t' }, t), el('span', { class: 'tile-d' }, d))))),
 
-    el('div', { class: 'card' },
-      el('h2', {}, 'Modules'),
-      el('div', { class: 'kv' }, ...MODULES.flatMap((m) => [
-        el('dt', {}, m.overview
-          ? el('a', { href: `#/module/${m.id}` }, m.label)
-          : el('span', {}, m.label)),
-        el('dd', { class: 'muted' }, MODULE_BLURB[m.id] || '')])),
-      el('p', { class: 'muted', style: 'margin:12px 0 0;font-size:12px' },
-        'Allele-specific expression and cross-species comparison are queued — see TODO.md.')),
+    el('div', { class: 'home-cols' },
+      el('div', { class: 'card' },
+        el('h2', {}, 'Start here'),
+        el('div', { class: 'kv' },
+          el('dt', {}, el('a', { href: '#/browse' }, 'Browse all genes')),
+          el('dd', { class: 'muted' }, 'Filter across every module at once, then export or save the selection.'),
+          // Was "PS18 Populus, drought-responsive in bark": "drought-responsive" rested on a
+          // descriptive n=3 ratio the Contrasts view itself says is not a test. The pool is the
+          // rerun that added Idesia (C5, Chen 2026-09-21 evening), in which this gene is PS17 and
+          // out of the pool; the frozen call had it at PS18, and its page says so.
+          el('dt', {}, el('a', { href: '#/gene/PtXaTreH.05G120200' }, 'PtXaTreH.05G120200')),
+          el('dd', { class: 'muted' }, 'An example gene page, and one the Idesia rerun moved: '
+            + 'PS18 in the frozen genEra call, PS17 Saliceae in the current one.'),
+          // Three examples, chosen because each shows a DIFFERENT shape of duplication rather
+          // than three views of the same one. Every claim below is read off the shipped record.
+          el('dt', {}, el('a', { href: '#/gene/PtXaTreH.08G070200' }, 'PtXaTreH.08G070200')),
+          el('dd', { class: 'muted' }, 'All four duplication types at one locus: four tandem MYB '
+            + 'copies, a salicoid partner and a gamma partner. The other haplotype carries two '
+            + 'tandem copies, not four.'),
+          el('dt', {}, el('a', { href: '#/gene/PtXaTreH.10G046700' }, 'PtXaTreH.10G046700')),
+          el('dd', { class: 'muted' }, 'A seven-copy nucleoredoxin array with no one-to-one '
+            + 'allele called on the other haplotype — the pattern a hemizygous locus leaves, '
+            + 'though an uncalled allele is not by itself proof of one.'))),
 
-    el('div', { class: 'card' },
+      el('div', { class: 'card' },
+        el('h2', {}, 'Modules'),
+        el('p', { class: 'muted', style: 'margin:0 0 10px;font-size:13px' },
+          'Each gene page is built from these layers.'),
+        el('div', { class: 'kv' }, ...MODULES.filter((m) => MODULE_BLURB[m.id]).flatMap((m) => [
+          el('dt', {}, m.overview
+            ? el('a', { href: `#/module/${m.id}` }, m.label)
+            : el('span', {}, m.label)),
+          el('dd', { class: 'muted' }, MODULE_BLURB[m.id])])),
+        el('p', { class: 'muted', style: 'margin:12px 0 0;font-size:12px' },
+          'Allele-specific expression and cross-species comparison are queued.'))),
+
+    el('div', { class: 'card cite-card' },
       el('h2', {}, 'Before you cite anything'),
-      el('p', { style: 'margin:0;font-size:13.5px;color:var(--ink-2)' },
+      el('p', { style: 'margin:0;font-size:14px;color:var(--ink-2)' },
         'Private-gene calls depend on which genomes are in the panel, HAP2 domain annotation is '
         + 'thinner than HAP1 for release reasons, and expression is raw TPM. The ',
         el('a', { href: '#/module/about' }, 'provenance page'),
@@ -267,13 +306,14 @@ route(/^\/$/, async (navigation) => {
  *  Never blocks the home page: if the facet index is slow or fails, every question still
  *  links correctly and simply shows no count. */
 function questionsCard() {
-  const counts = QUESTIONS.map(() => el('span', { class: 'muted', style: 'font-size:12px' }, ''));
-  const card = el('div', { class: 'card' },
+  const counts = QUESTIONS.map(() => el('span', { class: 'q-n' }, ''));
+  const card = el('div', { class: 'card qcard' },
     el('h2', {}, 'Start from a question', el('span', { class: 'tag' }, 'live counts')),
-    el('div', { class: 'kv qa' }, ...QUESTIONS.flatMap((q, i) => [
-      el('dt', {}, el('a', { href: browseHref(q.params) }, q.q)),
-      el('dd', {}, el('span', { class: 'muted', style: 'font-size:12.5px' }, q.sub),
-        ' ', counts[i])])),
+    el('div', { class: 'qgrid' }, ...QUESTIONS.map((q, i) =>
+      el('a', { class: 'qtile', href: browseHref(q.params) },
+        el('span', { class: 'q-q' }, q.q),
+        el('span', { class: 'q-sub' }, q.sub),
+        counts[i]))),
     el('p', { class: 'muted', style: 'margin:12px 0 0;font-size:11.5px' },
       'Every cutoff is stated in the question, because "expressed" and "tissue-specific" are '
       + 'not absolute properties. Each link opens Browse with those filters already set, and '
