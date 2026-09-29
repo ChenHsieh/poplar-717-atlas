@@ -221,3 +221,19 @@ button, select, input, textarea { font-family: inherit; }
   .home .kv { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
   .home .kv dd { margin-bottom: 9px; }
 }
+
+/* ---- Gene page header (specimen label) ---------------------------------------------- */
+.gene-head { border: 1.5px solid var(--ink); background: var(--panel); padding: 20px 24px 18px; margin: 0 0 12px;
+  box-shadow: 6px 6px 0 var(--line); position: relative; }
+.gene-head h1 { font-size: clamp(24px, 3.6vw, 34px); letter-spacing: -0.01em; margin: 4px 0 4px; overflow-wrap: anywhere; }
+.gh-desc { font: italic 400 21px/1.3 var(--serif); margin: 0 0 8px; }
+.gh-desc::first-letter { text-transform: uppercase; }
+.gene-head .sub { margin: 0 0 12px; font-size: 14px; }
+.gh-facts { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0 0 14px; }
+.gh-fact { font-size: 13px; padding: 3px 9px; border: 1px solid var(--line-2); background: var(--surface); }
+.gh-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.gh-actions a.btn { display: inline-flex; align-items: center; color: var(--ink); text-decoration: none; }
+.gh-nb { margin: 0 0 16px; font-size: 13px; }
+.card.glance { box-shadow: none; border-width: 1px; border-color: var(--line-2); }
+@media (max-width: 640px) { .gene-head { padding: 16px 16px 14px; box-shadow: 4px 4px 0 var(--line); }
+  .gh-actions .btn { flex: 1 1 auto; justify-content: center; min-height: 44px; } }

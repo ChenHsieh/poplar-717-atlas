@@ -616,6 +616,52 @@ function evidenceKey() {
     el('span', { class: 'ev-key-note' }, 'Cards run from the strongest evidence to the weakest.'));
 }
 
+/** The specimen label at the top of a gene page: what it is, where it is, and where to go
+ *  next. It restates only fields already on the record (description, rank, class, allele) --
+ *  the cards below carry each one with its caveats, so nothing here is computed. */
+function geneHeader(g, kb) {
+  const ann = g.ann || {};
+  const desc = ann.d || (ann.atd ? `similar to ${ann.at || 'Arabidopsis'}: ${ann.atd}` : null);
+  const ps = g.ps || {};
+  const facts = [];
+  if (ps.rank != null) facts.push(el('span', { class: 'gh-fact' }, `PS${ps.rank}`,
+    ps.name ? el('span', { class: 'muted' }, ` ${ps.name}`) : null));
+  if (g.syn && g.syn.cls) facts.push(el('span', { class: 'gh-fact' }, g.syn.cls.replace(/_/g, ' ')));
+  if (g.dup && g.dup.td) facts.push(el('span', { class: 'gh-fact' }, 'tandem array'));
+  if (g.allele && g.allele.id) facts.push(el('span', { class: 'gh-fact' }, 'allele ',
+    el('a', { href: `#/gene/${g.allele.id}`, class: 'mono' }, g.allele.id)));
+  else facts.push(el('span', { class: 'gh-fact muted' }, 'no 1:1 allele called'));
+
+  const copyBtn = el('button', { type: 'button', class: 'btn' }, 'Copy ID');
+  copyBtn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(g.id); copyBtn.textContent = 'Copied'; }
+    catch { copyBtn.textContent = g.id; }
+    setTimeout(() => { copyBtn.textContent = 'Copy ID'; }, 1600);
+  });
+  // The whole published record for this gene, exactly as the page read it.
+  const dlBtn = el('button', { type: 'button', class: 'btn' }, 'Download record');
+  dlBtn.addEventListener('click', () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(g, null, 2) + '\n'],
+      { type: 'application/json;charset=utf-8' }));
+    const a = el('a', { href: url, download: `${g.id}.json` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  });
+
+  return el('header', { class: 'gene-head', 'data-gene-head': g.id },
+    el('div', { class: 'kicker' }, `Gene model · ${g.hap === 'hap1' ? 'P. tremula haplotype' : 'P. alba haplotype'}`),
+    el('h1', { class: 'mono' }, g.id),
+    desc ? el('p', { class: 'gh-desc' }, desc.toLowerCase()) : el('p', { class: 'gh-desc muted' }, 'no functional description'),
+    el('p', { class: 'sub' }, `${hapLabel(g.hap)} · ${g.chr} · ${kb} kb`,
+      el('span', { class: 'mono muted' }, `   ${g.chr}:${fmt(g.start)}–${fmt(g.end)} (${g.strand || '?'})`)),
+    el('div', { class: 'gh-facts' }, ...facts),
+    el('div', { class: 'gh-actions' },
+      el('a', { class: 'btn', href: `#/pair/${g.id}` }, g.allele && g.allele.id ? 'Compare alleles' : 'Allele pair'),
+      el('a', { class: 'btn', href: `#/map/${g.hap}/${g.chr}` }, 'Genome map'),
+      el('a', { class: 'btn', href: browseHref({ hap: g.hap, chr: g.chr }) }, `Browse ${g.chr}`),
+      copyBtn, dlBtn));
+}
+
 route(/^\/gene\/(.+)$/, async (id, navigation) => {
   const { setView, loading } = scopedView(navigation);
   loading(`Loading ${id}…`);
@@ -702,9 +748,8 @@ route(/^\/gene\/(.+)$/, async (id, navigation) => {
 
   const ord = g.ord || {};
   setView(el('div', {},
-    el('h1', { class: 'mono' }, g.id),
-    el('p', { class: 'sub' }, `${hapLabel(g.hap)} · ${g.chr} · ${kb} kb`),
-    (ord.p || ord.n) ? el('p', { style: 'margin:-10px 0 16px;font-size:12.5px' },
+    geneHeader(g, kb),
+    (ord.p || ord.n) ? el('p', { class: 'gh-nb' },
       ord.p ? el('a', { href: `#/gene/${ord.p}`, class: 'mono' }, '← ' + ord.p) : null,
       (ord.p && ord.n) ? el('span', { class: 'muted' }, '   neighbours on the chromosome   ') : null,
       ord.n ? el('a', { href: `#/gene/${ord.n}`, class: 'mono' }, ord.n + ' →') : null) : null,
