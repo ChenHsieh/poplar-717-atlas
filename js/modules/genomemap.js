@@ -220,6 +220,11 @@ function drawOverview(ctx, view, overview, hap, metricKey, hover) {
       ctx.lineWidth = 1.5;
       ctx.strokeRect(bx, y - 1.5, Math.max(2, (bin / maxLen) * trackW), rowH + 3);
     }
+    const nChr = bins.reduce((a, b) => a + b[0], 0).toLocaleString('en-US');
+    ctx.font = `10.5px ${T.mono}`;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = T.ink3;
+    if (x0 + rowW + 6 + ctx.measureText(nChr).width < cssW - 2) ctx.fillText(nChr, x0 + rowW + 6, y + rowH / 2);
     boxes.push({ chr, x0, x1: x0 + rowW, y0: y - ROW_GAP / 2, y1: y + rowH + ROW_GAP / 2, bins });
   });
 
@@ -309,7 +314,8 @@ async function renderOverview(hap, onPickChr) {
     s.stage, readout,
     legend,
     el('p', { class: 'muted map-note' },
-      'Each row is one chromosome, drawn to its own length; darker = higher value. '
+      'Each row is one chromosome, drawn to its own length, with its gene count at the end '
+      + 'where it fits; darker = higher value. '
       + 'Click a chromosome to zoom in.'));
 }
 
@@ -343,7 +349,7 @@ const TRACKS = [
   { id: 'lsg', label: 'LSG pool', h: 10 },
 ];
 const TRACK_GAP = 3;
-const HEAD_H = 16, RULER_H = 22, LINK_H = 46, GUTTER = 70, PAD_R = 10;
+const HEAD_H = 16, RULER_H = 22, LINK_H = 46, GUTTER = 80, PAD_R = 10;
 const BLOCK_H = HEAD_H + RULER_H + TRACKS.reduce((a, t) => a + t.h + TRACK_GAP, 0);
 const CHR_H = BLOCK_H * 2 + LINK_H + 8;
 
@@ -392,10 +398,10 @@ function drawChrView(ctx, view, M) {
   ];
   const xOf = (win, bp) => GUTTER + ((bp - win.start) / (win.end - win.start)) * plotW;
   const pxPerBp = plotW / (M.win.end - M.win.start);
-  const geneLevel = pxPerBp * 4000 >= 24; // an average 4 kb gene gets >= 24 px
+  const geneLevel = pxPerBp * 4000 >= (plotW < 400 ? 12 : 24); // an average 4 kb gene gets >= 24 px
 
   // allele links first, behind everything
-  const linkTop = A.rows.minus.y + A.rows.minus.h, linkBot = B.rows.plus.y;
+  const linkTop = A.y1 - TRACK_GAP, linkBot = B.y0;
   ctx.lineWidth = 1;
   ctx.globalAlpha = 0.45;
   for (const L of M.links) {
@@ -435,9 +441,12 @@ function drawChrView(ctx, view, M) {
     ctx.textAlign = 'center';
     for (let bp = Math.ceil(win.start / step) * step; bp <= win.end; bp += step) {
       const tx = Math.round(xOf(win, bp)) + 0.5;
+      const lab = fmtBp(bp, step);
+      ctx.textAlign = tx + ctx.measureText(lab).width / 2 > cssW - 2 ? 'right'
+        : tx - ctx.measureText(lab).width / 2 < GUTTER - 20 ? 'left' : 'center';
       ctx.beginPath();
       ctx.moveTo(tx, rTop); ctx.lineTo(tx, rTop + (blk.dir > 0 ? -4 : 4)); ctx.stroke();
-      ctx.fillText(fmtBp(bp, step), tx, blk.dir > 0 ? rTop - 10 : rTop + 11);
+      ctx.fillText(lab, ctx.textAlign === 'right' ? cssW - 2 : tx, blk.dir > 0 ? rTop - 10 : rTop + 11);
     }
     // track labels + baselines
     ctx.font = `10px ${T.mono}`;
@@ -514,16 +523,13 @@ function drawChrView(ctx, view, M) {
         ctx.fillStyle = T.accent;
         ctx.fillRect(x0, rr.y + 1, Math.max(3, gw), rr.h - 2);
       }
+      const yTop = Math.min(L.rows.lsg.y, L.rows.plus.y);
+      const yBot = Math.max(L.rows.lsg.y + L.rows.lsg.h, L.rows.minus.y + L.rows.minus.h);
       if (hov) {
         ctx.strokeStyle = T.ink;
         ctx.lineWidth = 1.5;
-        ctx.strokeRect(x0 - 1.5, Math.min(L.rows.lsg.y, L.rows.plus.y) - 1,
-          gw + 3, (L.rows.lsg.y > L.rows.plus.y
-            ? L.rows.lsg.y + L.rows.lsg.h - L.rows.plus.y
-            : L.rows.minus.y + L.rows.minus.h - L.rows.lsg.y) + 2);
+        ctx.strokeRect(x0 - 1.5, yTop - 1, gw + 3, yBot - yTop + 2);
       }
-      const yTop = Math.min(L.rows.lsg.y, L.rows.plus.y);
-      const yBot = Math.max(L.rows.lsg.y + L.rows.lsg.h, L.rows.minus.y + L.rows.minus.h);
       boxes.push({ g: g.g, hap, x0, x1: x0 + gw, y0: yTop, y1: yBot, rec: g, rowY: r.y + r.h / 2 });
     }
   }
