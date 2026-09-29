@@ -2342,6 +2342,33 @@ for (const scheme of ['light', 'dark']) {
   await p.close();
 }
 
+// Browse bulk lookup: a pasted list narrows the table to exactly the IDs that exist, and an ID
+// that is not in the release is NAMED, not silently dropped. Combined with a filter, so the
+// list is shown to AND with the sidebar rather than replace it.
+{
+  const p = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto(base + '/#/browse', { waitUntil: 'networkidle' });
+  await p.waitForSelector('#view .stat .n');
+  await p.evaluate(() => { document.querySelector('[data-group="ids"]').open = true; });
+  await p.fill('label[data-filter="ids"] textarea',
+    'PtXaTreH.05G120200, PtXaAlbH.05G122300\nNOT_A_GENE.1');
+  await p.click('[data-group="ids"] button:has-text("Apply list")');
+  await p.waitForTimeout(400);
+  const listed = await p.$eval('#view .stat .n', (n) => n.textContent.trim());
+  const note = await p.$eval('label[data-filter="ids"] .bz-hint', (n) => n.textContent);
+  await p.selectOption('label[data-filter="hap"] select', 'hap2');
+  await p.waitForTimeout(400);
+  const withHap = await p.$eval('#view .stat .n', (n) => n.textContent.trim());
+  const ok = !errs.length && listed === '2' && withHap === '1'
+    && note.includes('2 of 3') && note.includes('NOT_A_GENE.1');
+  if (!ok) failures++;
+  console.log(`\n### browse:gene-list  ${ok ? 'OK' : 'FAIL'}  listed=${listed} +hap2=${withHap}  note="${note}"`);
+  errs.forEach((e) => console.log('   !! ' + e));
+  await p.close();
+}
+
 await browser.close();
 console.log(`\n${failures ? `${failures} CHECK(S) FAILED` : 'ALL CHECKS PASSED'}`);
 process.exit(failures ? 1 : 0);

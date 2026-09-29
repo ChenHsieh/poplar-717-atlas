@@ -189,6 +189,7 @@ function applyFilters(state, navigation) {
   } catch { /* URL bookkeeping is cosmetic; never let it break filtering */ }
   const out = [];
   for (let i = 0; i < state.rows.length; i++) {
+    if (state.idset && !state.idset.has(i)) continue;
     const r = state.rows[i];
     let ok = true;
     for (const f of active) {
@@ -366,7 +367,9 @@ export async function browseView(navigation) {
       for (const k of KEYS[f.id](r)) t.set(k, (t.get(k) || 0) + 1);
     };
     const totals = new Map(counted.map((f) => [f.id, 0]));
-    for (const r of state.rows) {
+    for (let ri = 0; ri < state.rows.length; ri++) {
+      if (state.idset && !state.idset.has(ri)) continue;
+      const r = state.rows[ri];
       let failed = null; let nfail = 0;
       for (const f of active) {
         if (!f.test(r, state.values[f.id])) { failed = f; if (++nfail > 1) break; }
@@ -444,6 +447,39 @@ export async function browseView(navigation) {
   };
   const groupNodes = [];
   const controls = el('div', { class: 'bz-groups' });
+  // A pasted list of gene IDs, the "bulk lookup" every genome portal has. It narrows the table
+  // like any other filter but is NOT written to the URL: a list of hundreds of IDs does not
+  // belong in a link. Unknown IDs are reported by name rather than silently dropped.
+  const idBox = el('textarea', { rows: '4', spellcheck: 'false', 'aria-label': 'Gene IDs, one per line',
+    placeholder: 'PtXaTreH.05G120200\nPtXaAlbH.05G122300' });
+  const idNote = el('span', { class: 'bz-hint', role: 'status', 'aria-live': 'polite' },
+    'paste IDs separated by spaces, commas or lines');
+  const applyIds = () => {
+    const toks = [...new Set(idBox.value.split(/[\s,;]+/).map((t) => t.trim()).filter(Boolean))];
+    if (!toks.length) {
+      state.idset = null;
+      idNote.textContent = 'paste IDs separated by spaces, commas or lines';
+    } else {
+      const found = new Set(); const missing = [];
+      for (const t of toks) {
+        const i = state.idIndex.get(t) ?? state.idIndex.get(t.replace(/\.\d+$/, ''));
+        if (i == null) missing.push(t); else found.add(i);
+      }
+      state.idset = found;
+      idNote.textContent = `${fmt(found.size)} of ${fmt(toks.length)} IDs found`
+        + (missing.length ? `; not in this release: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ` and ${missing.length - 5} more` : ''}` : '');
+    }
+    if (!applyFilters(state, navigation)) return;
+    sortMatches(state);
+    render();
+  };
+  const idGroup = el('details', { class: 'bz-group', 'data-group': 'ids' },
+    el('summary', {}, el('span', {}, 'Gene list'), el('span', { class: 'bz-badge' })),
+    el('label', { class: 'bz-field', 'data-filter': 'ids' }, 'Paste gene IDs', idBox, idNote),
+    el('div', { class: 'bz-field' },
+      el('button', { type: 'button', class: 'btn', onclick: applyIds }, 'Apply list'), ' ',
+      el('button', { type: 'button', class: 'btn ghost', onclick: () => { idBox.value = ''; applyIds(); } }, 'Clear')));
+  controls.append(idGroup);
   for (const g of FILTER_GROUPS) {
     const badge = el('span', { class: 'bz-badge' });
     const node = el('details', { class: 'bz-group' + (g.adv ? ' adv' : ''), open: g.adv ? null : 'open' },
@@ -467,6 +503,10 @@ export async function browseView(navigation) {
     clear(chipRow);
     const active = FILTERS.filter((f) => state.values[f.id] !== undefined
       && state.values[f.id] !== '' && state.values[f.id] !== null);
+    if (state.idset) {
+      chipRow.append(el('button', { class: 'chip', type: 'button', title: 'Remove the gene list',
+        onclick: () => { idBox.value = ''; applyIds(); } }, `Gene list: ${fmt(state.idset.size)} IDs  \u00d7`));
+    }
     if (!active.length) return;
     for (const f of active) {
       const chip = el('button', {
@@ -724,6 +764,7 @@ export async function browseView(navigation) {
   if (navigation && !navigation.isCurrent()) return root;
   state.rows = facets.rows.map((_, i) => facetRow(facets, i));
   state.ids = ids;
+  state.idIndex = new Map(ids.map((id, i) => [id, i]));
 
   // Build every select from its declared options after the facet vocabulary arrives. Peak
   // tissue deliberately comes from the release index, which includes leaf_young and leaf_old.
