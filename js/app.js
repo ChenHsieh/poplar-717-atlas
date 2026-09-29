@@ -219,6 +219,7 @@ route(/^\/$/, async (navigation) => {
     ['#/module/expression', 'Expression', `${fmt(e.n_samples)} samples from ${e.n_studies} curated studies.`],
     ['#/module/duplication', 'Duplication', 'Tandem arrays and whole-genome duplication partners.'],
     ['#/module/phylostrat', 'Gene age', 'Phylostrata and the lineage-specific pool.'],
+    ['#/arrays', 'Tandem arrays', 'Every curated array, per haplotype, with divergence and expression.'],
   ];
 
   setView(el('div', { class: 'home' },
@@ -834,8 +835,15 @@ route(/^\/map(?:\/(hap[12]))?(?:\/(\w+))?$/, async (hapArg, chrArg, navigation) 
   loading('Loading the genome map…');
   const hapBtn = (h, label) => el('button', {
     class: 'locus-btn', type: 'button',
-    style: h === hap ? 'background:var(--accent);color:#fff' : '',
-    onclick: () => { location.hash = chrArg ? `#/map/${h}/${chrArg}` : `#/map/${h}`; },
+    style: h === hap ? 'background:var(--accent);color:var(--on-accent);border-color:var(--accent)' : '',
+    'aria-pressed': h === hap ? 'true' : 'false',
+    // Keep the zoom window (?start=&end=) when switching haplotype on a chromosome view; the
+    // track browser draws both haplotypes and states its own coordinates, so the window is
+    // a place to land, not a claim that the two coordinate systems agree.
+    onclick: () => {
+      const q = chrArg ? (location.hash.split('?')[1] || '') : '';
+      location.hash = (chrArg ? `#/map/${h}/${chrArg}` : `#/map/${h}`) + (q ? '?' + q : '');
+    },
   }, label);
   const body = await renderMap(hap, chrArg || null);
   setView(el('div', {},
