@@ -1049,6 +1049,65 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await kp.close();
 }
 
+// #/karyotype painted chromosomes: every legend count must equal the count re-derived here, from
+// facets.json directly (hap column x aek hundreds digit), with a positive control that a one-gene
+// perturbation is caught. Then a driven click: a painted row -> detail -> Browse, and a legend
+// link -> Browse, each landing on the number it claimed. Then the page fits a 390 px phone.
+{
+  const kp = await browser.newPage({ viewport: { width: 1180, height: 1300 } });
+  const kerrs = [];
+  kp.on('pageerror', (e) => kerrs.push(e.message));
+  await kp.goto(base + '/#/karyotype', { waitUntil: 'networkidle' });
+  await kp.waitForSelector('[data-kp-fig]', { timeout: 60000 });
+  const fac = await kp.evaluate(async () => (await fetch('data/index/facets.json')).json());
+  const ih = fac.cols.indexOf('hap'); const ia = fac.cols.indexOf('aek');
+  const want = {};
+  for (const r of fac.rows) {
+    if (r[ia] == null || r[ia] < 100) continue;
+    const k = `${r[ih] === 0 ? 'hap1' : 'hap2'}|AEK${Math.floor(r[ia] / 100)}`;
+    want[k] = (want[k] || 0) + 1;
+  }
+  const shown = await kp.locator('[data-kp-legend]').evaluateAll((ns) => ns.map((n) => [n.dataset.kpLegend, +n.dataset.n,
+    parseInt(n.querySelector('.kp-n').textContent.replace(/,/g, ''), 10)]));
+  const agree = (w) => shown.length === 14 && shown.every(([k, n, t]) => w[k] === n && n === t);
+  const perturbed = { ...want, 'hap2|AEK4': want['hap2|AEK4'] + 1 };
+  const legendOk = agree(want) && !agree(perturbed);   // positive control: a one-gene drift is caught
+
+  const leg = kp.locator('[data-kp-legend="hap2|AEK3"]').first();
+  const legN = +(await leg.getAttribute('data-n'));
+  await leg.click();
+  await kp.waitForTimeout(1500);
+  const lm = (await viewText(kp)).match(/([\d,]+)\s*\n?\s*of [\d,]+ genes match/i);
+  const legLanded = lm ? parseInt(lm[1].replace(/,/g, ''), 10) : null;
+
+  await kp.goto(base + '/#/karyotype', { waitUntil: 'networkidle' });
+  await kp.waitForSelector('[data-kp-fig]', { timeout: 60000 });
+  await kp.locator('[data-kp-hit="hap1|Chr06"]').click();
+  const bl = kp.locator('[data-kp-browse]');
+  const segN = +(await bl.getAttribute('data-n'));
+  await bl.click();
+  await kp.waitForTimeout(1500);
+  const sm = (await viewText(kp)).match(/([\d,]+)\s*\n?\s*of [\d,]+ genes match/i);
+  const segLanded = sm ? parseInt(sm[1].replace(/,/g, ''), 10) : null;
+  await kp.close();
+
+  const pp = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await pp.goto(base + '/#/karyotype', { waitUntil: 'networkidle' });
+  await pp.waitForSelector('[data-kp-fig]', { timeout: 60000 });
+  const fit = await pp.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth,
+    Math.min(...[...document.querySelectorAll('[data-kp-mode],[data-kp-focus],[data-kp-legend]')]
+      .map((n) => n.getBoundingClientRect().height))]);
+  await pp.close();
+
+  const ok = !kerrs.length && legendOk && legLanded === legN && segN > 0 && segLanded === segN
+    && fit[0] <= fit[1] && fit[2] >= 44;
+  if (!ok) failures++;
+  console.log(`\n### karyotype:painted-legend-and-clicks  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   legend ${shown.length} counts agree with facets ${agree(want)}, perturbed caught ${!agree(perturbed)}; `
+    + `legend ${legN} -> ${legLanded}; segment ${segN} -> ${segLanded}; phone ${fit[0]}/${fit[1]}, min target ${fit[2]}px`);
+  kerrs.forEach((e) => console.log('   !! ' + e));
+}
+
 // The provenance sidecars, made reachable. They are committed and served over HTTP, and before
 // nothing in the interface linked to any of them -- they are where this project does its most
 // careful writing (the gate a layer had to pass, what it deliberately does not claim, what was
