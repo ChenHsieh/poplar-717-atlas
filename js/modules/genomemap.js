@@ -542,10 +542,11 @@ function drawChrView(ctx, view, M) {
   return boxes;
 }
 
-async function loadTiles(hap, chr, chrLen) {
-  const n = Math.floor(chrLen / 1e6) + 1;
-  const parts = await Promise.all(Array.from({ length: n }, (_, i) =>
-    loadLocusTile(hap, chr, i).catch(() => [])));
+// Tiles are keyed by floor(gene start / 1 Mb) (scripts/build_locus.py), so the set that
+// exists is exactly the set the index's own starts imply -- no probing, no 404s.
+async function loadTiles(hap, chr, genes) {
+  const mbs = [...new Set(genes.map((g) => Math.floor(g.s / 1e6)))].sort((a, b) => a - b);
+  const parts = await Promise.all(mbs.map((i) => loadLocusTile(hap, chr, i)));
   const m = new Map();
   for (const part of parts) for (const r of part || []) m.set(r.g, r);
   return m;
@@ -763,7 +764,7 @@ async function renderChromosome(hap, chr, onBack) {
   recompute();
   s.redraw();
 
-  Promise.all([loadTiles(hap, chr, len[hap]), loadTiles(other, chr, len[other])]).then(([ta, tb]) => {
+  Promise.all([loadTiles(hap, chr, idxA), loadTiles(other, chr, idxB)]).then(([ta, tb]) => {
     tiles[hap] = ta; tiles[other] = tb; M.tiles = tiles;
     tilesReady = true;
     recompute(); s.redraw();
