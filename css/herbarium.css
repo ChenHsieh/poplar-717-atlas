@@ -237,3 +237,7 @@ button, select, input, textarea { font-family: inherit; }
 .card.glance { box-shadow: none; border-width: 1px; border-color: var(--line-2); }
 @media (max-width: 640px) { .gene-head { padding: 16px 16px 14px; box-shadow: 4px 4px 0 var(--line); }
   .gh-actions .btn { flex: 1 1 auto; justify-content: center; min-height: 44px; } }
+
+/* Uppercasing headers turned tau into T and omega into a capital Omega on every table that
+   used them (pair, arrays, browse). Headers keep the mono label style, written as authored. */
+table.data th { text-transform: none; letter-spacing: .04em; font-size: 11.5px; }
