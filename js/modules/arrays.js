@@ -350,8 +350,8 @@ export async function arraysIndexView() {
       el('p', { class: 'sub' }, 'Every array in the curated union tandem set, per haplotype. Pick one to see its members '
         + 'to scale, their divergence, expression and the matching region on the other haplotype.'),
       el('p', { class: 'arr-note', 'data-arrays-counted': '' },
-        `Counted in the manuscript: ${rows.filter((r) => r.hap === 'hap1' && r.k > 0).length} ${hapLabel('hap1')} and `
-        + `${rows.filter((r) => r.hap === 'hap2' && r.k > 0).length} ${hapLabel('hap2')} arrays. The list also holds `
+        `Counted in the manuscript: ${fmt(rows.filter((r) => r.hap === 'hap1' && r.k > 0).length)} ${hapLabel('hap1')} and `
+        + `${fmt(rows.filter((r) => r.hap === 'hap2' && r.k > 0).length)} ${hapLabel('hap2')} arrays. The list also holds `
         + `${rows.filter((r) => r.k === 0).length} detected arrays the pseudogene screen removed; use the filter to hide them.`)),
     el('div', { class: 'card' }, el('h2', {}, 'Array sizes', el('span', { class: 'tag' }, 'count of arrays per haplotype')), hist),
     el('div', { class: 'card' },

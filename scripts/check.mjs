@@ -2541,9 +2541,8 @@ for (const scheme of ['light', 'dark']) {
   await p.goto(base + '/#/array/HAP1_U00193', { waitUntil: 'networkidle' });
   await p.waitForTimeout(1200);
   const stOk = await p.evaluate(() => document.querySelector('[data-arr-status]') === null);
-  const ok = !errs.length && note.includes('2119') === false && note.includes('2,119') === false
-    ? false : (!errs.length && /2,?119/.test(note) && /2,?085/.test(note) && /of 167 arrays/.test(removedCount)
-      && st === 'removed' && stOk);
+  const ok = !errs.length && note.includes('2,119') && note.includes('2,085')
+    && /of 167 arrays/.test(removedCount) && st === 'removed' && stOk;
   if (!ok) failures++;
   console.log(`\n### arrays:counted-vs-detected  ${ok ? 'OK' : 'FAIL'}  status(U00357)=${st} fullyCountedHasNoBanner=${stOk}`);
   console.log(`   ${note}\n   removed filter: ${removedCount}`);
