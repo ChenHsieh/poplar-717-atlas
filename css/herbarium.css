@@ -251,3 +251,11 @@ h2 { font-weight: 600; letter-spacing: -0.005em; }
 .q-q, .tile-t, .fold-title { font-weight: 600; }
 header.top .brand .wm i { font-style: normal; font-weight: 600; color: var(--ink-2); }
 body { background-image: radial-gradient(color-mix(in srgb, var(--dot) 60%, transparent) 1px, transparent 1px); }
+
+/* On a phone the header is three rows (~145 px of an 844 px screen). Let it scroll away; the
+   gene page section nav then sticks to the very top instead of under it. */
+@media (max-width: 640px) {
+  header.top { position: static; }
+  .secnav { top: 0; }
+  .cards > .card, h2.sect { scroll-margin-top: 58px; }
+}
