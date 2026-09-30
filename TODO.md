@@ -575,4 +575,4 @@ only what still has no second layer after that gets folded into About.
       scratchpad allele_vs_v11.py logic (atlas shards vs master_per_gene_v11.csv).
 - [x] **57: tandem gene with no allele shows the alleles its array reaches (2026-09-30).** Allele
       card + glance strip, via arrays.json and the members' own `allele`; check
-      `allele:through-the-array` (expected pairs from v11, true-negative array HAP1_U00357).
+      `allele:through-the-array` (expected pairs from v11, true-negative array HAP1_U00361).

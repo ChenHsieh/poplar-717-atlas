@@ -2509,7 +2509,7 @@ for (const scheme of ['light', 'dark']) {
 // A tandem gene with no syntelog of its own reaches the other haplotype through its array
 // (CJ's tandem rule, ms1-dup master v11 `td_array_associated`). Expected pairs are copied from
 // master_per_gene_v11.csv `syntelog_partner_gene_id` -- an INDEPENDENT source, not the atlas's
-// own shards -- for the members of HAP1_U00025. HAP1_U00357 is the negative case: no member
+// own shards -- for the members of HAP1_U00025. HAP1_U00361 is the negative case: every member counted tandem, no member
 // of that array has a partner in v11 OR in the atlas map, so the page must say so rather than
 // name anything. (HAP1_U00186 was tried first and is NOT a negative: the atlas map gives
 // 01G316900 an allele v11 does not -- the two partner sets differ, see TODO.)
@@ -2526,12 +2526,12 @@ for (const scheme of ['light', 'dark']) {
     }));
   };
   const pos = await read('PtXaTreH.01G020200');
-  const neg = await read('PtXaTreH.03G007900');
+  const neg = await read('PtXaTreH.03G012100');
   const want = [['PtXaTreH.01G020300', 'PtXaAlbH.01G020800'], ['PtXaTreH.01G020400', 'PtXaAlbH.01G021000']];
   const okPos = want.every(([m, a]) => pos.card.includes(m) && pos.card.includes(a))
     && pos.card.includes('HAP1_U00025') && pos.card.includes('not hemizygous')
     && pos.glance.includes('PtXaAlbH.01G020800');
-  const okNeg = neg.card.includes('HAP1_U00357') && neg.card.includes('array-level case')
+  const okNeg = neg.card.includes('HAP1_U00361') && neg.card.includes('array-level case')
     && !/PtXaAlbH\./.test(neg.card);
   const ok = !errs.length && okPos && okNeg;
   if (!ok) failures++;
