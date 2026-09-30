@@ -5,7 +5,7 @@
 // shards -- a filter that had to read 39 MB of shards plus 208 MB of expression buckets would
 // not be a filter anyone waits for.
 import { el, clear, fmt } from './dom.js';
-import { loadFacets, facetRow, loadGeneIndex, loadDescIndex, dataVersion } from './data.js';
+import { loadFacets, facetRow, loadGeneIndex, loadDescIndex, loadStructure, dataVersion } from './data.js';
 import { query, setQuery } from './router.js';
 import { onDispose } from './lifecycle.js';
 import {
@@ -645,6 +645,46 @@ export async function browseView(navigation) {
   });
   onDispose(root, unsubscribeSets);
 
+  // Protein FASTA for the current selection, from the structure buckets (ESMFold input
+  // sequences, 40,685 genes). Capped: each bucket is a separate fetch, and a whole-genome click
+  // should not pull most of 94 MB. Genes without a model are listed in the file's last line.
+  const actStatus = el('p', { class: 'muted bz-actstatus', role: 'status', 'aria-live': 'polite', 'data-browse-action-status': '' });
+  const FASTA_MAX = 300;
+  const faBtn = el('button', { type: 'button', class: 'btn', 'data-browse-fasta': '' }, 'Protein FASTA');
+  faBtn.addEventListener('click', async () => {
+    const ids = state.matches.map((i) => state.ids[i]);
+    if (ids.length > FASTA_MAX) {
+      actStatus.textContent = (`Protein FASTA is limited to ${FASTA_MAX} genes; this selection has ${fmt(ids.length)}. Narrow the filters or paste a gene list.`);
+      return;
+    }
+    faBtn.disabled = true;
+    const out = []; const missing = [];
+    let done = 0;
+    const queue = [...ids];
+    const worker = async () => {
+      while (queue.length) {
+        const id = queue.shift();
+        try {
+          const s = await loadStructure(id);
+          if (s && s.seq) out.push([id, s.seq]); else missing.push(id);
+        } catch { missing.push(id); }
+        done += 1;
+        faBtn.textContent = `Fetching ${done}/${ids.length}…`;
+      }
+    };
+    await Promise.all(Array.from({ length: 6 }, worker));
+    const order = new Map(ids.map((id, i) => [id, i]));
+    out.sort((a, b) => order.get(a[0]) - order.get(b[0]));
+    const text = out.map(([id, seq]) => `>${id} len=${seq.length} source=ESMFold input sequence, 717 atlas v${dataVersion()}\n`
+      + seq.replace(/(.{60})/g, '$1\n').replace(/\n$/, '')).join('\n') + '\n'
+      + (missing.length ? `; no protein model for ${missing.length} gene(s): ${missing.join(' ')}\n` : '');
+    download(`717atlas_selection_${out.length}proteins.faa`, text, 'text/plain;charset=utf-8');
+    actStatus.textContent = (`Downloaded ${fmt(out.length)} protein sequences`
+      + (missing.length ? `; ${fmt(missing.length)} gene(s) have no model and are listed at the end of the file.` : '.'));
+    faBtn.textContent = 'Protein FASTA';
+    faBtn.disabled = false;
+  });
+
   const actions = el('div', { class: 'bz-actions' },
     el('button', {
       type: 'button',
@@ -669,6 +709,7 @@ export async function browseView(navigation) {
       },
       class: 'btn',
     }, 'Save as set'),
+    faBtn,
     el('button', {
       type: 'button',
       onclick: () => {
@@ -752,6 +793,7 @@ export async function browseView(navigation) {
     el('div', { class: 'bz-main' },
       el('div', { class: 'bz-bar' }, summary, actions),
       chipRow,
+      actStatus,
       el('div', { class: 'card bz-results' }, tableHolder, pager),
       notes,
       el('details', { class: 'card-fold bz-sets' },

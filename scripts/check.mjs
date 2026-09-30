@@ -2587,6 +2587,33 @@ for (const scheme of ['light', 'dark']) {
   await ctx.close();
 }
 
+// Browse protein FASTA: refuses a whole-genome selection, and for a pasted list writes one
+// record per modelled gene in selection order with the unmodelled ones named at the end.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1180, height: 900 }, acceptDownloads: true });
+  const p = await ctx.newPage();
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto(base + '/#/browse', { waitUntil: 'networkidle' });
+  await p.waitForSelector('#view .stat .n');
+  await p.click('[data-browse-fasta]');
+  const refused = await p.$eval('[data-browse-action-status]', (n) => n.textContent);
+  await p.evaluate(() => { document.querySelector('[data-group="ids"]').open = true; });
+  await p.fill('label[data-filter="ids"] textarea', 'PtXaTreH.05G120200 PtXaTreH.01G000200 PtXaAlbH.05G122300');
+  await p.click('[data-group="ids"] button:has-text("Apply list")');
+  await p.waitForTimeout(300);
+  const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('[data-browse-fasta]')]);
+  const text = await (await import('fs')).promises.readFile(await dl.path(), 'utf8');
+  const heads = text.split('\n').filter((l) => l.startsWith('>')).map((l) => l.split(' ')[0].slice(1));
+  const ok = !errs.length && /limited to 300/.test(refused) && heads.length === 2
+    && heads.includes('PtXaTreH.05G120200') && heads.includes('PtXaAlbH.05G122300')
+    && /no protein model for 1 gene\(s\): PtXaTreH\.01G000200/.test(text);
+  if (!ok) failures++;
+  console.log(`\n### browse:protein-fasta  ${ok ? 'OK' : 'FAIL'}  records=${heads.join(',')}  refused="${refused.slice(0, 60)}"`);
+  errs.forEach((e) => console.log('   !! ' + e));
+  await ctx.close();
+}
+
 // A tandem gene with no syntelog of its own reaches the other haplotype through its array
 // (CJ's tandem rule, ms1-dup master v11 `td_array_associated`). Expected pairs are copied from
 // master_per_gene_v11.csv `syntelog_partner_gene_id` -- an INDEPENDENT source, not the atlas's
