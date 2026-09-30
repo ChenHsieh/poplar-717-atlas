@@ -2558,6 +2558,35 @@ for (const scheme of ['light', 'dark']) {
   await p.close();
 }
 
+// Protein FASTA from the gene header: the downloaded sequence must have the residue count the
+// gene record states (prot.ss.n, from the same ESMFold model), and a gene with no model must
+// say so rather than download an empty file.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1180, height: 900 }, acceptDownloads: true });
+  const p = await ctx.newPage();
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
+  await p.waitForSelector('[data-protein-fasta]');
+  const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 20000 }), p.click('[data-protein-fasta]')]);
+  const text = await (await import('fs')).promises.readFile(await dl.path(), 'utf8');
+  const seq = text.split('\n').slice(1).join('').trim();
+  const want = await p.evaluate(async () => {
+    const r = await fetch('data/genes/hap1/Chr05/4.json').then((x) => x.json());
+    return r['PtXaTreH.05G120200'].prot.ss.n;
+  });
+  await p.goto(base + '/#/gene/PtXaTreH.01G000200', { waitUntil: 'networkidle' });
+  await p.click('[data-protein-fasta]');
+  await p.waitForTimeout(1500);
+  const none = await p.$eval('[data-protein-fasta]', (b) => b.textContent);
+  const ok = !errs.length && text.startsWith('>PtXaTreH.05G120200 ') && /^[A-Z*]+$/.test(seq)
+    && seq.length === want && /No protein model/.test(none);
+  if (!ok) failures++;
+  console.log(`\n### gene:protein-fasta  ${ok ? 'OK' : 'FAIL'}  ${seq.length} aa vs record ${want}; no-model button: "${none}"`);
+  errs.forEach((e) => console.log('   !! ' + e));
+  await ctx.close();
+}
+
 // A tandem gene with no syntelog of its own reaches the other haplotype through its array
 // (CJ's tandem rule, ms1-dup master v11 `td_array_associated`). Expected pairs are copied from
 // master_per_gene_v11.csv `syntelog_partner_gene_id` -- an INDEPENDENT source, not the atlas's

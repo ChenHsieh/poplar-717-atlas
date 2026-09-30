@@ -1,7 +1,7 @@
 import { el, clear, fmt } from './core/dom.js';
 import { studyMeta, cleanCitation } from './core/cite.js';
 import { getGene, loadManifest, hapLabel, loadExprStudies,
-         loadExprSamples, searchGenesRanked, loadFacets, facetRow, arrayAlleles } from './core/data.js';
+         loadExprSamples, searchGenesRanked, loadFacets, facetRow, arrayAlleles, loadStructure, dataVersion } from './core/data.js';
 import { MODULES, byId, GENE_SECTIONS, geneSectionModules, CARD_EVIDENCE,
          EVIDENCE_TIERS } from './core/registry.js';
 import { dupTypeLabel } from './modules/duplication.js';
@@ -674,6 +674,27 @@ function geneHeader(g, kb) {
     setTimeout(() => URL.revokeObjectURL(url), 0);
   });
 
+  // Protein sequence: the ESMFold input sequence carried in the structure buckets (40,685 genes).
+  // Fetched only on click; a gene without a model says so instead of downloading nothing.
+  const faBtn = el('button', { type: 'button', class: 'btn', 'data-protein-fasta': '' }, 'Protein FASTA');
+  faBtn.addEventListener('click', async () => {
+    faBtn.disabled = true;
+    faBtn.textContent = 'Fetching…';
+    try {
+      const s = await loadStructure(g.id);
+      if (!s || !s.seq) { faBtn.textContent = 'No protein model for this gene'; return; }
+      const body = s.seq.replace(/(.{60})/g, '$1\n').replace(/\n$/, '');
+      const text = `>${g.id} ${hapLabel(g.hap)} ${g.chr}:${g.start}-${g.end}(${g.strand || '?'}) `
+        + `len=${s.seq.length} source=ESMFold input sequence, 717 atlas v${dataVersion()}\n${body}\n`;
+      const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+      const a = el('a', { href: url, download: `${g.id}.faa` });
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      faBtn.textContent = `Protein FASTA (${s.seq.length} aa)`;
+      faBtn.disabled = false;
+    } catch { faBtn.textContent = 'Could not fetch the sequence'; }
+  });
+
   return el('header', { class: 'gene-head', 'data-gene-head': g.id },
     el('div', { class: 'kicker' }, `Gene model · ${g.hap === 'hap1' ? 'P. tremula haplotype' : 'P. alba haplotype'}`),
     el('h1', { class: 'mono' }, g.id),
@@ -685,7 +706,7 @@ function geneHeader(g, kb) {
       el('a', { class: 'btn', href: `#/pair/${g.id}` }, g.allele && g.allele.id ? 'Compare alleles' : 'Allele pair'),
       el('a', { class: 'btn', href: `#/map/${g.hap}/${g.chr}` }, 'Genome map'),
       el('a', { class: 'btn', href: browseHref({ hap: g.hap, chr: g.chr }) }, `Browse ${g.chr}`),
-      copyBtn, dlBtn));
+      faBtn, copyBtn, dlBtn));
 }
 
 route(/^\/gene\/(.+)$/, async (id, navigation) => {
