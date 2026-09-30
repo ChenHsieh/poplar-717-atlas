@@ -647,7 +647,16 @@ function geneHeader(g, kb) {
   if (g.dup && g.dup.td) facts.push(el('span', { class: 'gh-fact' }, 'tandem array'));
   if (g.allele && g.allele.id) facts.push(el('span', { class: 'gh-fact' }, 'allele ',
     el('a', { href: `#/gene/${g.allele.id}`, class: 'mono' }, g.allele.id)));
-  else facts.push(el('span', { class: 'gh-fact muted' }, 'no 1:1 allele called'));
+  else {
+    const chip = el('span', { class: 'gh-fact muted' }, 'no 1:1 allele called');
+    facts.push(chip);
+    if (g.dup && g.dup.td) {
+      arrayAlleles(g).then((r) => {
+        const n = r ? r.members.filter((x) => x.id !== g.id && x.allele).length : 0;
+        if (n) chip.textContent = `no 1:1 allele; its array reaches ${n} on the other haplotype`;
+      }).catch(() => {});
+    }
+  }
 
   const copyBtn = el('button', { type: 'button', class: 'btn' }, 'Copy ID');
   copyBtn.addEventListener('click', async () => {
