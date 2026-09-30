@@ -564,3 +564,15 @@ only what still has no second layer after that gets folded into About.
       (d) Stale remote branches: `codex/atlas-hardening-20260923` is fully squash-merged as
       3e91e68; `pool-frozen-flags-20260921`, `ms2-canon-sync-20260921`, `pages-site-only`,
       `chen-wgd-events` are all contained in main. Safe to delete; left for Chen.
+
+- [ ] **56: the Allele layer is not v11's partner set (found 2026-09-30, POST-FREEZE, Chen to decide).**
+      Gene by gene against ms1-dup master v11 `syntelog_partner_gene_id` (per haplotype; the maps
+      are symmetric): 25,623 same partner; **2,519 genes v11 calls 1:1 that the atlas shows with no
+      allele** (e.g. PtXaTreH.01G000200 -> PtXaAlbH.01G000100, relationship_v11 1:1); 257 the atlas
+      pairs that v11 does not (mostly REMOVED by QC or hemizygous in v11); 51 with a different partner
+      (expanded loci). The atlas Allele card is the older 25,931-pair Yang-Nielsen map. Moving to v11
+      changes a layer, so it waits for the freeze to lift. Script:
+      scratchpad allele_vs_v11.py logic (atlas shards vs master_per_gene_v11.csv).
+- [x] **57: tandem gene with no allele shows the alleles its array reaches (2026-09-30).** Allele
+      card + glance strip, via arrays.json and the members' own `allele`; check
+      `allele:through-the-array` (expected pairs from v11, true-negative array HAP1_U00357).
