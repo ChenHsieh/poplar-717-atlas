@@ -2,7 +2,7 @@
 // Answers a visitor's first three questions on the gene page: what is this gene, where is
 // its other allele, and which genomes have it.
 import { el, fmt } from '../core/dom.js';
-import { loadTerms } from '../core/data.js';
+import { loadTerms, arrayAlleles } from '../core/data.js';
 
 const PANEL = ['Ptrxalhap1', 'Ptrxalhap2', 'Pnigra', 'Ptrichocarpa', 'Pdeltoides',
   'Peuphratica', 'Spurpurea', 'Egrandis', 'Vvinifera', 'Athaliana', 'Osativa', 'Ppatens'];
@@ -124,11 +124,43 @@ function alleleCard(g, man) {
     const cp = man && man.copies && man.copies.genes && man.copies.genes[g.id];
     const loc = cp && man.copies.loci[cp];
     const unann = loc && Object.values(loc.summary).some((s) => s.unannotated > 0);
+    // Filled after first paint: the alleles this gene reaches through its tandem array.
+    const viaArray = el('div', { 'data-allele-via-array': '' });
+    if (g.dup && g.dup.td) {
+      arrayAlleles(g).then((r) => {
+        if (!r) return;
+        const withAllele = r.members.filter((x) => x.id !== g.id && x.allele);
+        const aLink = (id) => el('a', { href: `#/array/${id}`, class: 'mono' }, id);
+        if (!withAllele.length) {
+          viaArray.append(el('p', { style: 'margin:10px 0 0;font-size:13px' },
+            'No member of its tandem array ', aLink(r.arrayId), ` has a 1:1 ${other} syntelog either, `
+            + 'so the whole array has no called counterpart: an array-level case.'));
+          return;
+        }
+        viaArray.append(
+          el('p', { style: 'margin:10px 0 6px;font-size:13.5px' },
+            el('strong', {}, 'Through its tandem array. '),
+            `This gene has no syntelog of its own, but ${withAllele.length} of the other `
+            + `${r.members.length - 1} members of `, aLink(r.arrayId), ` do, so the locus is present on ${other}; `
+            + 'the gene is tandem-array-associated, not hemizygous.'),
+          el('dl', { class: 'kv' }, ...withAllele.flatMap((x) => [
+            el('dt', {}, el('a', { href: `#/gene/${x.id}`, class: 'mono' }, x.id)),
+            el('dd', {}, '→ ', el('a', { href: `#/gene/${x.allele}`, class: 'mono' }, x.allele),
+              ' ', el('a', { href: `#/pair/${x.id}`, class: 'muted' }, 'pair'))])),
+          r.pairedArrays.length ? el('p', { style: 'margin:6px 0 0;font-size:13px' },
+            `Matching ${other} array${r.pairedArrays.length > 1 ? 's' : ''}: `,
+            ...r.pairedArrays.flatMap((id, i) => [i ? ', ' : '', aLink(id)])) : null,
+          el('p', { class: 'muted', style: 'margin:6px 0 0;font-size:12px' },
+            'An array-level link, not a 1:1 call for this gene: which copy corresponds to which is '
+            + 'not resolved inside a tandem array.'));
+      }).catch(() => {});
+    }
     return el('div', { class: 'card', 'data-card': 'allele' },
       el('h2', {}, 'Allele', el('span', { class: 'tag' }, 'syntelog')),
       el('p', { class: 'muted', style: 'margin:0;font-size:13px' },
         `No 1:1 ${other} syntelog in the 25,931-pair map. That is expected for genes in tandem `
         + `arrays, hemizygous regions, or where synteny breaks down — not evidence of absence.`),
+      viaArray,
       loc ? el('p', { style: 'margin:8px 0 0;font-size:13px' },
         `Its copies on both haplotypes${unann ? ', including pieces the annotation does not call,' : ''} `
         + 'are drawn in the ',

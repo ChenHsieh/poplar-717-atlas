@@ -2506,6 +2506,40 @@ for (const scheme of ['light', 'dark']) {
   await p.close();
 }
 
+// A tandem gene with no syntelog of its own reaches the other haplotype through its array
+// (CJ's tandem rule, ms1-dup master v11 `td_array_associated`). Expected pairs are copied from
+// master_per_gene_v11.csv `syntelog_partner_gene_id` -- an INDEPENDENT source, not the atlas's
+// own shards -- for the members of HAP1_U00025. HAP1_U00186 is the negative case: no member
+// of that array has a syntelog in v11, so the page must say so rather than name anything.
+{
+  const p = await browser.newPage({ viewport: { width: 1180, height: 1000 } });
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  const read = async (id) => {
+    await p.goto(`${base}/#/gene/${id}`, { waitUntil: 'networkidle' });
+    await p.waitForTimeout(1500);
+    return p.evaluate(() => ({
+      card: document.querySelector('[data-allele-via-array]')?.innerText || '',
+      glance: document.querySelector('[data-glance-array-allele]')?.innerText || '',
+    }));
+  };
+  const pos = await read('PtXaTreH.01G020200');
+  const neg = await read('PtXaTreH.01G316900');
+  const want = [['PtXaTreH.01G020300', 'PtXaAlbH.01G020800'], ['PtXaTreH.01G020400', 'PtXaAlbH.01G021000']];
+  const okPos = want.every(([m, a]) => pos.card.includes(m) && pos.card.includes(a))
+    && pos.card.includes('HAP1_U00025') && pos.card.includes('not hemizygous')
+    && pos.glance.includes('PtXaAlbH.01G020800');
+  const okNeg = neg.card.includes('HAP1_U00186') && neg.card.includes('array-level case')
+    && !/PtXaAlbH\./.test(neg.card);
+  const ok = !errs.length && okPos && okNeg;
+  if (!ok) failures++;
+  console.log(`\n### allele:through-the-array  ${ok ? 'OK' : 'FAIL'}  positive=${okPos} negative=${okNeg}`);
+  if (!okPos) console.log('   card: ' + pos.card.slice(0, 300) + '\n   glance: ' + pos.glance);
+  if (!okNeg) console.log('   neg card: ' + neg.card.slice(0, 300));
+  errs.forEach((e) => console.log('   !! ' + e));
+  await p.close();
+}
+
 // Browse bulk lookup: a pasted list narrows the table to exactly the IDs that exist, and an ID
 // that is not in the release is NAMED, not silently dropped. Combined with a filter, so the
 // list is shown to AND with the sidebar rather than replace it.

@@ -1,6 +1,6 @@
 import { el, clear, fmt } from './core/dom.js';
 import { getGene, loadManifest, hapLabel, loadExprStudies,
-         loadExprSamples, searchGenesRanked, loadFacets, facetRow } from './core/data.js';
+         loadExprSamples, searchGenesRanked, loadFacets, facetRow, arrayAlleles } from './core/data.js';
 import { MODULES, byId, GENE_SECTIONS, geneSectionModules, CARD_EVIDENCE,
          EVIDENCE_TIERS } from './core/registry.js';
 import { dupTypeLabel } from './modules/duplication.js';
@@ -385,6 +385,20 @@ function glanceCard(g, man) {
       el('a', { href: `#/gene/${g.allele.id}`, class: 'mono' }, g.allele.id),
       el('span', { class: 'muted' }, ' · '),
       el('a', { href: `#/pair/${g.id}` }, 'side by side'))]);
+  } else if (g.dup && g.dup.td) {
+    // No allele of its own: the Allele card says what the array reaches; this row points at it.
+    const holder = el('span', { class: 'muted', 'data-glance-array-allele': '' }, 'none of its own; checking its tandem array…');
+    bits.push(['Allele', holder]);
+    arrayAlleles(g).then((r) => {
+      const w = r ? r.members.filter((x) => x.id !== g.id && x.allele) : [];
+      holder.textContent = '';
+      holder.className = '';
+      if (!w.length) { holder.append(el('span', { class: 'muted' }, 'none of its own, and none in its tandem array')); return; }
+      holder.append('none of its own; through its array ',
+        el('a', { href: `#/array/${r.arrayId}`, class: 'mono' }, r.arrayId), ': ',
+        el('a', { href: `#/gene/${w[0].allele}`, class: 'mono' }, w[0].allele),
+        w.length > 1 ? el('span', { class: 'muted' }, ` and ${w.length - 1} more`) : null);
+    }).catch(() => { holder.textContent = 'none of its own'; });
   }
   // A gene in a copy-search panel: the route to the other haplotype's copies, which the allele
   // map cannot give when the array has no assigned allele (NRX1: none of its 7 copies has one).

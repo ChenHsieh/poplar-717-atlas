@@ -424,6 +424,35 @@ export function loadChromatinProfile(potriId) {
 /** Members of a tandem array, from the curated union set. */
 export const loadArrays = () => fetchJSON('data/index/arrays.json');
 
+let _arrayOfGene = null;
+/** gene id -> curated union array id, reversed from arrays.json once per page load. */
+async function arrayIndex() {
+  if (!_arrayOfGene) {
+    _arrayOfGene = loadArrays().then((arrays) => {
+      const m = new Map();
+      for (const [aid, members] of Object.entries(arrays)) for (const id of members) m.set(id, aid);
+      return { arrays, m };
+    });
+  }
+  return _arrayOfGene;
+}
+
+/** The allele a tandem gene reaches THROUGH its array when it has no 1:1 syntelog of its own.
+ *  This is CJ's tandem rule (v11 `td_array_associated`, 2026-09-23): a tandem gene is not
+ *  hemizygous when another member of its array has a syntelog. Returns null when the gene is
+ *  in no array. Otherwise { arrayId, members: [{id, allele}], pairedArrays: [ids on the other
+ *  haplotype that hold those alleles] }. Every value is read off the member records; nothing
+ *  is inferred. */
+export async function arrayAlleles(gene) {
+  const { arrays, m } = await arrayIndex();
+  const arrayId = m.get(gene.id);
+  if (!arrayId) return null;
+  const recs = await Promise.all(arrays[arrayId].map((id) => (id === gene.id ? gene : getGene(id))));
+  const members = recs.filter(Boolean).map((r) => ({ id: r.id, allele: r.allele ? r.allele.id : null }));
+  const paired = [...new Set(members.filter((x) => x.allele).map((x) => m.get(x.allele)).filter(Boolean))].sort();
+  return { arrayId, members, pairedArrays: paired };
+}
+
 // Locus layer. A tile is one megabase of one chromosome: gene positions, strand,
 // longest-isoform exon structure, and the few fields the locus card draws. Built by
 // scripts/build_locus.py. Self-sufficient on purpose -- a gene page on a phone should
