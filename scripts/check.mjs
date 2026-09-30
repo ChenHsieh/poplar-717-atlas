@@ -2506,6 +2506,23 @@ for (const scheme of ['light', 'dark']) {
   await p.close();
 }
 
+// Every module the site loads is preloaded from the head (scripts/sync_preload.py), so the
+// browser fetches the import graph in one round trip instead of one per import level. A module
+// requested without a preload link means the generated list went stale.
+{
+  const p = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const js = new Set();
+  p.on('request', (r) => { const u = new URL(r.url()); if (u.pathname.endsWith('.js') && !u.pathname.includes('/vendor/')) js.add(u.pathname.replace(/^.*?\/js\//, 'js/')); });
+  await p.goto(base + '/#/gene/PtXaTreH.08G070200', { waitUntil: 'networkidle' });
+  const pre = await p.evaluate(() => [...document.querySelectorAll('link[rel=modulepreload]')].map((l) => l.getAttribute('href')));
+  const missing = [...js].filter((f) => f !== 'js/app.js' && !pre.includes(f));
+  const ok = js.size > 10 && pre.length > 10 && missing.length === 0;
+  if (!ok) failures++;
+  console.log(`\n### perf:modules-preloaded  ${ok ? 'OK' : 'FAIL'}  ${js.size} modules loaded, ${pre.length} preloaded`);
+  missing.forEach((m) => console.log('   !! not preloaded: ' + m));
+  await p.close();
+}
+
 // A tandem gene with no syntelog of its own reaches the other haplotype through its array
 // (CJ's tandem rule, ms1-dup master v11 `td_array_associated`). Expected pairs are copied from
 // master_per_gene_v11.csv `syntelog_partner_gene_id` -- an INDEPENDENT source, not the atlas's

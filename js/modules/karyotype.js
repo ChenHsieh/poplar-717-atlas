@@ -12,7 +12,7 @@
 //      chromosomes carry it, per haplotype.
 //
 // NO NEW DATA. Counts are reduced in the browser from the `aek` facet column (chromosome*100 +
-// gamma*10 + salicoid). Positions come from the locus index the genome map already serves
+// gamma*10 + salicoid). Positions come from data/index/pos.json (gene model start and end)
 // (data/locus/index/<hap>/<chr>.json), joined to the facet row by gene ID. Precomputing any of
 // this would create an aggregate a build stage owns and can silently leave stale (TODO 25).
 //
@@ -20,7 +20,7 @@
 // ancestral chromosome, not subgenomes, and "no genes" in a cell means no collinear anchor
 // carries that slot in this haplotype -- never a proven loss.
 import { el, fmt, clear } from '../core/dom.js';
-import { loadFacets, facetRow, loadGeneIndex, loadLocusIndex } from '../core/data.js';
+import { loadFacets, facetRow, loadPositions as loadAllPositions } from '../core/data.js';
 import { browseHref } from '../core/browse.js';
 
 const CHRS = [1, 2, 3, 4, 5, 6, 7];
@@ -131,29 +131,22 @@ function segments(genes, mode, focus) {
   return out;
 }
 
+// Positions come from one aligned file (data/index/pos.json, ~290 KB gzipped) rather than the
+// 38 per-chromosome locus index files (~1.5 MB) this page used to fetch for the same numbers.
 async function loadPositions(rows, onProgress) {
-  const ids = await loadGeneIndex();
-  const idx = new Map();
-  ids.forEach((id, i) => idx.set(id, i));
-  const jobs = [];
-  for (const hap of HAPS) for (const chr of MODERN) jobs.push([hap, chr]);
-  let done = 0;
+  const pos = await loadAllPositions();
+  const set = new Set(MODERN);
   const out = { hap1: {}, hap2: {} };
-  await Promise.all(jobs.map(async ([hap, chr]) => {
-    const list = await loadLocusIndex(hap, chr);
-    const genes = [];
-    let len = 0;
-    for (const g of list) {
-      const i = idx.get(g.g);
-      const aek = i == null ? -1 : rows[i].aek;
-      genes.push({ s: g.s, e: g.e, aek });
-      if (g.e > len) len = g.e;
-    }
-    genes.sort((a, b) => a.s - b.s);
-    out[hap][chr] = { genes, len };
-    done += 1;
-    onProgress(done, jobs.length);
-  }));
+  for (const hap of HAPS) for (const chr of MODERN) out[hap][chr] = { genes: [], len: 0 };
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (!set.has(r.chr) || !out[r.hap]) continue;
+    const c = out[r.hap][r.chr];
+    c.genes.push({ s: pos.start[i], e: pos.end[i], aek: r.aek });
+    if (pos.end[i] > c.len) c.len = pos.end[i];
+  }
+  for (const hap of HAPS) for (const chr of MODERN) out[hap][chr].genes.sort((a, b) => a.s - b.s);
+  onProgress(1, 1);
   return out;
 }
 
@@ -446,7 +439,7 @@ export async function karyotypeView() {
         'Route C, exploratory. Ancestral chromosomes come from collinearity between the 717 '
         + 'genome and the ancestral karyotype genes of Wang et al. 2022, BMC Biology 20:216; '
         + 'copy names come from collinear blocks shared with P. trichocarpa v3.1. Painted '
-        + 'positions are gene start and end coordinates from the genome map’s locus index.')));
+        + 'positions are gene start and end coordinates of the v5.1 gene models.')));
 
   loadPositions(rows, (d, n) => {
     const l = figs.querySelector('[data-kp-loading]');

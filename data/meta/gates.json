@@ -1,6 +1,6 @@
 {
- "data_version": "0.16.0",
- "n_checks": 90,
+ "data_version": "0.16.1",
+ "n_checks": 92,
  "n_failed": 0,
  "checks": [
   {
@@ -251,7 +251,7 @@
   {
    "name": "no embargoed LSG candidate label in any published file",
    "ok": true,
-   "detail": "1343 text files"
+   "detail": "1347 text files"
   },
   {
    "name": "ancestral karyotype counts match the route C coverage, per haplotype",
@@ -382,6 +382,16 @@
    "name": "facet class codes are inside the vocabulary",
    "ok": true,
    "detail": "0 out of range"
+  },
+  {
+   "name": "pos.json decodes to every gene's start and end",
+   "ok": true,
+   "detail": "63,960 genes"
+  },
+  {
+   "name": "desc.json decodes to each gene's own description",
+   "ok": true,
+   "detail": "57,527 described"
   },
   {
    "name": "the validator covers every facet column",

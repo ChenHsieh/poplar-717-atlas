@@ -142,9 +142,33 @@ def main():
             desc.append(f"similar to {ann.get('at', 'Arabidopsis')}: {ann['atd']}")
         else:
             desc.append("")
+    # Dictionary-encoded: 63,960 genes share 18,513 distinct descriptions, so each string is
+    # stored once (sorted, so the file is deterministic) and genes carry an index. 837 KB -> 354 KB
+    # gzipped. js/core/data.js loadDescIndex() decodes it back to one string per gene.
+    vocab = sorted(set(desc))
+    at = {s: i for i, s in enumerate(vocab)}
     dp = f"{data}/index/desc.json"
     with open(dp, "w") as fh:
-        json.dump(desc, fh, separators=(",", ":"), ensure_ascii=False)
+        json.dump({"vocab": vocab, "idx": [at[d] for d in desc]}, fh,
+                  separators=(",", ":"), ensure_ascii=False)
+    # Gene start/end, aligned with genes.json, for views that need every gene's position at
+    # once (the painted karyotype fetched 38 per-chromosome locus files, ~1.5 MB, for this).
+    # Starts are stored as the gap from the previous gene's start on the same haplotype and
+    # sequence (reset to the absolute start on a change), ends as the gene's length; the
+    # client (data.js loadPositions) rebuilds absolute bp. Small numbers compress well.
+    ds, ln, prev_key, prev_s = [], [], None, 0
+    for gid in order:
+        hap, r = recs[gid]
+        key = (hap, r.get("chr"))
+        s, e = int(r["start"]), int(r["end"])
+        ds.append(s - prev_s if key == prev_key else s)
+        ln.append(e - s)
+        prev_key, prev_s = key, s
+    pp = f"{data}/index/pos.json"
+    with open(pp, "w") as fh:
+        json.dump({"encoding": "start: delta from previous gene on the same hap+chr, else absolute; end = start + len",
+                   "ds": ds, "len": ln}, fh, separators=(",", ":"))
+    print(f"pos: {len(ds)} genes -> {os.path.getsize(pp)/1e6:.2f} MB raw")
     print(f"desc: {sum(1 for d in desc if d)} of {len(desc)} genes described -> "
           f"{os.path.getsize(dp)/1e6:.2f} MB raw")
     p = f"{data}/index/facets.json"

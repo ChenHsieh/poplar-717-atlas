@@ -311,7 +311,30 @@ export async function loadFamilies() {
 export const loadTerms = () => fetchJSON('data/index/terms.json');
 export const loadGeneIndex = () => fetchJSON('data/index/genes.json');
 /** One short description per gene, aligned with genes.json (build_facets.py). Browse only. */
-export const loadDescIndex = () => fetchJSON('data/index/desc.json');
+export const loadDescIndex = () => fetchJSON('data/index/desc.json')
+  .then((d) => (Array.isArray(d) ? d : d.idx.map((i) => d.vocab[i])));   // dictionary-encoded
+/** Every gene's [start, end] in bp, aligned with genes.json (build_facets.py writes pos.json
+ *  delta-encoded; decoded here). Resets the running start whenever hap or chr changes, which
+ *  it reads from the facet index so the two files cannot disagree about the order. */
+let _positions = null;
+export function loadPositions() {
+  if (!_positions) {
+    _positions = Promise.all([fetchJSON('data/index/pos.json'), loadFacets()]).then(([p, f]) => {
+      const n = p.ds.length;
+      const start = new Int32Array(n); const end = new Int32Array(n);
+      const hc = f.cols.indexOf('hap'); const cc = f.cols.indexOf('chr');
+      let prevKey = null; let prev = 0;
+      for (let i = 0; i < n; i++) {
+        const key = f.rows[i][hc] + ':' + f.rows[i][cc];
+        const s = key === prevKey ? prev + p.ds[i] : p.ds[i];
+        start[i] = s; end[i] = s + p.len[i];
+        prevKey = key; prev = s;
+      }
+      return { start, end };
+    });
+  }
+  return _positions;
+}
 /** Token index is sharded by first character so typing fetches one small file. */
 export const loadSearchShard = (c) => fetchJSON(`data/index/search/${c}.json`);
 

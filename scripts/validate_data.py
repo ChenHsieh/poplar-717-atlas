@@ -804,6 +804,32 @@ def main():
         vocab_n = len(fac["vocab"]["cls"])
         oob = sum(1 for r in fac["rows"] if r[ci] >= vocab_n)
         check("facet class codes are inside the vocabulary", oob == 0, f"{oob} out of range")
+
+        # pos.json and desc.json are aligned with genes.json and ENCODED (delta starts,
+        # dictionary descriptions), so a decoding slip would move every gene silently. Decode
+        # them exactly as data.js does and compare with every gene record.
+        pos_path = f"{DATA}/index/pos.json"
+        if os.path.exists(pos_path):
+            pos = json.load(open(pos_path))
+            hc, cc2 = fac["cols"].index("hap"), fac["cols"].index("chr")
+            bad, prev_key, prev = 0, None, 0
+            for i, gid in enumerate(idx):
+                key = (fac["rows"][i][hc], fac["rows"][i][cc2])
+                s = prev + pos["ds"][i] if key == prev_key else pos["ds"][i]
+                rec = genes[gid][2]
+                if s != int(rec["start"]) or s + pos["len"][i] != int(rec["end"]):
+                    bad += 1
+                prev_key, prev = key, s
+            check("pos.json decodes to every gene's start and end", bad == 0 and len(pos["ds"]) == len(idx),
+                  f"{bad} genes misplaced" if bad else f"{len(idx):,} genes")
+        desc_path = f"{DATA}/index/desc.json"
+        if os.path.exists(desc_path):
+            dsc = json.load(open(desc_path))
+            dec = dsc if isinstance(dsc, list) else [dsc["vocab"][j] for j in dsc["idx"]]
+            bad = sum(1 for i, gid in enumerate(idx)
+                      if (genes[gid][2].get("ann") or {}).get("d") and dec[i] != genes[gid][2]["ann"]["d"])
+            check("desc.json decodes to each gene's own description", bad == 0 and len(dec) == len(idx),
+                  f"{bad} wrong" if bad else f"{sum(1 for d in dec if d):,} described")
         # Spot-check against the shards: the facet class must equal the gene's class.
         # EVERY row, EVERY column -- not a sample, and not just the two columns this check
         # used to cover. It sampled `cls` and `ps` only, and both happen to be untouched by
