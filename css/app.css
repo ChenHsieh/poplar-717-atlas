@@ -21,7 +21,10 @@
   --hap1: #3f5a2a; --hap2: #a97f2e;
   --c-core: #2a78d6; --c-disp: #eb6834; --c-nonsyn: #1baf7a;
   --c-priv: #eda100; --c-tandem: #e87ba4;
-  --serif: "Fraunces", "Iowan Old Style", Georgia, serif;
+  /* Headings use the sans (Chen, 2026-09-29: the serif and italics read harder). The serif
+     survives only in the wordmark, as --display. */
+  --serif: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
   --sans: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --dot: #e3dbc8;
