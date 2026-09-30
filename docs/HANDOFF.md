@@ -101,6 +101,29 @@ genes, and a general resource for anyone working in this clone. See `docs/ROADMA
 3. **No application build step or framework.** Vanilla ES modules and static JSON are served as a
    static Pages artifact. `.nojekyll` keeps Jekyll away from that tree.
 
+### Since the 2026-09-29/30 redesign (0.16.1)
+
+- **Look.** Colour and font TOKENS live in `css/app.css :root` (light + both dark blocks);
+  components in `css/herbarium.css`; per-view files `css/karyotype.css`, `css/map.css`,
+  `css/arrays.css`. Never hard-code a hex in JS; canvas code reads tokens with
+  getComputedStyle. `--serif` now points at the sans (Chen found serif/italics hard to read);
+  the serif survives only as `--display` in the wordmark.
+- **Module preloading.** `index.html` carries a GENERATED `<link rel=modulepreload>` list
+  (`scripts/sync_preload.py`). Adding or removing an import means re-running it; CI runs
+  `--check`, and check.mjs `perf:modules-preloaded` fails on any module loaded without a link.
+- **Encoded indexes written by `build_facets.py`**, aligned with `genes.json`:
+  `desc.json` (dictionary-encoded descriptions, Browse table) and `pos.json` (delta-encoded
+  gene start + length, karyotype painting). Decoders in `js/core/data.js`
+  (`loadDescIndex`, `loadPositions`); `validate_data.py` decodes both and compares every gene.
+- **New routes:** `#/array/<id>` and `#/arrays` (js/modules/arrays.js, js/core/locusfig.js),
+  track-browser map with `?start=&end=`, painted karyotype. `arrays.json` lists DETECTED
+  arrays; counted = has a `dup.td` member (2,119 / 2,085, matching master v11) and pages say so.
+- **Inherited allele.** A tandem gene with no syntelog shows its array-mates' alleles
+  (`arrayAlleles` in data.js; CJ's tandem rule). Uses the atlas's own allele map, which is NOT
+  v11's partner set (TODO 56).
+- **Local CI:** `/scratch/ch29576/tools/webcheck/atlas_ci.sh <worktree> <port> <outdir>`
+  (packages COMMITTED files, so commit first). Parallel helpers need distinct ports.
+
 ## Before you trust a data source
 
 A 2026-09-05 audit found real staleness. **Read `docs/DATA_AUDIT.md` before adding any layer.**
