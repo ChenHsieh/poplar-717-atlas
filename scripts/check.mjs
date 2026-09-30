@@ -2523,6 +2523,34 @@ for (const scheme of ['light', 'dark']) {
   await p.close();
 }
 
+// arrays.json lists every DETECTED array; the manuscript counts arrays with a member that passed
+// the pseudogene screen: 2,119 HAP1 / 2,085 HAP2 (ms1-dup master v11 README, has_T_gene).
+// HAP1_U00357 lost every member to the screen and must say it is not counted.
+{
+  const p = await browser.newPage({ viewport: { width: 1180, height: 1000 } });
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto(base + '/#/arrays', { waitUntil: 'networkidle' });
+  await p.waitForSelector('[data-arrays-counted]');
+  const note = await p.$eval('[data-arrays-counted]', (n) => n.innerText);
+  await p.selectOption('[data-arrays-status]', 'removed');
+  const removedCount = await p.$eval('[data-arrays-count]', (n) => n.innerText);
+  await p.goto(base + '/#/array/HAP1_U00357', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(1200);
+  const st = await p.evaluate(() => document.querySelector('[data-arr-status]')?.getAttribute('data-arr-status'));
+  await p.goto(base + '/#/array/HAP1_U00193', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(1200);
+  const stOk = await p.evaluate(() => document.querySelector('[data-arr-status]') === null);
+  const ok = !errs.length && note.includes('2119') === false && note.includes('2,119') === false
+    ? false : (!errs.length && /2,?119/.test(note) && /2,?085/.test(note) && /of 167 arrays/.test(removedCount)
+      && st === 'removed' && stOk);
+  if (!ok) failures++;
+  console.log(`\n### arrays:counted-vs-detected  ${ok ? 'OK' : 'FAIL'}  status(U00357)=${st} fullyCountedHasNoBanner=${stOk}`);
+  console.log(`   ${note}\n   removed filter: ${removedCount}`);
+  errs.forEach((e) => console.log('   !! ' + e));
+  await p.close();
+}
+
 // A tandem gene with no syntelog of its own reaches the other haplotype through its array
 // (CJ's tandem rule, ms1-dup master v11 `td_array_associated`). Expected pairs are copied from
 // master_per_gene_v11.csv `syntelog_partner_gene_id` -- an INDEPENDENT source, not the atlas's

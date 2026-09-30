@@ -8,7 +8,7 @@
 // Everything here is computed in the browser from committed files: member records (getGene),
 // the locus tiles (exon features, neighbours, allele ids) and arrays.json. No new index.
 import { el, fmt } from '../core/dom.js';
-import { getGene, hapLabel, loadArrays } from '../core/data.js';
+import { getGene, hapLabel, loadArrays, loadFacets, loadGeneIndex } from '../core/data.js';
 import { saveSet } from '../core/geneset.js';
 import { browseHref } from '../core/browse.js';
 import { genesIn, matchingRegion, drawTracks, tissueList, tissueN } from '../core/locusfig.js';
@@ -141,7 +141,8 @@ function exprCard(genes) {
 function memberTable(genes, other) {
   const rows = genes.map((g, i) => el('tr', { 'data-arr-member': g.id },
     el('td', { class: 'num' }, i + 1),
-    el('td', {}, el('a', { href: `#/gene/${g.id}`, class: 'mono' }, g.id)),
+    el('td', {}, el('a', { href: `#/gene/${g.id}`, class: 'mono' }, g.id),
+      g.dup && g.dup.td ? null : el('div', { class: 'arr-small muted' }, 'removed by the screen')),
     el('td', {}, g.strand || '—'),
     el('td', { class: 'num' }, ((g.end - g.start) / 1000).toFixed(2)),
     el('td', { class: 'num' }, g.gs ? g.gs.ex : '—'),
@@ -232,6 +233,17 @@ export async function arrayView(aid) {
       catch (e) { saveBtn.textContent = `Could not save: ${e.message}`; }
     } }, 'Save members as a gene set');
   const psSet = [...new Set(genes.map((g) => (g.ps && g.ps.rank != null ? g.ps.rank : null)).filter((v) => v != null))];
+  // arrays.json lists every DETECTED array; the pseudogene screen then removed members, and the
+  // manuscript counts only members that passed (dup.td; master v11 counted_in_manuscript).
+  const nCounted = genes.filter((g) => g.dup && g.dup.td).length;
+  const status = nCounted === genes.length ? null
+    : el('div', { class: 'warn', 'data-arr-status': nCounted ? 'reduced' : 'removed' },
+      nCounted
+        ? `${nCounted} of ${genes.length} members are counted in the curated tandem set; the pseudogene `
+          + `screen removed ${genes.length - nCounted}. Counts in the manuscript use the ${nCounted}.`
+        : `Not counted in the manuscript: the pseudogene screen removed ${genes.length === 1 ? 'its member' : 'every member'}`
+          + ' or left too few to form an array. It is listed because it was detected; its members '
+          + 'appear as dispersed or single-copy elsewhere on this site.');
 
   return el('div', { class: 'arr-page', 'data-arr-page': aid, 'data-arr-n': genes.length },
     el('div', { class: 'page-head' },
@@ -241,6 +253,7 @@ export async function arrayView(aid) {
         `${genes.length} members in genomic order on ${chr}:${fmt(from)}–${fmt(to)} `
         + `(${((to - from) / 1000).toFixed(1)} kb). Membership is the curated union tandem set, the same `
         + 'one the Duplication card uses; GENESPACE’s looser tandem placement is not used here.')),
+    status,
     el('div', { class: 'stat-row' },
       el('div', { class: 'stat' }, el('div', { class: 'n' }, genes.length), el('div', { class: 'l' }, 'members')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, `${withAllele.length}/${genes.length}`), el('div', { class: 'l' }, `with an allele on ${hapLabel(other)}`)),
@@ -273,12 +286,20 @@ export async function arrayView(aid) {
 
 // ---------------------------------------------------------------------------------------------
 export async function arraysIndexView() {
-  const all = await loadArrays();
+  const [all, facets, geneIds] = await Promise.all([loadArrays(), loadFacets(), loadGeneIndex()]);
+  // Counted = passed the pseudogene screen (dup.td, the facet index's `tandem` column; master v11
+  // counted_in_manuscript). arrays.json lists every DETECTED array, so 167 of its 4,371 have no
+  // counted member at all and 89 lost some.
+  const ti = facets.cols.indexOf('tandem');
+  const td = new Map(geneIds.map((id, i) => [id, facets.rows[i][ti] === 1]));
   const rows = Object.keys(all).sort().map((aid) => {
     const ids = all[aid];
-    return { aid, hap: HAP_OF(aid), chr: chrOf(ids[0]), n: ids.length, first: ids[0], last: ids[ids.length - 1] };
+    const k = ids.filter((id) => td.get(id)).length;
+    return { aid, hap: HAP_OF(aid), chr: chrOf(ids[0]), n: ids.length, k,
+      status: k === 0 ? 'removed' : k < ids.length ? 'reduced' : 'counted',
+      first: ids[0], last: ids[ids.length - 1] };
   });
-  const state = { sort: 'n', dir: -1, hap: '', chr: '', shown: 150 };
+  const state = { sort: 'n', dir: -1, hap: '', chr: '', status: '', shown: 150 };
   const body = el('tbody');
   const count = el('p', { class: 'arr-note', 'data-arrays-count': '' });
   const more = el('button', { class: 'btn', type: 'button', onclick: () => { state.shown += 300; render(); } }, 'Show more');
@@ -287,11 +308,14 @@ export async function arraysIndexView() {
     hap: (a, b) => (a.hap < b.hap ? -1 : a.hap > b.hap ? 1 : 0), chr: (a, b) => (a.chr < b.chr ? -1 : a.chr > b.chr ? 1 : 0),
   };
   function render() {
-    const list = rows.filter((r) => (!state.hap || r.hap === state.hap) && (!state.chr || r.chr === state.chr))
+    const list = rows.filter((r) => (!state.hap || r.hap === state.hap) && (!state.chr || r.chr === state.chr)
+      && (!state.status || (state.status === 'in' ? r.k > 0 : r.status === state.status)))
       .sort((a, b) => state.dir * cmp[state.sort](a, b) || (a.aid < b.aid ? -1 : 1));
     body.replaceChildren(...list.slice(0, state.shown).map((r) => el('tr', { 'data-arrays-row': r.aid },
       el('td', {}, el('a', { href: `#/array/${r.aid}`, class: 'mono' }, r.aid)),
       el('td', {}, hapLabel(r.hap)), el('td', {}, r.chr), el('td', { class: 'num' }, r.n),
+      el('td', { class: 'num' }, r.k === r.n ? r.k : el('span', { title: 'members that passed the pseudogene screen' },
+        `${r.k} of ${r.n}`)),
       el('td', { class: 'mono arr-desc' }, `${r.first} … ${r.last}`))));
     const byHap = (h) => list.filter((r) => r.hap === h);
     count.textContent = `Showing ${Math.min(state.shown, list.length)} of ${list.length} arrays `
@@ -304,6 +328,11 @@ export async function arraysIndexView() {
   const chrs = [...new Set(rows.map((r) => r.chr))].sort();
   const hapSel = el('select', { 'data-arrays-hap': '', onchange: (e) => { state.hap = e.target.value; render(); } },
     el('option', { value: '' }, 'Both haplotypes'), el('option', { value: 'hap1' }, hapLabel('hap1')), el('option', { value: 'hap2' }, hapLabel('hap2')));
+  const statusSel = el('select', { 'data-arrays-status': '', onchange: (e) => { state.status = e.target.value; render(); } },
+    el('option', { value: '' }, 'Every detected array'),
+    el('option', { value: 'in' }, 'Counted in the manuscript'),
+    el('option', { value: 'reduced' }, 'Counted, some members removed'),
+    el('option', { value: 'removed' }, 'Not counted (removed by the screen)'));
   const chrSel = el('select', { onchange: (e) => { state.chr = e.target.value; render(); } },
     el('option', { value: '' }, 'All chromosomes'), ...chrs.map((c) => el('option', { value: c }, c)));
   // Size histogram, one bar per size, per haplotype -- never summed.
@@ -319,14 +348,19 @@ export async function arraysIndexView() {
       el('div', { class: 'kicker' }, 'Duplication'),
       el('h1', {}, 'Tandem arrays'),
       el('p', { class: 'sub' }, 'Every array in the curated union tandem set, per haplotype. Pick one to see its members '
-        + 'to scale, their divergence, expression and the matching region on the other haplotype.')),
+        + 'to scale, their divergence, expression and the matching region on the other haplotype.'),
+      el('p', { class: 'arr-note', 'data-arrays-counted': '' },
+        `Counted in the manuscript: ${rows.filter((r) => r.hap === 'hap1' && r.k > 0).length} ${hapLabel('hap1')} and `
+        + `${rows.filter((r) => r.hap === 'hap2' && r.k > 0).length} ${hapLabel('hap2')} arrays. The list also holds `
+        + `${rows.filter((r) => r.k === 0).length} detected arrays the pseudogene screen removed; use the filter to hide them.`)),
     el('div', { class: 'card' }, el('h2', {}, 'Array sizes', el('span', { class: 'tag' }, 'count of arrays per haplotype')), hist),
     el('div', { class: 'card' },
-      el('div', { class: 'arr-actions' }, hapSel, chrSel),
+      el('div', { class: 'arr-actions' }, hapSel, chrSel, statusSel),
       count,
       el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
         el('thead', {}, el('tr', {}, el('th', {}, sortBtn('aid', 'Array')), el('th', {}, sortBtn('hap', 'Haplotype')),
-          el('th', {}, sortBtn('chr', 'Chromosome')), el('th', { class: 'num' }, sortBtn('n', 'Members')), el('th', {}, 'First … last member'))),
+          el('th', {}, sortBtn('chr', 'Chromosome')), el('th', { class: 'num' }, sortBtn('n', 'Members')),
+          el('th', { class: 'num', title: 'members that passed the pseudogene screen' }, 'Counted'), el('th', {}, 'First … last member'))),
         body)),
       more));
 }
