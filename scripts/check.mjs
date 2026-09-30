@@ -138,6 +138,14 @@ await check('module-expression', '#/module/expression',
 // every row, the tissue_analysis join (sources/sample_tissue_analysis.tsv) has regressed.
 await check('study-1', '#/study/1',
   { expect: ['Study 1', 'PRJEB22956', 'Georgii', 'Tissue', 'Aligned %', 'control', 'leaf_old', 'leaf_young'], wait: 1000 });
+// Two citations in studies.json carry notes to whoever formats the reference list after the
+// URL ("Set the title in italics...", "If the lab prefers personal attribution..."). The page
+// shows the reference and stops at its link; the paper title leads where one parses cleanly.
+await check('study-citation-clean-4', '#/study/4',
+  { expect: ['Transcription profiling of Populus', 'Jakobi et al. 2020', 'E-MTAB-8683'],
+    forbid: ['If you prefer', 'reverse-italicized', 'Set the title'], wait: 1000 });
+await check('study-citation-clean-8', '#/study/8',
+  { expect: ['Study 8', 'PRJNA275366'], forbid: ['Asterisks', 'If the lab prefers', 'inferred from'], wait: 1000 });
 // Study 29 carries the "prefer counts over TPM" flag (it has no per-sample notes).
 await check('study-29', '#/study/29',
   { expect: ['Study 29', 'prefer est_counts'], wait: 1000 });

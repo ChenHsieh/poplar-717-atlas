@@ -1,4 +1,5 @@
 import { el, clear, fmt } from './core/dom.js';
+import { studyMeta, cleanCitation } from './core/cite.js';
 import { getGene, loadManifest, hapLabel, loadExprStudies,
          loadExprSamples, searchGenesRanked, loadFacets, facetRow, arrayAlleles } from './core/data.js';
 import { MODULES, byId, GENE_SECTIONS, geneSectionModules, CARD_EVIDENCE,
@@ -931,11 +932,17 @@ route(/^\/study\/(\d+)$/, async (idStr, navigation) => {
       + `${mine.filter((x) => x.ctrl === 'perturbation').length} perturbation. `
       + 'Only WT controls contribute to the tissue baselines shown on gene pages.'));
 
+  // Lead with the paper, not the serial number; the number stays in the subtitle.
+  const meta = studyMeta(s.citation);
   setView(el('div', {},
-    el('h1', {}, `Study ${id}`),
-    el('p', { class: 'sub' }, s.bioprojects.map((b) =>
-      el('a', { href: `https://www.ebi.ac.uk/ena/browser/view/${b}`, target: '_blank', rel: 'noopener', class: 'mono' }, b)
-    ).flatMap((a, i) => i ? [', ', a] : [a])),
+    el('div', { class: 'kicker' }, 'RNA-seq study'),
+    el('h1', { class: meta.title ? 'study-title' : null }, meta.title || `Study ${id}`),
+    el('p', { class: 'sub' }, `Study ${id}`,
+      meta.firstAuthor ? ` · ${meta.firstAuthor}${meta.year ? ' ' + meta.year : ''}` : '',
+      ` · ${fmt(mine.length)} samples · `,
+      ...s.bioprojects.map((b) =>
+        el('a', { href: `https://www.ebi.ac.uk/ena/browser/view/${b}`, target: '_blank', rel: 'noopener', class: 'mono' }, b)
+      ).flatMap((a, i) => i ? [', ', a] : [a])),
     s.flags.includes('prefer_counts_over_tpm') && el('div', { class: 'warn' },
       'This study\'s single-end fragment length was not individually calibrated. Effective-length ',
       'inflation is measurable here — prefer est_counts over TPM/FPKM for this study.'),
@@ -944,7 +951,7 @@ route(/^\/study\/(\d+)$/, async (idStr, navigation) => {
       el('p', {}, factorRow('Tissue', s.tissues), factorRow('Panel', s.panel_type),
         factorRow('Genotype', s.genotypes), factorRow('Treatment', s.treatments),
         factorRow('Growth', s.growth_conditions), factorRow('Additional', s.additional_conditions)),
-      s.citation && el('p', { class: 'muted', style: 'font-size:12.5px;margin-top:10px' }, s.citation),
+      s.citation && el('p', { class: 'muted', style: 'font-size:12.5px;margin-top:10px' }, cleanCitation(s.citation)),
       s.doi.length ? el('p', {}, ...s.doi.map((d) => el('a', { href: d, target: '_blank', rel: 'noopener' }, d))) : null),
     sampleCard,
   ));

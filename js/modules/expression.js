@@ -2,6 +2,7 @@
 // Two-level data: gene.x is a baseline SUMMARY already in the shard (free); the full
 // 652-sample vector is a second fetch via loadExprVector(gene) -- see core/data.js.
 import { el, clear, fmt, pct } from '../core/dom.js';
+import { studyMeta } from '../core/cite.js';
 import { loadExprSamples, loadExprStudies, loadExprVector, loadCombatVector,
   loadContrasts } from '../core/data.js';
 
@@ -349,13 +350,12 @@ function fullProfile(vec, samples, studies) {
 /** A study's identity is its design and its paper, not its serial number. The number was
  *  the only clickable thing here, and at 11 px it was also the smallest. */
 function studyRow(s) {
-  const first = s.citation ? s.citation.split('(')[0].trim().replace(/,$/, '') : null;
-  const year = s.citation && s.citation.match(/\((\d{4})\)/);
-  const title = (() => {
-    if (!s.citation) return null;
-    const parts = s.citation.split(').');
-    return parts.length > 1 ? parts[1].split('.')[0].trim() : null;
-  })();
+  // One parser for the list and the study page (core/cite.js). The inline one here printed the
+  // whole author list as "first author".
+  const meta = studyMeta(s.citation);
+  const first = meta.firstAuthor;
+  const year = meta.year ? [null, meta.year] : null;
+  const title = meta.title;
   const href = `#/study/${s.id}`;
   return el('tr', { style: 'cursor:pointer', onclick: () => { location.hash = href; } },
     el('td', {},

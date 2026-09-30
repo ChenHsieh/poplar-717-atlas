@@ -576,3 +576,8 @@ only what still has no second layer after that gets folded into About.
 - [x] **57: tandem gene with no allele shows the alleles its array reaches (2026-09-30).** Allele
       card + glance strip, via arrays.json and the members' own `allele`; check
       `allele:through-the-array` (expected pairs from v11, true-negative array HAP1_U00361).
+- [ ] **58: studies.json citations 4 and 8 carry formatting notes after the URL (found 2026-09-30).**
+      "Set the title in italics ... If you prefer to cite the ENA mirror ..." (study 4) and "Asterisks
+      denote italics ... this author list is inferred from the companion physiology paper" (study 8).
+      The site now shows each reference only up to its first link (js/core/cite.js cleanCitation);
+      the SOURCE still carries the notes. Fix in the expression build input, post-freeze.
