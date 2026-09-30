@@ -31,5 +31,5 @@ keywords:
   - lineage-specific genes
   - expression atlas
 license-url: "https://github.com/ChenHsieh/poplar-717-atlas/blob/main/LICENSE"
-version: "0.16.0"
-date-released: "2026-09-26"
+version: "0.16.1"
+date-released: "2026-09-29"

@@ -9,6 +9,30 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.16.1 - 2026-09-29 - A redesigned site: herbarium look, grouped Browse, and deeper views
+
+No value in any layer changed. One file was added: `data/index/desc.json`, one short
+description per gene aligned with `genes.json`, written by `build_facets.py` from the committed
+shards (Phytozome description, else the Arabidopsis hit's defline prefixed "similar to"), so
+the Browse table can say what a gene is. 57,527 of 63,960 genes have one.
+
+**Look.** A new visual identity chosen by Chen from three mocked directions: paper, ink and a
+moss accent, a serif display face, an aspen-leaf mark. Chrome only: the CVD-validated data
+palette is unchanged, and every link still clears WCAG AA in both colour schemes.
+
+**Browse.** Filters moved into a sidebar grouped by question (genome; age and conservation;
+duplication; expression; function and protein; selection), with the disputed and exploratory
+calls folded away. Every option shows how many genes it would leave. The table sorts by any
+column, has a description column, and a pasted list of gene IDs narrows it (unknown IDs are
+named). URL parameters are unchanged, so every existing link still works.
+
+**New and deeper views.** A search-first home page. A gene-page header with the description,
+key facts and actions (compare alleles, genome map, download the record). A genome map track
+browser with both haplotypes, allele links, zoom and shareable windows. Painted ancestral
+chromosomes on the karyotype page. A page for every tandem array (#/array/<id>) and a list of
+all 4,371 (#/arrays). A side-by-side allele pair page with both gene models and expression on
+one axis.
+
 ## 0.16.0 - 2026-09-26 - The pool is the rerun that added Idesia again (776/835), and two checks flag it
 
 ms2-lsg's corrections log, C5 (commit `8eb65b0`): "make the new canon with the idesia included run
