@@ -2001,7 +2001,11 @@ await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
   await mp.waitForTimeout(300);
   const st = await mp.$('[data-card="mirror"] [data-locus-browser]');
   const pr = await st.evaluate((n) => ({ x: +n.dataset.probeOtherX, y: +n.dataset.probeOtherY }));
-  await mp.click('[data-card="mirror"] [data-locus-browser] canvas', { position: pr });
+  const cv = await mp.$('[data-card="mirror"] [data-locus-browser] canvas');
+  await cv.scrollIntoViewIfNeeded();
+  const cb = await cv.boundingBox();
+  if (cb && pr.x > 0) await mp.mouse.click(cb.x + pr.x, cb.y + pr.y);
+  else merrs.push(`no lower-haplotype probe (${JSON.stringify(pr)})`);
   await mp.waitForTimeout(700);
   const navigated = /#\/gene\/PtXaAlbH\./.test(mp.url());
   const ok = navigated && !merrs.length;
