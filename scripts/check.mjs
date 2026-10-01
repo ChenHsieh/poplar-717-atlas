@@ -1997,7 +1997,7 @@ await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
   // '.locus-canvas' list, which broke the moment the gene page's running order changed --
   // '.locus-canvas' is a shared style class, not this card's identity -- and then by heading
   // text, which is one merge away from moving too.
-  await mp.waitForSelector('[data-card="mirror"] [data-locus-browser][data-tiles="ready"]', { timeout: 15000 }).catch(() => {});
+  await mp.waitForSelector('[data-card="mirror"] [data-locus-browser][data-tiles="ready"][data-probe-other-x]', { timeout: 15000 }).catch(() => {});
   await mp.waitForTimeout(300);
   const st = await mp.$('[data-card="mirror"] [data-locus-browser]');
   const pr = await st.evaluate((n) => ({ x: +n.dataset.probeOtherX, y: +n.dataset.probeOtherY }));
