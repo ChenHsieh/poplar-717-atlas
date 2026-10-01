@@ -642,7 +642,9 @@ export async function chromosomeBrowser(opts) {
   }
   M.tiles = tiles;
   M.win = clampWin(start, end);
-  s.setDraw((ctx, view) => drawChrView(ctx, view, M));
+  // Probe after EVERY paint, not only after a window change: a card that starts in a closed
+  // panel first paints when it is opened, through the resize observer.
+  s.setDraw((ctx, view) => { const boxes = drawChrView(ctx, view, M); setProbe(); return boxes; });
   recompute();
   s.redraw();
 
