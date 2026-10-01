@@ -32,26 +32,33 @@ const phytozomeBrowserUrl = (genomeId, chr, start, end) => {
   return `https://phytozome-next.jgi.doe.gov/jbrowse/index.html?${q}`;
 };
 
-let termsCache = null;
-loadTerms().then((t) => { termsCache = t; }).catch(() => {});
+// Term names arrive in one small index. The card can render before it lands, so names are
+// filled in when the promise resolves rather than read from a cache that may still be empty
+// (that race printed "term name unavailable" beside every GO id).
+const termsP = loadTerms().catch(() => null);
 
 function accBadges(list, kind) {
   return list.map((id) => {
-    const name = termsCache && termsCache.acc && termsCache.acc[id];
-    return el('span', { class: 'badge', title: name || id, style: 'font-size:11px' },
+    const b = el('span', { class: 'badge', title: id, style: 'font-size:11px' },
       el('span', { class: 'mono' }, id));
+    termsP.then((t) => { const name = t && t.acc && t.acc[id]; if (name) b.title = name; });
+    return b;
   });
 }
 
 function goList(ids) {
   const NS = { P: 'process', F: 'function', C: 'component' };
   const rows = ids.slice(0, 12).map((id) => {
-    const t = termsCache && termsCache.go && termsCache.go[id];
+    const name = el('span', { class: 'muted', 'data-go-name': id }, '…');
+    termsP.then((terms) => {
+      const t = terms && terms.go && terms.go[id];
+      name.replaceChildren(...(t ? [el('span', {}, t[0]), el('span', { class: 'muted' }, ` · ${NS[t[1]] || t[1]}`)]
+        : ['term name not in the release']));
+      if (t) name.classList.remove('muted');
+    });
     return el('li', { style: 'margin:0 0 3px' },
       el('a', { href: `https://amigo.geneontology.org/amigo/term/${id}`, target: '_blank',
-        rel: 'noopener', class: 'mono', style: 'font-size:11.5px' }, id), ' ',
-      t ? el('span', {}, t[0], el('span', { class: 'muted' }, ` · ${NS[t[1]] || t[1]}`))
-        : el('span', { class: 'muted' }, 'term name unavailable'));
+        rel: 'noopener', class: 'mono', style: 'font-size:11.5px' }, id), ' ', name);
   });
   const ul = el('ul', { style: 'margin:0;padding-left:0;list-style:none' }, ...rows);
   if (ids.length > 12) ul.append(el('li', { class: 'muted', style: 'font-size:12px;margin-top:4px' },

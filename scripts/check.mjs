@@ -1414,6 +1414,21 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await hp.close();
 }
 
+// GO names must arrive even when the card renders before terms.json (a race once printed
+// "term name unavailable" on every id). PtXaTreH.08G070200 carries GO:0003677 (DNA binding).
+{
+  const gp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  await gp.goto(base + '/#/gene/PtXaTreH.08G070200', { waitUntil: 'networkidle' });
+  await gp.waitForTimeout(1500);
+  const r = await gp.evaluate(() => [...document.querySelectorAll('[data-go-name]')].map((n) => n.textContent));
+  const named = r.filter((t) => t && t !== '…' && !/not in the release/.test(t)).length;
+  const ok = r.length > 0 && named === r.length && r.some((t) => /DNA binding/.test(t));
+  if (!ok) failures++;
+  console.log(`\n### annotation:go-names  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${named}/${r.length} named: ${r.slice(0, 3).join(' | ')}`);
+  await gp.close();
+}
+
 // One locus browser everywhere (core/locusbrowser.js): the gene, array and pair pages embed the
 // genome map's own two-haplotype view. What must hold on each: it paints, it highlights the
 // page's genes, and the links it draws are classified -- the focus genes' own alleles are
