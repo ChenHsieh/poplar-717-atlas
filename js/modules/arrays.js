@@ -11,7 +11,8 @@ import { el, fmt } from '../core/dom.js';
 import { getGene, hapLabel, loadArrays, loadFacets, loadGeneIndex } from '../core/data.js';
 import { saveSet } from '../core/geneset.js';
 import { browseHref } from '../core/browse.js';
-import { genesIn, matchingRegion, drawTracks, tissueList, tissueN } from '../core/locusfig.js';
+import { genesIn, matchingRegion, tissueList, tissueN } from '../core/locusfig.js';
+import { chromosomeBrowser } from '../core/locusbrowser.js';
 
 const HAP_OF = (aid) => (aid.startsWith('HAP2') ? 'hap2' : 'hap1');
 const CHR_RE = /^PtXa(?:TreH|AlbH)\.(\d+)G/;
@@ -191,41 +192,65 @@ export async function arrayView(aid) {
   const to = Math.max(...genes.map((g) => g.end));
   const withAllele = genes.filter((g) => g.allele);
 
-  // Locus figure: the array plus a margin of 15% (at least 5 kb) either side.
-  const pad = Math.max(5000, (to - from) * 0.15);
-  const figHolder = el('div', { class: 'scroll-x lf-box', 'data-arr-locus': '' }, el('p', { class: 'muted' }, 'Drawing the locus…'));
-  const figNote = el('p', { class: 'arr-note' });
+  // Locus: the shared two-haplotype browser, opened on the array with room either side. Only
+  // the members (top) and their OWN alleles (bottom) are highlighted; other tandem arrays on
+  // the other haplotype are drawn but not marked, because nothing links them to this one.
+  const pad = Math.max(15000, (to - from) * 0.6);
+  const figHolder = el('div', { 'data-arr-locus': '' }, el('p', { class: 'muted' }, 'Drawing the locus…'));
+  const linkBox = el('div', { class: 'lb-linkbox', 'data-arr-linked': '' }, el('p', { class: 'muted' }, 'Finding the matching array…'));
   (async () => {
-    const own = await genesIn(hap, chr, from - pad, to + pad);
-    const wide = await genesIn(hap, chr, from - 3e5, to + 3e5);
-    const region = await matchingRegion(hap, wide, ids);
-    const tracks = [{ label: hapLabel(hap).split(' ')[0], chr, hapClass: hap, from: from - pad, to: to + pad,
-      rows: own, mark: new Set(ids) }];
-    const links = [];
-    let otherRows = [];
-    if (region) {
-      const p2 = Math.max(5000, (region.to - region.from) * 0.15);
-      otherRows = await genesIn(region.hap, region.chr, region.from - p2, region.to + p2);
-      const alleleIds = new Set(withAllele.map((g) => g.allele.id));
-      tracks.push({ label: hapLabel(region.hap).split(' ')[0], chr: region.chr, hapClass: region.hap,
-        from: region.from - p2, to: region.to + p2, rows: otherRows, mark: alleleIds,
-        hi: new Set(otherRows.filter((r) => /T/.test(r.c || '')).map((r) => r.g)) });
-      for (const [a, b] of region.anchors) links.push([a, b]);
+    const alleleIds = withAllele.map((g) => g.allele.id);
+    const alleles = (await Promise.all(alleleIds.map((id) => getGene(id).catch(() => null)))).filter(Boolean);
+    let anchors = new Set();
+    let otherChr = null;
+    let region = null;
+    if (alleles.length) {
+      const c = new Map();
+      alleles.forEach((o) => c.set(o.chr, (c.get(o.chr) || 0) + 1));
+      otherChr = [...c.entries()].sort((x, y) => y[1] - x[1])[0][0];
+    } else {
+      const wide = await genesIn(hap, chr, from - 3e5, to + 3e5);
+      region = await matchingRegion(hap, wide, ids, 12, 2);
+      if (region) { anchors = new Set(region.anchors.map(([a]) => a)); otherChr = region.chr; }
     }
-    figHolder.replaceChildren(drawTracks(tracks, links, { onGene: (id) => { location.hash = `#/gene/${id}`; } }));
-    const nOwnOther = own.length - genes.length;
-    figNote.textContent = `Top: ${hapLabel(hap)}, ${genes.length} members (filled) and ${nOwnOther} other gene`
-      + `${nOwnOther === 1 ? '' : 's'} in the window (outline). Genes on the + strand sit above the line, `
-      + '− strand below; tall blocks are coding exons, short blocks untranslated exon parts, the chevron marks the 3′ end. '
-      + (region
-        ? `Bottom: the matching region on ${hapLabel(region.hap)} (${region.chr}), located by `
-          + (region.via === 'members'
-            ? `the alleles of ${withAllele.length} of the ${genes.length} members; filled genes there are those alleles. `
-            : `none of the members has an allele, so by the alleles of ${region.anchors.length} flanking genes; lines join those flanks, and no gene there is an allele of a member. `)
-          + 'A shaded outline on the bottom track marks a gene the curated set calls tandem on that haplotype. '
-        : `No matching region on ${hapLabel(other)} could be located: neither the members nor the genes within 300 kb carry an allele call. `)
-      + 'Click a gene to open it.';
-  })().catch((e) => { figHolder.replaceChildren(el('p', { class: 'muted' }, `Locus figure unavailable: ${e.message}`)); });
+    // Which array on the other haplotype holds the members' alleles -- the one that matters.
+    const arrayOf = new Map();
+    for (const [k, members] of Object.entries(all)) for (const id of members) arrayOf.set(id, k);
+    const byArray = new Map();
+    let loose = 0;
+    for (const o of alleles) {
+      const k = arrayOf.get(o.id);
+      if (k) byArray.set(k, (byArray.get(k) || 0) + 1); else loose += 1;
+    }
+    const otherL = hapLabel(other);
+    const ranked = [...byArray.entries()].sort((x, y) => y[1] - x[1]);
+    const lines = [];
+    if (alleles.length) {
+      lines.push(el('p', {}, el('strong', {}, `${withAllele.length} of ${genes.length} members`),
+        ` have their own allele on ${otherL}; those alleles are highlighted and joined by solid lines.`));
+      if (ranked.length) {
+        ranked.forEach(([k, n], i) => lines.push(el('p', { 'data-arr-linked-array': k },
+          i === 0 ? 'Matching array: ' : 'Also: ',
+          el('a', { href: `#/array/${k}`, class: 'mono' }, k),
+          ` holds ${n} of those alleles (it has ${all[k].length} member${all[k].length === 1 ? '' : 's'}).`)));
+      }
+      if (loose) lines.push(el('p', {}, `${loose} allele${loose === 1 ? ' is' : 's are'} not in any tandem array on ${otherL}.`));
+      if (!ranked.length) lines.push(el('p', {}, `No tandem array on ${otherL} holds these alleles: the copies are tandem on this haplotype only.`));
+    } else if (region) {
+      lines.push(el('p', {}, el('strong', {}, 'No member has an allele'), ` on ${otherL}, so nothing on that side is this array's allele. `
+        + `The view is lined up by the alleles of ${anchors.size} neighbouring gene${anchors.size === 1 ? '' : 's'} (dashed lines); `
+        + 'any tandem array you see there is not linked to this one.'));
+    } else {
+      lines.push(el('p', {}, `No member and no gene within 300 kb has an allele on ${otherL}, so the matching region cannot be placed.`));
+    }
+    linkBox.replaceChildren(...lines);
+    figHolder.replaceChildren(await chromosomeBrowser({
+      hap, chr, otherChr: otherChr || chr, start: Math.max(0, from - pad), end: to + pad, embed: true,
+      focus: new Set(ids), linked: new Set(alleleIds), anchors,
+      outline: new Set(ranked.length ? all[ranked[0][0]] : []),
+      outlineLabel: ranked.length ? `members of the matching array ${ranked[0][0]}` : null,
+      focusLabel: 'array member and its own allele' }));
+  })().catch((e) => { figHolder.replaceChildren(el('p', { class: 'muted' }, `Locus unavailable: ${e.message}`)); });
 
   const saveBtn = el('button', { class: 'btn', type: 'button', 'data-arr-save': '',
     onclick: () => {
@@ -265,14 +290,9 @@ export async function arrayView(aid) {
       el('a', { class: 'btn ghost', href: browseHref({ hap, chr, tandem: 'yes' }) }, `Tandem genes on ${chr} in Browse`),
       el('a', { class: 'btn ghost', href: '#/arrays' }, 'All arrays')),
     el('div', { class: 'card' },
-      el('h2', {}, 'The locus, to scale', el('span', { class: 'tag' }, `n = ${genes.length} members`)),
-      figHolder,
-      el('div', { class: 'arr-legend' },
-        el('span', { class: 'arr-key on' }, ''), ' array member / its allele  ',
-        el('span', { class: 'arr-key' }, ''), ' other gene  ',
-        el('span', { class: 'arr-key hi' }, ''), ' tandem on the other haplotype  ',
-        el('span', { class: 'arr-key link' }, ''), ' allele link'),
-      figNote),
+      el('h2', {}, `This array on both haplotypes`, el('span', { class: 'tag' }, `n = ${genes.length} members`)),
+      linkBox,
+      figHolder),
     el('div', { class: 'card' },
       el('h2', {}, 'Members', el('span', { class: 'tag' }, `${genes.length} genes, genomic order`)),
       memberTable(genes, other),

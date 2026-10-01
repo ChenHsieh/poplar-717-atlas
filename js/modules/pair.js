@@ -15,7 +15,8 @@
 // two-column layout reads as "nothing there" instead of "not measured".
 import { el, fmt } from '../core/dom.js';
 import { getGene, hapLabel, loadExprVector } from '../core/data.js';
-import { svgEl, genesIn, tileRecord, matchingRegion, drawTracks, tissueList, tissueN } from '../core/locusfig.js';
+import { svgEl, genesIn, tileRecord, matchingRegion, tissueList, tissueN } from '../core/locusfig.js';
+import { chromosomeBrowser } from '../core/locusbrowser.js';
 
 const pct = (x) => `${(x * 100).toFixed(0)}%`;
 
@@ -181,38 +182,34 @@ async function modelsFigure(a, b, holder) {
   }
 }
 
-/** Neighbourhood on both haplotypes for a gene with no allele. */
-async function soloNeighbourhood(g, holder) {
+/** The shared two-haplotype browser around a gene. With an allele, that allele is the linked
+ *  gene; without one, the nearest neighbours' alleles line the two haplotypes up (dashed). */
+async function locusOnBoth(g, partner, holder) {
   try {
-    const wide = await genesIn(g.hap, g.chr, g.start - 3e5, g.end + 3e5);
-    const i = wide.findIndex((r) => r.g === g.id);
-    const lo = wide[Math.max(0, i - 6)];
-    const hi = wide[Math.min(wide.length - 1, i + 6)];
-    const own = await genesIn(g.hap, g.chr, lo.s, hi.e);
-    const region = await matchingRegion(g.hap, wide, [g.id], 6);
-    const tracks = [{ label: hapLabel(g.hap).split(' ')[0], chr: g.chr, hapClass: g.hap, from: lo.s - 2000, to: hi.e + 2000,
-      rows: own, mark: new Set([g.id]) }];
-    let links = [];
-    if (region) {
-      const rows = await genesIn(region.hap, region.chr, region.from - 2000, region.to + 2000);
-      tracks.push({ label: hapLabel(region.hap).split(' ')[0], chr: region.chr, hapClass: region.hap,
-        from: region.from - 2000, to: region.to + 2000, rows, mark: new Set() });
-      links = region.anchors;
+    const pad = Math.max(60000, (g.end - g.start) * 3);
+    let anchors = new Set();
+    let otherChr = partner ? partner.chr : g.chr;
+    let note;
+    if (!partner) {
+      const wide = await genesIn(g.hap, g.chr, g.start - 3e5, g.end + 3e5);
+      const region = await matchingRegion(g.hap, wide, [g.id], 6, 2);
+      if (region) {
+        anchors = new Set(region.anchors.map(([x]) => x));
+        otherChr = region.chr;
+        note = `${g.id} has no allele, so the lower haplotype is lined up by the alleles of ${anchors.size} `
+          + 'neighbouring genes (dashed). Where the gap between them holds no gene, the other parent has '
+          + 'nothing annotated in that position.';
+      } else {
+        note = 'No neighbour within 6 genes has an allele, so the lower haplotype cannot be lined up here.';
+      }
     }
-    const other = g.hap === 'hap1' ? 'hap2' : 'hap1';
-    holder.replaceChildren(el('div', { class: 'scroll-x lf-box' },
-      drawTracks(tracks, links, { onGene: (id) => { location.hash = `#/gene/${id}`; } })),
-    el('p', { class: 'arr-note' }, `Top: ${own.length} genes around ${g.id} (filled). `
-      + (region ? `Bottom: the matching stretch of ${hapLabel(region.hap)} ${region.chr}, placed by the alleles of `
-        + `${region.anchors.length} flanking genes (joined by lines). Where the gap between those flanks holds no `
-        + 'gene, the other parent has nothing annotated in that position.'
-        : `No flanking gene within 6 genes has an allele, so the matching region on ${hapLabel(other)} cannot be placed.`)
-      + ' Click a gene to open it.'),
-    el('p', { style: 'margin:6px 0 0' },
-      el('a', { href: `#/map/${g.hap}/${g.chr}` }, `${g.chr} on the genome map →`),
-      region ? el('a', { href: `#/map/${region.hap}/${region.chr}`, style: 'margin-left:14px' }, `${region.chr} on ${hapLabel(region.hap)} →`) : null));
+    const browser = await chromosomeBrowser({
+      hap: g.hap, chr: g.chr, otherChr, start: Math.max(0, g.start - pad), end: g.end + pad, embed: true,
+      focus: new Set([g.id]), linked: new Set(partner ? [partner.id] : []), anchors,
+      focusLabel: partner ? 'this allele pair' : 'this gene' });
+    holder.replaceChildren(...(note ? [el('p', { class: 'arr-note', style: 'margin:0 0 8px' }, note)] : []), browser);
   } catch (e) {
-    holder.replaceChildren(el('p', { class: 'muted' }, `Neighbourhood unavailable: ${e.message}`));
+    holder.replaceChildren(el('p', { class: 'muted' }, `Locus unavailable: ${e.message}`));
   }
 }
 /** Correlation of the two alleles across all 652 samples, computed here from the two vectors.
@@ -267,7 +264,7 @@ export async function pairView(id) {
   if (res.solo) {
     const g = res.solo;
     const nb = el('div', { 'data-pair-neighbourhood': '' }, el('p', { class: 'muted' }, 'Drawing the neighbourhood on both haplotypes…'));
-    soloNeighbourhood(g, nb);
+    locusOnBoth(g, null, nb);
     return el('div', { 'data-pair-solo': g.id },
       el('div', { class: 'kicker' }, `Allele pair · ${hapLabel(g.hap)}`),
       el('h1', {}, 'No allele pair'),
@@ -298,6 +295,8 @@ export async function pairView(id) {
   const tc = tissueCompare(a, b);
   const models = el('div', {}, el('p', { class: 'muted' }, 'Drawing both gene models…'));
   modelsFigure(a, b, models);
+  const locus = el('div', { 'data-pair-locus': '' }, el('p', { class: 'muted' }, 'Drawing the locus…'));
+  locusOnBoth(a, b, locus);
   return el('div', { 'data-pair': `${a.id}|${b.id}` },
     el('div', { class: 'kicker' }, 'Allele pair · HAP1 and HAP2'),
     el('h1', {}, 'Allele pair'),
@@ -320,6 +319,10 @@ export async function pairView(id) {
     el('div', { class: 'card' },
       el('h2', {}, 'Gene models', el('span', { class: 'tag' }, 'shared axis, 5′ to 3′')),
       models),
+
+    el('div', { class: 'card' },
+      el('h2', {}, 'The locus on both haplotypes', el('span', { class: 'tag' }, 'drag to zoom')),
+      locus),
 
     el('div', { class: 'card' },
       el('h2', {}, 'Side by side', el('span', { class: 'tag' }, 'rows that differ are marked')),

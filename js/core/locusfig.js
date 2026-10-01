@@ -1,6 +1,6 @@
-// Shared drawing for the array and pair pages: genes from the locus tiles drawn to scale on
-// one or two haplotype tracks, with lines joining allele pairs. No colour is set here; every
-// mark carries a class and css/arrays.css paints it from the theme tokens.
+// Shared helpers for the array and pair pages: tile lookups, the matching region on the
+// other haplotype, the SVG helper for the pair page's gene models, and the tissue order.
+// The locus drawing itself is core/locusbrowser.js.
 //
 // Tile records (data/locus/tile/<hap>/<chr>/<Mb>.json) carry, per gene: g id, s/e coordinates,
 // d strand (+1/-1), al allele id, y synteny class, and f = [[offset, length, isCDS], ...]
@@ -39,7 +39,7 @@ export async function tileRecord(g) {
 /** The region on the OTHER haplotype that matches a set of genes. Uses the genes' own alleles
  *  first; if none has one, the alleles of up to `flank` flanking genes on each side. Returns
  *  {hap, chr, from, to, via: 'members'|'flanks', anchors: [[ownId, otherId]]} or null. */
-export async function matchingRegion(own, ownRows, focusIds, flank = 12) {
+export async function matchingRegion(own, ownRows, focusIds, flank = 12, keepPerSide = Infinity) {
   const focus = new Set(focusIds);
   let anchors = ownRows.filter((r) => focus.has(r.g) && r.al).map((r) => [r.g, r.al]);
   let via = 'members';
@@ -48,8 +48,10 @@ export async function matchingRegion(own, ownRows, focusIds, flank = 12) {
     const idx = ownRows.map((r, i) => (focus.has(r.g) ? i : -1)).filter((i) => i >= 0);
     const lo = Math.min(...idx);
     const hi = Math.max(...idx);
-    anchors = ownRows.filter((r, i) => r.al && ((i < lo && i >= lo - flank) || (i > hi && i <= hi + flank)))
-      .map((r) => [r.g, r.al]);
+    // the nearest `keepPerSide` flanks with an allele on each side
+    const left = ownRows.filter((r, i) => r.al && i < lo && i >= lo - flank).slice(-keepPerSide);
+    const right = ownRows.filter((r, i) => r.al && i > hi && i <= hi + flank).slice(0, keepPerSide);
+    anchors = [...left, ...right].map((r) => [r.g, r.al]);
   }
   if (!anchors.length) return null;
   const others = (await Promise.all(anchors.map(([, id]) => getGene(id).catch(() => null)))).filter(Boolean);
@@ -69,67 +71,6 @@ export async function matchingRegion(own, ownRows, focusIds, flank = 12) {
   const t2 = Math.max(...keep.map((o) => o.end));
   return { hap: on[0].hap, chr, from: f2, to: t2, via,
     anchors: anchors.filter(([, id]) => keep.some((o) => o.id === id)), spanAll: [from, to] };
-}
-
-/** Draw tracks to scale. tracks: [{label, from, to, rows, mark: Set, hapClass}], links: [[idA, idB]]
- *  between track 0 and track 1. Returns an <svg> sized by viewBox (width 1000). */
-export function drawTracks(tracks, links = [], { width = 1000, onGene } = {}) {
-  const padL = 96;
-  const padR = 16;
-  const trackH = 64;
-  const gap = links.length ? 70 : 26;
-  const H = 24 + tracks.length * trackH + (tracks.length - 1) * gap + 22;
-  const svg = svgEl('svg', { viewBox: `0 0 ${width} ${H}`, class: 'lf-svg', role: 'img' });
-  const pos = new Map();
-  tracks.forEach((t, ti) => {
-    const y0 = 24 + ti * (trackH + gap);
-    const span = Math.max(1, t.to - t.from);
-    const X = (v) => padL + ((v - t.from) / span) * (width - padL - padR);
-    const mid = y0 + trackH / 2;
-    svg.append(svgEl('text', { x: 4, y: mid - 4, class: `lf-lab ${t.hapClass || ''}` }, t.label));
-    svg.append(svgEl('text', { x: 4, y: mid + 12, class: 'lf-sub' }, t.chr || ''));
-    svg.append(svgEl('line', { x1: padL, x2: width - padR, y1: mid, y2: mid, class: 'lf-axis' }));
-    // scale bar: kb ticks at the ends
-    svg.append(svgEl('text', { x: padL, y: y0 + trackH + 14, class: 'lf-tick' }, `${(t.from / 1e6).toFixed(3)} Mb`));
-    svg.append(svgEl('text', { x: width - padR, y: y0 + trackH + 14, class: 'lf-tick', 'text-anchor': 'end' },
-      `${(t.to / 1e6).toFixed(3)} Mb · ${((t.to - t.from) / 1000).toFixed(1)} kb shown`));
-    for (const r of t.rows) {
-      const x1 = Math.max(padL, X(r.s));
-      const x2 = Math.min(width - padR, X(r.e));
-      const on = t.mark && t.mark.has(r.g);
-      const up = r.d >= 0;
-      const yb = up ? mid - 20 : mid + 4;         // + strand above the axis, - strand below
-      const g = svgEl('g', { class: `lf-gene${on ? ' on' : ''}${t.hi && t.hi.has(r.g) ? ' hi' : ''}`,
-        'data-gene': r.g, tabindex: onGene ? 0 : null });
-      g.append(svgEl('title', {}, `${r.g} (${up ? '+' : '−'} strand, ${((r.e - r.s) / 1000).toFixed(2)} kb)`));
-      g.append(svgEl('line', { x1, x2, y1: yb + 8, y2: yb + 8, class: 'lf-intron' }));
-      const feats = r.f && r.f.length ? r.f : [[0, r.e - r.s, 1]];
-      for (const [off, len, cds] of feats) {
-        const fx1 = Math.max(padL, X(r.s + off));
-        const fx2 = Math.min(width - padR, X(r.s + off + len));
-        g.append(svgEl('rect', { x: fx1, y: cds ? yb + 2 : yb + 5, width: Math.max(1, fx2 - fx1),
-          height: cds ? 12 : 6, class: cds ? 'lf-cds' : 'lf-utr' }));
-      }
-      // strand chevron at the 3' end
-      const tip = up ? x2 : x1;
-      const dir = up ? 1 : -1;
-      g.append(svgEl('path', { d: `M${tip} ${yb + 2} l${4 * dir} 6 l${-4 * dir} 6`, class: 'lf-chev' }));
-      if (onGene) g.addEventListener('click', () => onGene(r.g));
-      svg.append(g);
-      pos.set(r.g, { x: (x1 + x2) / 2, y: up ? yb : yb + 16, top: up ? yb : yb, bot: yb + 16, ti });
-    }
-  });
-  for (const [a, b] of links) {
-    const p = pos.get(a);
-    const q = pos.get(b);
-    if (!p || !q) continue;
-    const top = p.ti < q.ti ? p : q;
-    const bot = p.ti < q.ti ? q : p;
-    svg.insertBefore(svgEl('path', {
-      d: `M${top.x} ${top.bot + 2} C${top.x} ${top.bot + 40} ${bot.x} ${bot.top - 40} ${bot.x} ${bot.top - 2}`,
-      class: 'lf-link' }), svg.firstChild);
-  }
-  return svg;
 }
 
 /** Tissue order shared by both expression figures: fixed, never alphabetical by value. */

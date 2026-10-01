@@ -1414,53 +1414,53 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await hp.close();
 }
 
-// The Locus card draws the SAME window from the SAME tile as the mirror card above it, so it
-// folds shut rather than running a second full-width strip of the same genes. It is folded,
-// not deleted, because it is the only view with exon structure AND the only panning control
-// on the page. What must hold: it starts closed, and the canvas inside -- which has zero
-// width while folded -- actually PAINTS when opened, at the right backing-store ratio, with
-// its 44px controls intact. A blank canvas on open would look like a broken card.
+// One locus browser everywhere (core/locusbrowser.js): the gene, array and pair pages embed the
+// genome map's own two-haplotype view. What must hold on each: it paints, it highlights the
+// page's genes, and the links it draws are classified -- the focus genes' own alleles are
+// counted separately from the alignment anchors and from every other allele pair in view.
+// HAP1_U00120: all 3 members have an allele, 2 of them in HAP2_U02345, which must be named as
+// the matching array. HAP1_U00012: no member has an allele, so every emphasised link is an
+// anchor and the page must say nothing on HAP2 is this array's allele.
 {
-  const fp = await browser.newPage({ viewport: { width: 1180, height: 900 }, deviceScaleFactor: 1 });
-  const ferrs = [];
-  fp.on('pageerror', (e) => ferrs.push(e.message));
-  fp.on('console', (m) => { if (m.type() === 'error') ferrs.push('console: ' + m.text()); });
-  await fp.goto(base + '/#/gene/PtXaTreH.19G110500', { waitUntil: 'networkidle' });
-  await fp.waitForTimeout(2400);
-
-  const closed = await fp.evaluate(() => {
-    const d = [...document.querySelectorAll('details.card-fold')]
-      .find((x) => /Locus/.test(x.querySelector('.fold-title')?.textContent || ''));
-    return d ? { found: true, open: d.open, why: d.querySelector('.fold-why')?.textContent } : { found: false };
-  });
-  await fp.click('details.card-fold > summary');
-  await fp.waitForTimeout(1300);
-  const open = await fp.evaluate(() => {
-    const d = [...document.querySelectorAll('details.card-fold')]
-      .find((x) => /Locus/.test(x.querySelector('.fold-title')?.textContent || ''));
-    const cv = d && d.querySelector('.locus-canvas');
-    if (!cv) return { missing: true };
-    const box = cv.getBoundingClientRect();
-    const px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
-    const seen = new Set();
-    for (let i = 0; i < px.length; i += 4 * 97) seen.add(px[i] + ',' + px[i + 1] + ',' + px[i + 2]);
-    const btns = [...d.querySelectorAll('.locus-btn')].map((q) => q.getBoundingClientRect())
-      .map((q) => Math.min(q.width, q.height));
-    return { open: d.open, colours: seen.size, ratio: +(cv.width / box.width).toFixed(2),
-             nBtn: btns.length, minBtn: btns.length ? Math.round(Math.min(...btns)) : 0,
-             innerH2: d.querySelectorAll('h2').length };
-  });
-
-  const ok = !ferrs.length && closed.found && closed.open === false && !!closed.why
-    && !open.missing && open.open && open.colours > 3 && open.ratio === 1
-    && open.nBtn === 4 && open.minBtn >= 44 && open.innerH2 === 0;
-  if (!ok) failures++;
-  console.log(`\n### genepage:redundant-locus-card-folds  ${ok ? 'OK' : 'FAIL'}`);
-  console.log(`   closed at load: ${closed.open === false}, says why: "${closed.why || ''}"`);
-  console.log(`   on open: colours=${open.colours} dprRatio=${open.ratio} buttons=${open.nBtn} `
-    + `minBtn=${open.minBtn}px duplicateHeading=${open.innerH2}`);
-  ferrs.forEach((e) => console.log('   !! ' + e));
-  await fp.close();
+  const cases = [
+    ['gene', '#/gene/PtXaTreH.05G120200', '[data-card="mirror"]', (d) => +d.linksFocus === 1],
+    ['pair', '#/pair/PtXaTreH.05G120200', '[data-pair-locus]', (d) => +d.linksFocus === 1],
+    ['array-linked', '#/array/HAP1_U00120', '[data-arr-locus]', (d) => +d.linksFocus === 3],
+    ['array-anchored', '#/array/HAP1_U00012', '[data-arr-locus]', (d) => +d.linksFocus === 0 && +d.linksAnchor > 0 && +d.linksAnchor <= 4],
+  ];
+  for (const [label, route, host, linksOk] of cases) {
+    const lp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+    const lerrs = [];
+    lp.on('pageerror', (e) => lerrs.push(e.message));
+    lp.on('console', (m) => { if (m.type() === 'error') lerrs.push('console: ' + m.text()); });
+    await lp.goto(base + '/' + route, { waitUntil: 'networkidle' });
+    await lp.waitForSelector(`${host} [data-locus-browser="embed"][data-tiles="ready"]`, { timeout: 15000 })
+      .catch(() => lerrs.push('no browser'));
+    await lp.waitForTimeout(500);
+    const r = await lp.evaluate((h) => {
+      const st = document.querySelector(`${h} [data-locus-browser="embed"]`);
+      if (!st) return { missing: true };
+      const cv = st.querySelector('canvas');
+      const px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      const seen = new Set();
+      for (let i = 0; i < px.length; i += 4 * 97) seen.add(px[i] + ',' + px[i + 1] + ',' + px[i + 2]);
+      const linked = document.querySelector('[data-arr-linked]');
+      return { d: { ...st.dataset }, colours: seen.size,
+        matching: [...document.querySelectorAll('[data-arr-linked-array]')].map((n) => n.dataset.arrLinkedArray),
+        linkedText: linked ? linked.innerText : '' };
+    }, host);
+    let extra = true;
+    if (label === 'array-linked') extra = r.matching && r.matching[0] === 'HAP2_U02345';
+    if (label === 'array-anchored') extra = /No member has an allele/.test(r.linkedText || '') && /not linked to this one/.test(r.linkedText || '');
+    const ok = !r.missing && r.colours > 5 && linksOk(r.d || {}) && extra && !lerrs.length;
+    if (!ok) failures++;
+    console.log(`\n### locus-browser:${label}  ${ok ? 'OK' : 'FAIL'}`);
+    console.log(`   colours=${r.colours} links focus/anchor/other=${r.d?.linksFocus}/${r.d?.linksAnchor}/${r.d?.linksOther} `
+      + `matching=${(r.matching || []).join(',')}`);
+    lerrs.forEach((e) => console.log('   !! ' + e));
+    await lp.screenshot({ path: `${outdir}/locus-browser-${label}.png` });
+    await lp.close();
+  }
 }
 
 // The Duplication card and the Duplication layers figure named EXACTLY the same partners --
@@ -1711,40 +1711,27 @@ await check('gene-promoter-tata-false', '#/gene/PtXaTreH.05G120200',
   await sp.close();
 }
 
-// The locus card is a canvas, so a text assertion cannot see it. Check that the
+// The gene page's locus is a canvas, so a text assertion cannot see it. Check that the
 // canvas is actually PAINTED (more than one colour sampled), that the DPR backing
 // buffer matches, and that a phone viewport neither scrolls horizontally nor
-// shrinks a control below the 44px comfort target.
+// shrinks a control below the 44px comfort target. Scoped to the mirror card's own browser.
 for (const [label, vw, vh, dpr] of [['locus-desktop', 1180, 900, 1], ['locus-phone', 375, 667, 2]]) {
   const lp = await browser.newPage({ viewport: { width: vw, height: vh }, deviceScaleFactor: dpr });
   const lerrs = [];
   lp.on('pageerror', (e) => lerrs.push(e.message));
   lp.on('console', (m) => { if (m.type() === 'error') lerrs.push(m.text()); });
   await lp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
-  await lp.waitForTimeout(1400);
-  // The Locus card folds shut by default (the mirror card above draws the same window), so
-  // open it the way a reader would before measuring. Scoped by the fold's own title rather
-  // than by "the first .locus-canvas on the page": that class is shared by the mirror,
-  // genome map and scrubber canvases, so a page-wide index silently measures another card
-  // the moment the running order changes -- which is exactly how this check broke.
-  await lp.evaluate(() => {
-    const d = document.querySelector('details.card-fold:has([data-card="locus"])');
-    if (d) d.open = true;
-  });
-  await lp.waitForTimeout(1100);
+  await lp.waitForSelector('[data-card="mirror"] [data-locus-browser][data-tiles="ready"]', { timeout: 15000 }).catch(() => {});
+  await lp.waitForTimeout(400);
   const r = await lp.evaluate(() => {
-    const host = document.querySelector('details.card-fold:has([data-card="locus"])');
-    const cv = host && host.querySelector('.locus-canvas');
+    const host = document.querySelector('[data-card="mirror"]');
+    const cv = host && host.querySelector('[data-locus-browser] canvas');
     if (!cv) return { missing: true };
     const box = cv.getBoundingClientRect();
     const px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
     const seen = new Set();
     for (let i = 0; i < px.length; i += 4 * 97) seen.add(px[i] + ',' + px[i + 1] + ',' + px[i + 2]);
-    // Scoped to the SAME card as the canvas above -- .locus-btn is now also used by the
-    // Expression scrubber card (added 2026-09-08), a legitimate second user of the same
-    // touch-target-compliant class, not a regression. A page-wide count would conflate
-    // the two cards' controls; per-card is what "the Locus card's 4 controls" ever meant.
-    const btns = [...host.querySelectorAll('.locus-btn')]
+    const btns = [...host.querySelectorAll('.map-btn')]
       .map((b) => b.getBoundingClientRect()).map((q) => Math.min(q.width, q.height));
     return {
       colours: seen.size, ratio: +(cv.width / box.width).toFixed(2),
@@ -1752,7 +1739,7 @@ for (const [label, vw, vh, dpr] of [['locus-desktop', 1180, 900, 1], ['locus-pho
       hscroll: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     };
   });
-  const ok = !r.missing && r.colours > 3 && r.minBtn >= 44 && r.nBtn === 4
+  const ok = !r.missing && r.colours > 3 && r.minBtn >= 44 && r.nBtn === 5
     && !r.hscroll && r.ratio === Math.min(dpr, 2) && !lerrs.length;
   if (!ok) failures++;
   console.log(`\n### ${label}  ${ok ? 'OK' : 'FAIL'}`);
@@ -1991,11 +1978,11 @@ for (const hash of ['#/map', '#/map/hap2/Chr19?start=1000000&end=1200000']) {
 // rendered, since the whole point is comparing two independently-coordinated genomes.
 await check('mirror-full', '#/gene/PtXaTreH.05G120200',
   { expect: ['This locus on HAP2 too', 'both haplotypes', 'HAP1 (TreH) above',
-             'HAP2 (AlbH) below'], wait: 1200 });
+             'HAP2 (AlbH) below', 'joined by the solid line'], wait: 2500 });
 // This gene's neighbourhood runs into a real HAP1-only stretch (verified against pav.confirmed
 // directly): the card must say so in its own count, not just render silently.
 await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
-  { expect: ['This locus on HAP2 too', 'with none'], wait: 1200 });
+  { expect: ['This locus on HAP2 too', 'with none'], wait: 2500 });
 {
   const mp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
   const merrs = [];
@@ -2010,9 +1997,11 @@ await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
   // '.locus-canvas' list, which broke the moment the gene page's running order changed --
   // '.locus-canvas' is a shared style class, not this card's identity -- and then by heading
   // text, which is one merge away from moving too.
-  const mcard = await mp.$('[data-card="mirror"]');
-  const box = await (await mcard.$('.locus-canvas')).boundingBox();
-  await mp.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.8);
+  await mp.waitForSelector('[data-card="mirror"] [data-locus-browser][data-tiles="ready"]', { timeout: 15000 }).catch(() => {});
+  await mp.waitForTimeout(300);
+  const st = await mp.$('[data-card="mirror"] [data-locus-browser]');
+  const pr = await st.evaluate((n) => ({ x: +n.dataset.probeOtherX, y: +n.dataset.probeOtherY }));
+  await mp.click('[data-card="mirror"] [data-locus-browser] canvas', { position: pr });
   await mp.waitForTimeout(700);
   const navigated = /#\/gene\/PtXaAlbH\./.test(mp.url());
   const ok = navigated && !merrs.length;
@@ -2434,13 +2423,13 @@ for (const scheme of ['light', 'dark']) {
   const hasLink = await link.count() > 0;
   if (hasLink) { await link.scrollIntoViewIfNeeded(); await link.click(); }
   await ap.waitForSelector('[data-arr-page]', { timeout: 15000 }).catch(() => aerrs.push('array page did not render'));
-  await ap.waitForSelector('[data-arr-locus] svg', { timeout: 15000 }).catch(() => aerrs.push('no locus figure'));
+  await ap.waitForSelector('[data-arr-locus] [data-locus-browser][data-tiles="ready"]', { timeout: 15000 }).catch(() => aerrs.push('no locus browser'));
   const got = await ap.evaluate(() => ({
     hash: location.hash,
     n: document.querySelectorAll('[data-arr-member]').length,
     attr: Number((document.querySelector('[data-arr-page]') || {}).dataset?.arrN),
     heat: document.querySelectorAll('[data-arr-heat-row]').length,
-    marked: document.querySelectorAll('[data-arr-locus] .lf-gene.on').length,
+    marked: Number((document.querySelector('[data-arr-locus] [data-locus-browser]') || {}).dataset?.genesInView || 0),
     text: document.getElementById('view').innerText,
   }));
   await ap.screenshot({ path: `${outdir}/array-page.png`, fullPage: true });
@@ -2476,10 +2465,10 @@ for (const scheme of ['light', 'dark']) {
     ns: document.querySelectorAll('[data-pair-expr] .pr-tn').length,
     desc: !!document.querySelector('[data-pair-row="Description"]') }));
   await pp.goto(base + '/#/pair/PtXaTreH.01G175200', { waitUntil: 'networkidle' });
-  await pp.waitForSelector('[data-pair-neighbourhood] svg', { timeout: 15000 }).catch(() => perr.push('no neighbourhood'));
+  await pp.waitForSelector('[data-pair-neighbourhood] [data-locus-browser][data-tiles="ready"]', { timeout: 15000 }).catch(() => perr.push('no neighbourhood'));
   const solo = await pp.evaluate(() => ({
     id: (document.querySelector('[data-pair-solo]') || {}).dataset?.pairSolo,
-    tracks: document.querySelectorAll('[data-pair-neighbourhood] .lf-lab').length }));
+    tracks: document.querySelectorAll('[data-pair-neighbourhood] [data-locus-browser] canvas').length }));
   const pok = !perr.length && withA.pair === 'PtXaTreH.05G120200|PtXaAlbH.05G122300' && withA.bars >= 2
     && withA.ns > 0 && withA.desc && solo.id === 'PtXaTreH.01G175200' && solo.tracks >= 1;
   if (!pok) failures++;

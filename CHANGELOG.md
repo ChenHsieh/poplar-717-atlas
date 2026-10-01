@@ -9,6 +9,23 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## One locus browser on every page, and the link that matters is marked
+
+Site only; no data changed. The gene page ("This locus on HAP2 too"), the array page and the
+pair page now embed the genome map's own two-haplotype browser (`js/core/locusbrowser.js`,
+split out of `genomemap.js`) instead of three different static figures. Drag to zoom (pan on a
+phone), buttons for both, and exon structure and gene IDs appear when zoomed in; "Open in the
+genome map" carries the same window across. Tiles are fetched for the window in view only.
+
+Links are now classified, so the reader can tell which one matters: the page's genes and their
+own alleles are filled and joined by a solid line; neighbouring genes used only to line the two
+haplotypes up (when the page's genes have no allele) are dashed and limited to the nearest two
+on each side; every other allele pair is thin and grey. The array page no longer shades every
+tandem gene on the other haplotype. It names the matching array there (the one holding the
+members' alleles), outlines its members in the figure, and says when no member has an allele.
+The folded single-haplotype Locus strip and the SVG track figure are gone; the RNA-seq
+gene-model card stays.
+
 ## 0.16.2 - 2026-09-30 - Faster pages, the allele an array reaches, and which arrays are counted
 
 No value in any layer changed. Two index files changed form, both written by `build_facets.py`
