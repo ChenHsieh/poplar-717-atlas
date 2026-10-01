@@ -2341,7 +2341,9 @@ for (const [label, hash, focal, width] of [
 }
 // ...and on no other gene page: a panel must not appear where no search was run.
 await check('copies-absent-elsewhere', '#/gene/PtXaTreH.08G070200',
-  { expect: ['Location'], forbid: ['on both haplotypes', 'Both haplotypes'] });
+  // "Both haplotypes" alone is now the locus browser card's section label on every gene page,
+  // so the copies panel is identified by its own heading and nav label instead.
+  { expect: ['Location'], forbid: ['on both haplotypes', 'Copies on both haplotypes'], wait: 2500 });
 await check('copies-unknown-locus', '#/copies/nope', { expect: ['No such copy search', 'nrx1'] });
 
 // ---- evidence tiers (registry.js CARD_EVIDENCE) --------------------------------------------
