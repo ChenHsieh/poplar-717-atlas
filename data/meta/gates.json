@@ -1,5 +1,5 @@
 {
- "data_version": "0.16.1",
+ "data_version": "0.16.2",
  "n_checks": 92,
  "n_failed": 0,
  "checks": [
@@ -251,7 +251,7 @@
   {
    "name": "no embargoed LSG candidate label in any published file",
    "ok": true,
-   "detail": "1347 text files"
+   "detail": "1351 text files"
   },
   {
    "name": "ancestral karyotype counts match the route C coverage, per haplotype",

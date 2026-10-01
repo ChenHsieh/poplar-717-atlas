@@ -365,14 +365,10 @@ function drawChrView(ctx, view, M) {
   return boxes;
 }
 
-// Tiles are keyed by floor(gene start / 1 Mb) (scripts/build_locus.py). Only the tiles under
-// the current window (plus one either side) are fetched; the whole chromosome is the same
-// code path, just more tiles.
-const tileMbs = (a, b) => {
-  const out = [];
-  for (let m = Math.max(0, Math.floor(a / 1e6) - 1); m <= Math.floor(b / 1e6) + 1; m++) out.push(m);
-  return out;
-};
+// Tiles are keyed by floor(gene start / 1 Mb) (scripts/build_locus.py), so the tiles that exist
+// are exactly those the index's own starts imply -- no probing, no 404s. Only the tiles under
+// the genes in the current window are fetched; the whole chromosome is the same path.
+const tileMbs = (genes) => [...new Set(genes.map((g) => Math.floor(g.s / 1e6)))];
 
 /** The two-haplotype browser. Options:
  *   hap, chr          top haplotype and chromosome
@@ -636,13 +632,13 @@ export async function chromosomeBrowser(opts) {
   const chrOf = { [hap]: chr, [other]: otherChr };
   function ensureTiles() {
     const want = [[hap, M.win], [other, M.otherWin]].flatMap(([h, w]) =>
-      tileMbs(Math.max(0, w.start), Math.min(len[h], w.end)).filter((m) => m * 1e6 <= len[h] && !asked[h].has(m)).map((m) => [h, m]));
+      tileMbs(idx[h].filter((g) => inWin(g, w.start, w.end))).filter((m) => !asked[h].has(m)).map((m) => [h, m]));
     if (!want.length) { if (!tilesReady) { tilesReady = true; s.stage.dataset.tiles = 'ready'; } return; }
     tilesReady = false;
     want.forEach(([h, m]) => asked[h].add(m));
     Promise.all(want.map(([h, m]) => loadLocusTile(h, chrOf[h], m).then((rows) => {
       for (const r of rows || []) tiles[h].set(r.g, r);
-    }).catch(() => { /* chromosome end */ }))).then(() => { recompute(); s.redraw(); });
+    }))).catch(() => {}).then(() => { recompute(); s.redraw(); });
   }
   M.tiles = tiles;
   M.win = clampWin(start, end);
