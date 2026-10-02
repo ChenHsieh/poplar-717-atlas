@@ -310,7 +310,7 @@ def main():
         check("overview and index agree on gene count per chromosome", not bad_count,
               f"{len(bad_count)} mismatched, e.g. {bad_count[:3]}" if bad_count else "")
 
-        idx_bad_gene = []
+        idx_bad_gene, idx_bad_lsg = [], []
         for hap in ("hap1", "hap2"):
             for chr_ in ov["hap"].get(hap, {}):
                 ip = f"{DATA}/locus/index/{hap}/{chr_}.json"
@@ -319,8 +319,14 @@ def main():
                 for g in json.load(open(ip)):
                     if g["g"] not in genes:
                         idx_bad_gene.append(g["g"])
+                    elif bool(g.get("l")) != bool((genes[g["g"]][2].get("ps") or {}).get("lsg")):
+                        idx_bad_lsg.append(g["g"])
         check("every genome-map index gene is a real atlas gene", not idx_bad_gene,
               f"{len(idx_bad_gene)} unknown, e.g. {idx_bad_gene[:3]}" if idx_bad_gene else "")
+        # The index's LSG-pool mark once kept the frozen pool for 114 genes after the tiles
+        # were resynced (2026-10-02); the map's LSG track reads it, so it must equal ps.lsg.
+        check("genome-map index LSG mark equals the gene record's pool call", not idx_bad_lsg,
+              f"{len(idx_bad_lsg)} differ, e.g. {idx_bad_lsg[:3]}" if idx_bad_lsg else "")
 
     # Expression scrubber (section 2.3): every contrast's sample indices must be in
     # range for the 652-sample vectors they will index into, and both arms non-empty.

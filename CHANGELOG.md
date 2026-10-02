@@ -9,6 +9,22 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.16.3 - 2026-10-02 - Genome-map LSG marks resynced; dissertation wording
+
+**Data.** 114 genes (66 HAP1, 48 HAP2) were still marked as lineage-specific in the genome
+map's per-chromosome index (`data/locus/index/`), although their gene records and the locus
+tiles had left the pool when it moved to the Idesia-corrected call (776 HAP1 / 835 HAP2). The
+map's LSG track and its counts read that index, so they showed 842 / 883. `patch_map_overlays.py`
+now resyncs the index as well as the tiles, under the same gate (only genes whose membership
+differs from the frozen call may change), and `validate_data.py` checks every index mark
+against the gene record. No other value changed; the atlas stays on the v9 duplication basis.
+
+**Wording, to match the dissertation.** The two whole-genome events are labelled aWGT (ancient
+whole-genome triplication) and sWGD (salicoid whole-genome duplication) wherever a reader sees
+a class, copy or partner name; URL parameter values are unchanged, so saved links still work.
+"neighbor" spelling; no em-dashes in rendered text (commas in prose, en dashes in empty cells);
+"compared with" or "vs." between numbers instead of "against".
+
 ## One locus browser on every page, and the link that matters is marked
 
 Site only; no data changed. The gene page ("This locus on HAP2 too"), the array page and the

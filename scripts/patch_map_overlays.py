@@ -154,9 +154,10 @@ def sync_tile_pool():
                 lsg[gid] = bool(ps.get("lsg"))
                 if ps.get("frz") and bool(ps["frz"].get("lsg")) != lsg[gid]:
                     moved.add(gid)
-    tdir = os.path.join(DATA, "locus", "tile")
+    # Both the tiles and the per-chromosome index carry `l`; the index (which the genome map's
+    # LSG track reads) was missed when this resync was first written and kept the stale 114.
     tiles, changed = {}, set()
-    for dp, _, fs in os.walk(tdir):
+    for dp, _, fs in [w for d in ("tile", "index") for w in os.walk(os.path.join(DATA, "locus", d))]:
         for fn in sorted(fs):
             if not fn.endswith(".json"):
                 continue
@@ -175,7 +176,7 @@ def sync_tile_pool():
             r["l"] = lsg[r["g"]]
         with open(p, "w") as fh:
             json.dump(rows, fh, separators=(",", ":"))
-    print(f"locus tiles: {len(changed)} pool marks rewritten from ps.lsg in {len(tiles)} tiles "
+    print(f"locus tiles + index: {len(changed)} pool marks rewritten from ps.lsg in {len(tiles)} files "
           f"(all on genes whose membership differs from the frozen call)")
 
 
