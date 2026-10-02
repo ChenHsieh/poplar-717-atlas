@@ -40,6 +40,7 @@ SOURCE_GENERATORS = {
     "make_proteomics_v2_source.py",
     "make_structure_source.py",
     "make_td_pair_ks_source.py",
+    "make_terminator_source.py",
     "make_wgd_combined_call_source.py",
     "make_wgd_pairs_source.py",
 }

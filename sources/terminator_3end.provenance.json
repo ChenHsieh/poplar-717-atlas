@@ -1,0 +1,24 @@
+{
+ "purpose": "Per-gene 3' end evidence: annotated 3' UTR, PAS motif counts, empirical 3' end from 1,212 stranded RNA-seq libraries, and the next downstream gene with gap and orientation.",
+ "tier": "public",
+ "why_public": "Derived from the published 717 v5.1 assemblies / annotation and public RNA-seq; per-gene coordinates and counts only.",
+ "shipped_sha256": "c86b288e1828a363a95a4ac3d9ea8cc4370bf265ad43e47639b5dc8f55f74fb7",
+ "rows": 63960,
+ "join_key": "gene_id, bare locus",
+ "expressed_per_hap": {
+  "HAP1": 29764,
+  "HAP2": 29382
+ },
+ "generated_by": "scripts/make_terminator_source.py, from ms1-dup data/130_terminator_3end_20261001",
+ "derived_from": {
+  "/scratch/ch29576/ms1-dup/data/130_terminator_3end_20261001/terminator_3end_per_gene.tsv.gz": {
+   "sha256": "308b21dbafb32a6636b82dacab6c108f1b0ecee573a71fc981fc697f24abb1bb",
+   "bytes": 4167759
+  }
+ },
+ "caveats": [
+  "3' UTR annotation is absent for ~13% of genes and differs by gene class",
+  "end_into_next_gene at gaps <= 100 bp is unreliable (ms1-dup data/126)",
+  "not wired into a card yet: needs a patch stage in build_all.sh (Chen's call)"
+ ]
+}
