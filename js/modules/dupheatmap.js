@@ -219,7 +219,7 @@ function geneCard(g) {
   body.append(
     el('p', { class: 'muted', style: 'font-size:12px;margin:0 0 10px' },
       `This gene and ${p.rows.length - 1} of its duplicates over every sample in the atlas, `
-      + 'tandem copies, the other haplotype’s allele, and the salicoid and gamma partners. '
+      + 'tandem copies, the other haplotype’s allele, and the sWGD and aWGT partners. '
       + `Each row is one full 652-value profile, fetched on demand (${p.rows.length} requests).`),
     load);
 

@@ -190,8 +190,8 @@ function wgdSection(g) {
       row.append(el('div', { class: 'warn' },
         el('strong', {}, 'The two calls disagree for this gene. '),
         `Canonical says ${v9Says}; the route C re-adjudication says ${ccSays}. `
-        + 'They differ on 904 genes genome-wide: 567 gain salicoid and 173 lose it, 122 gain '
-        + 'gamma and 485 lose it (net +394 salicoid, −363 gamma). Neither is overridden here, and nothing downstream on this site '
+        + 'They differ on 904 genes genome-wide: 567 gain sWGD and 173 lose it, 122 gain '
+        + 'aWGT and 485 lose it (net +394 sWGD, −363 aWGT). Neither is overridden here, and nothing downstream on this site '
         + 'uses the route C call, it is shown so the disagreement is visible rather than '
         + 'buried in a figure.'));
     }
@@ -230,8 +230,8 @@ function wgdSection(g) {
         el('th', {}, ''))),
       el('tbody', {}, ...rows))));
     wrap.append(el('p', { class: 'muted', style: 'font-size:11.5px;margin:6px 0 0' },
-      'Every anchor pair from the MS1 WGD analysis is listed, unfiltered. Gamma was a '
-      + 'triplication, so a gene can have two gamma partners; later salicoid duplication of '
+      'Every anchor pair from the MS1 WGD analysis is listed, unfiltered. aWGT was a '
+      + 'triplication, so a gene can have two aWGT partners; later sWGD duplication of '
       + 'both copies gives more. Expression r uses the same basis as the other duplicate tables; '
       + '"n/c" means not comparable, not uncorrelated.'));
   }
@@ -305,7 +305,7 @@ function karyotypeSection(g) {
           el('span', { class: 'muted' }, ' of the 10 nearest collinear anchors shared with P. trichocarpa '
             + 'agree on this label')));
     } else {
-      kv.append(el('dt', {}, 'Gamma and sWGD copy'), el('dd', {}, 'not assigned', note(k.x
+      kv.append(el('dt', {}, 'aWGT and sWGD copy'), el('dd', {}, 'not assigned', note(k.x
         ? 'The AEK block and the P. trichocarpa naming point to different ancestral chromosomes.'
         : 'No collinear block shared with P. trichocarpa names a copy here.')));
     }
@@ -324,7 +324,7 @@ function karyotypeSection(g) {
     el('a', { href: `https://doi.org/${AEK_DOI}`, target: '_blank', rel: 'noopener' }, `doi:${AEK_DOI}`),
     '. The ancestral chromosome comes from collinearity between the 717 genome and the ancestral '
     + 'karyotype genes (for a gene outside those blocks, from its nearest anchors shared with '
-    + 'P. trichocarpa). Gamma and sWGD copy names come from collinear blocks shared with '
+    + 'P. trichocarpa). aWGT and sWGD copy names come from collinear blocks shared with '
     + 'P. trichocarpa v3.1, using Wang et al.\'s published P. trichocarpa painting. aWGT copy (1 to 3) '
     + 'and sWGD copy (1 to 2) numbers are completeness ranks from Wang et al.\'s karyotype '
     + 'projection, not subgenomes. A copy says which ancestral copy the gene descends from, not '

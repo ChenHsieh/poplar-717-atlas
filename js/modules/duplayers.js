@@ -701,8 +701,8 @@ function caption(built, g, suppressed, dropped) {
   if (built.between && built.between.length) {
     const n = built.between.length;
     bits.push(`${n} dashed link${n === 1 ? '' : 's'} join${n === 1 ? 's' : ''} two PARTNERS `
-      + 'rather than this gene: gamma came first, so this gene\u2019s salicoid sister and its '
-      + 'aWGT copy are themselves a gamma pair. Each is drawn only where the anchor table '
+      + 'rather than this gene: aWGT came first, so this gene\u2019s sWGD sister and its '
+      + 'aWGT copy are themselves an aWGT pair. Each is drawn only where the anchor table '
       + 'carries that pair, with that pair\u2019s own dS, never inferred from the other two.');
   }
   // The whole-array history, stated as the array's. The distinction carried here is the

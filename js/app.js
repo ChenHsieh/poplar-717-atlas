@@ -268,7 +268,7 @@ route(/^\/$/, async (navigation) => {
           // than three views of the same one. Every claim below is read off the shipped record.
           el('dt', {}, el('a', { href: '#/gene/PtXaTreH.08G070200' }, 'PtXaTreH.08G070200')),
           el('dd', { class: 'muted' }, 'All four duplication types at one locus: four tandem MYB '
-            + 'copies, a salicoid partner and a gamma partner. The other haplotype carries two '
+            + 'copies, an sWGD partner and an aWGT partner. The other haplotype carries two '
             + 'tandem copies, not four.'),
           el('dt', {}, el('a', { href: '#/gene/PtXaTreH.10G046700' }, 'PtXaTreH.10G046700')),
           el('dd', { class: 'muted' }, 'A seven-copy nucleoredoxin array with no one-to-one '

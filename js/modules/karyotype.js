@@ -385,7 +385,7 @@ export async function karyotypeView() {
     el('h1', {}, 'Ancestral karyotype', el('span', { class: 'badge', style: 'margin-left:10px;font-size:12px;padding:1px 7px' }, 'exploratory')),
     el('p', { class: 'sub' },
       'Where each gene came from, rather than where it sits now. Seven ancestral eudicot '
-      + 'chromosomes (AEK1 to AEK7), each in three gamma copies, each in two salicoid copies. '
+      + 'chromosomes (AEK1 to AEK7), each in three aWGT copies, each in two sWGD copies. '
       + 'Below: the modern chromosomes painted by ancestry, the 42-cell table, and where each '
       + 'copy landed. Every count is a link to the genes behind it.'),
 
@@ -400,14 +400,14 @@ export async function karyotypeView() {
       el('p', { style: 'margin:0 0 8px;font-size:13.5px;color:var(--ink-2)' },
         'Each bar is one modern chromosome drawn to scale; each coloured stretch is a run of '
         + 'consecutive genes that descend from the same ancestral chromosome. Switch to a copy view '
-        + 'to see, within one ancestral chromosome, which gamma or sWGD copy each stretch is.'),
+        + 'to see, within one ancestral chromosome, which aWGT or sWGD copy each stretch is.'),
       controls, figs, detail),
 
     el('div', { class: 'card' },
       el('h2', {}, 'The 42 cells', el('span', { class: 'tag' }, 'both haplotypes, split below')),
       el('p', { style: 'margin:0 0 10px;font-size:13.5px;color:var(--ink-2)' },
         'A cell counts the genes (HAP1 and HAP2 together, then each haplotype on its own line) '
-        + 'whose ancestral chromosome is the column and whose gamma and sWGD copy ranks are '
+        + 'whose ancestral chromosome is the column and whose aWGT and sWGD copy ranks are '
         + 'the row. Click a cell to browse exactly those genes.'),
       el('div', { class: 'scroll-x' },
         el('table', { class: 'data kp-grid', style: 'width:100%' },
