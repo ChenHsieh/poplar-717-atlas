@@ -114,7 +114,8 @@ export const FILTERS = [
 // URL parameters and saved links depend on them; only the label follows the dissertation's
 // names for the two whole-genome events (aWGT, sWGD).
 const OPTION_LABEL = { salicoid: 'sWGD', gamma: 'aWGT', aWGD_era: 'aWGT era' };
-const optLabel = (v) => OPTION_LABEL[v] || String(v).replace(/_/g, ' ');
+const optLabel = (v) => OPTION_LABEL[v]
+  || String(v).replace(/gamma_copy/g, 'aWGT_copy').replace(/salicoid_copy/g, 'sWGD_copy').replace(/_/g, ' ');
 
 export const FILTER_GROUPS = [
   { id: 'where', label: 'Genome', ids: ['hap', 'chr', 'allele'] },

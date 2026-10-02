@@ -2115,7 +2115,7 @@ await check('gene-duplicate-coexpr', '#/gene/PtXaTreH.01G330600',
 // an unplaced-scaffold gene that was never assessed. The slot wording is asserted in full, since
 // "lost or not detected" must never read as a proven loss.
 await check('gene-karyotype-anchor', '#/gene/PtXaTreH.01G144500',
-  { expect: ['Ancestral karyotype', 'exploratory', 'AEK1', 'aWGT copy', 'Salicoid copy',
+  { expect: ['Ancestral karyotype', 'exploratory', 'AEK1', 'aWGT copy', 'sWGD copy',
              'Label support', '100%', 'eud1g01445', 'Its HAP1 descendants', 'PtXaTreH.03G046700',
              'lost or not detected', 'not evidence that the gene was lost', 'not subgenomes',
              'doi:10.1186/s12915-022-01420-1'], wait: 1000 });
