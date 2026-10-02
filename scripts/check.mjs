@@ -312,18 +312,18 @@ await check('module-phylostrat', '#/module/phylostrat',
     // '1,725' and '1,611' would be the two haplotypes' pools summed; nothing should do that.
     // the old merged ladder's hand-typed range read "log-scaled — counts run from"; the range is
     // now computed per haplotype ("HAP1 counts run from ..."), so forbid the old wording.
-    forbid: ['1,725', '1,611', '12-species', 'Idesia-corrected panel', 'log-scaled — counts run from',
+    forbid: ['1,725', '1,611', '12-species', 'Idesia-corrected panel', 'log-scaled, counts run from',
              'pass all four checks', 'and it does not change'] });
 await check('gene-ambiguous-ps', '#/gene/PtXaTreH.06G037000',
   { expect: ['genEra flagged this gene as ambiguous'], wait: 900 });
 await check('module-duplication', '#/module/duplication',
   { expect: ['Duplication', 'not genome-wide', 'stratum-selected', 'Duplication class',
-             'salicoid WGD', 'dispersed'] });
+             'sWGD', 'dispersed'] });
 await check('gene-paralog', '#/gene/PtXaTreH.01G330600',
   { expect: ['Duplication', 'Paralog pairs'], wait: 900  });
 // A curated tandem-array member: array identity, size, age bin and member links.
 await check('gene-tandem-array', '#/gene/PtXaTreH.01G330700',
-  { expect: ['Tandem array', 'Array members', 'neighbours on the chromosome'], wait: 1400  });
+  { expect: ['Tandem array', 'Array members', 'neighbors on the chromosome'], wait: 1400  });
 // PAV (TODO 21): a DIAMOND-confirmed hemizygous gene, and a "not confirmed" one whose
 // contradicting hit is named -- so a wrong-branch bug (the confirmed/not-confirmed text
 // swapped) can't hide behind whichever branch happens to render.
@@ -374,7 +374,7 @@ await check('gene-family-same-run', '#/gene/PtXaTreH.01G003100',
     forbid: ['originates at PS11 in the frozen call', 'not available'], wait: 900 });
 // A pool gene in a family from cellular organisms: not a lineage-specific family, and it says so.
 await check('gene-family-young-in-old', '#/gene/PtXaTreH.11G057300',
-  { expect: ['yes — PS18', '1,435 members', 'family originates at PS1',
+  { expect: ['yes, PS18', '1,435 members', 'family originates at PS1',
              'A young gene in an older family', 'not a lineage-specific family'], wait: 900 });
 // Family origin cannot be shown on 45 unranked genes, two disjoint groups: 39 have a family but
 // no gene age (this one), 6 have no family assignment. The card gives the reason true of both.
@@ -413,7 +413,7 @@ await check('module-about-numbers', '#/module/about',
 // pool one matters most: the site published the withdrawn pool for four days, and a check
 // that only asserts "a pool number renders" would have passed throughout.
 await check('gene-ps19-to-ps18', '#/gene/PtXaAlbH.17G073600',
-  { expect: ['yes — PS18', 'Frozen call', 'Hybrid-only in the frozen call, Populus-wide in the current one',
+  { expect: ['yes, PS18', 'Frozen call', 'Hybrid-only in the frozen call, Populus-wide in the current one',
              '179 pool genes do this', 'post-QC set (neither QC flag): yes'],
     forbid: ['left the pool'], wait: 900 });
 // The abSENSE calibration must travel with the flag, not sit in a doc nobody opens.
@@ -669,7 +669,7 @@ await check('gene-duplayers-tandem', '#/gene/PtXaTreH.08G070600',
 await check('gene-duplayers-wgd', '#/gene/PtXaTreH.17G070400',
   // The allele no longer gets a ROW of its own (a full track and a link crossing the figure,
   // to say a 1-to-1 thing). It is named in words beside the compare button instead.
-  { expect: ['three layers, kept apart', 'gamma whole-genome triplication',
+  { expect: ['three layers, kept apart', 'ancient whole-genome triplication (aWGT)',
              'the same gene on the other haplotype is',
              'not a duplication'], wait: 2200 });
 // The per-PAIR tandem dS is a NEW column and is not td.ks. Assert both the column and the
@@ -1196,7 +1196,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
     && claimed === a.rows                                  // the stat and the table agree
     && a.rows >= 8
     && /focal/.test(a.txt)                                 // the focal gene is marked, not given a distance
-    && a.txt.includes('tandem') && a.txt.includes('salicoid WGD') && a.txt.includes('gamma')
+    && a.txt.includes('tandem') && a.txt.includes('sWGD') && a.txt.includes('aWGT')
     && sameFamily                                          // recentring gives the same membership
     && solo.txt.includes('No descent group') && solo.txt.includes('3,348')
     && solo.rows === 0;
@@ -2038,7 +2038,7 @@ await check('mirror-hemizygous-gap', '#/gene/PtXaTreH.12G001200',
 // canvas still showed stale tissue-mode content. Checked here so it cannot silently
 // return.
 await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
-  { expect: ['Expression across the neighbourhood', 'By tissue', 'By contrast', 'Median TPM in catkin'], wait: 1200 });
+  { expect: ['Expression across the neighborhood', 'By tissue', 'By contrast', 'Median TPM in catkin'], wait: 1200 });
 {
   const sp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
   const serrs2 = [];
@@ -2046,7 +2046,7 @@ await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
   sp.on('console', (m) => { if (m.type() === 'error') serrs2.push(m.text()); });
   await sp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
   await sp.waitForTimeout(1200);
-  const h = await sp.$('h2:has-text("Expression across the neighbourhood")');
+  const h = await sp.$('h2:has-text("Expression across the neighborhood")');
   await h.scrollIntoViewIfNeeded();
   await sp.waitForTimeout(500);
   // Switch mode WITHOUT ever touching the <select> -- the exact scenario that failed.
@@ -2087,11 +2087,11 @@ await check('scrubber-tissue-default', '#/gene/PtXaTreH.05G120200',
   const tp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
   await tp.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
   await tp.waitForTimeout(1200);
-  const h = await tp.$('h2:has-text("Expression across the neighbourhood")');
+  const h = await tp.$('h2:has-text("Expression across the neighborhood")');
   await h.scrollIntoViewIfNeeded();
   const r = await tp.evaluate(() => {
     const card = [...document.querySelectorAll('.card')]
-      .find((c) => c.querySelector('h2')?.textContent.includes('Expression across the neighbourhood'));
+      .find((c) => c.querySelector('h2')?.textContent.includes('Expression across the neighborhood'));
     const btns = [...card.querySelectorAll('.locus-btn')]
       .map((b) => b.getBoundingClientRect()).map((q) => Math.min(q.width, q.height));
     return { n: btns.length, min: btns.length ? Math.min(...btns) : 0 };
@@ -2115,7 +2115,7 @@ await check('gene-duplicate-coexpr', '#/gene/PtXaTreH.01G330600',
 // an unplaced-scaffold gene that was never assessed. The slot wording is asserted in full, since
 // "lost or not detected" must never read as a proven loss.
 await check('gene-karyotype-anchor', '#/gene/PtXaTreH.01G144500',
-  { expect: ['Ancestral karyotype', 'exploratory', 'AEK1', 'Gamma copy', 'Salicoid copy',
+  { expect: ['Ancestral karyotype', 'exploratory', 'AEK1', 'aWGT copy', 'Salicoid copy',
              'Label support', '100%', 'eud1g01445', 'Its HAP1 descendants', 'PtXaTreH.03G046700',
              'lost or not detected', 'not evidence that the gene was lost', 'not subgenomes',
              'doi:10.1186/s12915-022-01420-1'], wait: 1000 });
@@ -2154,9 +2154,9 @@ await check('gene-karyotype-scaffold', '#/gene/PtXaTreH.T006000',
 }
 // The Browse filter, deep-linked, both haplotypes and then one: 2,167 = 1,097 HAP1 + 1,070 HAP2.
 await check('browse-karyotype', '#/browse?aek=AEK1_gamma_copy_1',
-  { expect: ['Ancestral chromosome (exploratory)', 'AEK1 gamma copy 1', '2,167', 'Clear all'], wait: 1400 });
+  { expect: ['Ancestral chromosome (exploratory)', 'AEK1 aWGT copy 1', '2,167', 'Clear all'], wait: 1400 });
 await check('browse-karyotype-hap2', '#/browse?aek=AEK1_gamma_copy_1&hap=hap2',
-  { expect: ['AEK1 gamma copy 1', '1,070', 'Clear all 2'], wait: 1400 });
+  { expect: ['AEK1 aWGT copy 1', '1,070', 'Clear all 2'], wait: 1400 });
 
 // The chromatin card's "Show the signal profile" button must actually fetch and draw the
 // four-mark panel, not just sit there -- chipRow and metricNote were both built and wired but
@@ -2486,14 +2486,14 @@ for (const scheme of ['light', 'dark']) {
     ns: document.querySelectorAll('[data-pair-expr] .pr-tn').length,
     desc: !!document.querySelector('[data-pair-row="Description"]') }));
   await pp.goto(base + '/#/pair/PtXaTreH.01G175200', { waitUntil: 'networkidle' });
-  await pp.waitForSelector('[data-pair-neighborhood] [data-locus-browser][data-tiles="ready"]', { timeout: 15000 }).catch(() => perr.push('no neighbourhood'));
+  await pp.waitForSelector('[data-pair-neighborhood] [data-locus-browser][data-tiles="ready"]', { timeout: 15000 }).catch(() => perr.push('no neighborhood'));
   const solo = await pp.evaluate(() => ({
     id: (document.querySelector('[data-pair-solo]') || {}).dataset?.pairSolo,
     tracks: document.querySelectorAll('[data-pair-neighborhood] [data-locus-browser] canvas').length }));
   const pok = !perr.length && withA.pair === 'PtXaTreH.05G120200|PtXaAlbH.05G122300' && withA.bars >= 2
     && withA.ns > 0 && withA.desc && solo.id === 'PtXaTreH.01G175200' && solo.tracks >= 1;
   if (!pok) failures++;
-  console.log(`\n### pair:models-expression-neighbourhood  ${pok ? 'OK' : 'FAIL'}`);
+  console.log(`\n### pair:models-expression-neighborhood  ${pok ? 'OK' : 'FAIL'}`);
   console.log(`   pair ${withA.pair}, ${withA.bars} bars; solo tracks ${solo.tracks}`);
   perr.forEach((e) => console.log('   !! ' + e));
   await pp.close();
