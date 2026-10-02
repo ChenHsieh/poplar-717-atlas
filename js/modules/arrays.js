@@ -6,7 +6,7 @@
 // to decide who is in the array.
 //
 // Everything here is computed in the browser from committed files: member records (getGene),
-// the locus tiles (exon features, neighbours, allele ids) and arrays.json. No new index.
+// the locus tiles (exon features, neighbors, allele ids) and arrays.json. No new index.
 import { el, fmt } from '../core/dom.js';
 import { getGene, hapLabel, loadArrays, loadFacets, loadGeneIndex } from '../core/data.js';
 import { saveSet } from '../core/geneset.js';
@@ -19,7 +19,7 @@ const CHR_RE = /^PtXa(?:TreH|AlbH)\.(\d+)G/;
 const chrOf = (id) => { const m = CHR_RE.exec(id); return m ? `Chr${m[1]}` : 'scaffold'; };
 const v9Dup = (d) => {
   if (!d) return null;
-  const w = [d.s ? 'salicoid' : null, d.a ? 'gamma' : null].filter(Boolean);
+  const w = [d.s ? 'sWGD' : null, d.a ? 'aWGT' : null].filter(Boolean);
   return w.length ? w.join(' + ') : 'no WGD partner';
 };
 const synWords = (g) => (g.syn && g.syn.cls ? g.syn.cls.replace(/_/g, ' ') : null);
@@ -73,11 +73,11 @@ function divergenceCard(genes) {
   const rows = out.map((p) => el('tr', {},
     el('td', {}, el('a', { href: `#/gene/${p.a}`, class: 'mono' }, short(p.a)), ' × ',
       el('a', { href: `#/gene/${p.b}`, class: 'mono' }, short(p.b))),
-    el('td', { class: 'num' }, p.ks == null ? na('—') : p.ks.toFixed(4)),
-    el('td', { class: 'num' }, p.para && p.para.ks != null ? p.para.ks.toFixed(4) : na('—')),
-    el('td', { class: 'num' }, p.para && p.para.ka != null ? p.para.ka.toFixed(4) : na('—')),
-    el('td', { class: 'num' }, p.para && p.para.w != null ? p.para.w.toFixed(3) : na('—')),
-    el('td', { class: 'num' }, p.r == null ? na('—') : p.r.toFixed(2))));
+    el('td', { class: 'num' }, p.ks == null ? na('–') : p.ks.toFixed(4)),
+    el('td', { class: 'num' }, p.para && p.para.ks != null ? p.para.ks.toFixed(4) : na('–')),
+    el('td', { class: 'num' }, p.para && p.para.ka != null ? p.para.ka.toFixed(4) : na('–')),
+    el('td', { class: 'num' }, p.para && p.para.w != null ? p.para.w.toFixed(3) : na('–')),
+    el('td', { class: 'num' }, p.r == null ? na('–') : p.r.toFixed(2))));
   return el('div', { class: 'card', 'data-arr-div': '' },
     el('h2', {}, 'Divergence among members', el('span', { class: 'tag' }, `${out.length} member pairs`)),
     el('p', { class: 'arr-note' },
@@ -112,18 +112,18 @@ function exprCard(genes) {
   const table = el('table', { class: 'arr-heat', 'data-arr-heat': '' },
     el('thead', {}, el('tr', {}, el('th', {}, 'Member'),
       ...tissues.map((t) => el('th', {}, el('div', {}, t.replace(/_/g, ' ')),
-        el('div', { class: 'arr-n' }, n[t] == null ? 'n —' : `n ${n[t]}`))),
+        el('div', { class: 'arr-n' }, n[t] == null ? 'n –' : `n ${n[t]}`))),
       el('th', {}, 'τ'))),
     el('tbody', {}, ...genes.map((g) => el('tr', { 'data-arr-heat-row': g.id },
       el('th', {}, el('a', { href: `#/gene/${g.id}`, class: 'mono' }, short(g.id))),
       ...tissues.map((t) => {
         const v = g.x && g.x.t ? g.x.t[t] : null;
-        if (v == null) return el('td', { class: 'arr-h-na', title: 'no value' }, '—');
+        if (v == null) return el('td', { class: 'arr-h-na', title: 'no value' }, '–');
         const bin = Math.min(5, Math.floor((lg(v) / max) * 6));
         return el('td', { class: `arr-h h${bin}`, title: `${g.id} ${t}: median ${v} TPM` },
           v >= 100 ? v.toFixed(0) : v.toFixed(1));
       }),
-      el('td', { class: 'num' }, g.x && g.x.tau != null ? g.x.tau.toFixed(2) : '—')))));
+      el('td', { class: 'num' }, g.x && g.x.tau != null ? g.x.tau.toFixed(2) : '–')))));
   return el('div', { class: 'card', 'data-arr-expr': '' },
     el('h2', {}, 'Expression by tissue', el('span', { class: 'tag' }, 'median TPM, WT controls')),
     el('div', { class: 'scroll-x' }, table),
@@ -144,15 +144,15 @@ function memberTable(genes, other) {
     el('td', { class: 'num' }, i + 1),
     el('td', {}, el('a', { href: `#/gene/${g.id}`, class: 'mono' }, g.id),
       g.dup && g.dup.td ? null : el('div', { class: 'arr-small muted' }, 'removed by the screen')),
-    el('td', {}, g.strand || '—'),
+    el('td', {}, g.strand || '–'),
     el('td', { class: 'num' }, ((g.end - g.start) / 1000).toFixed(2)),
-    el('td', { class: 'num' }, g.gs ? g.gs.ex : '—'),
+    el('td', { class: 'num' }, g.gs ? g.gs.ex : '–'),
     el('td', {}, psWords(g) || na()),
     el('td', {}, synWords(g) || na()),
     el('td', {}, v9Dup(g.dup) || na()),
     el('td', {}, g.allele ? el('span', {}, el('a', { href: `#/gene/${g.allele.id}`, class: 'mono' }, g.allele.id),
       ' ', el('a', { href: `#/pair/${g.id}`, class: 'arr-small' }, 'pair')) : na('no allele')),
-    el('td', {}, (g.x && g.x.top) || na('—')),
+    el('td', {}, (g.x && g.x.top) || na('–')),
     el('td', { class: 'arr-desc' }, ((g.ann || {}).d) || na('no description'))));
   return el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
     el('thead', {}, el('tr', {}, el('th', { class: 'num' }, '#'), el('th', {}, 'Gene'), el('th', {}, 'Strand'),
@@ -238,7 +238,7 @@ export async function arrayView(aid) {
       if (!ranked.length) lines.push(el('p', {}, `No tandem array on ${otherL} holds these alleles: the copies are tandem on this haplotype only.`));
     } else if (region) {
       lines.push(el('p', {}, el('strong', {}, 'No member has an allele'), ` on ${otherL}, so nothing on that side is this array's allele. `
-        + `The view is lined up by the alleles of ${anchors.size} neighbouring gene${anchors.size === 1 ? '' : 's'} (dashed lines); `
+        + `The view is lined up by the alleles of ${anchors.size} neighboring gene${anchors.size === 1 ? '' : 's'} (dashed lines); `
         + 'any tandem array you see there is not linked to this one.'));
     } else {
       lines.push(el('p', {}, `No member and no gene within 300 kb has an allele on ${otherL}, so the matching region cannot be placed.`));
@@ -282,8 +282,8 @@ export async function arrayView(aid) {
     el('div', { class: 'stat-row' },
       el('div', { class: 'stat' }, el('div', { class: 'n' }, genes.length), el('div', { class: 'l' }, 'members')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, `${withAllele.length}/${genes.length}`), el('div', { class: 'l' }, `with an allele on ${hapLabel(other)}`)),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, genes[0].td && genes[0].td.ks != null ? genes[0].td.ks : '—'), el('div', { class: 'l' }, 'array median Ks')),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, (genes[0].td && genes[0].td.age || '—').replace(/_/g, ' ')), el('div', { class: 'l' }, 'age bin'))),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, genes[0].td && genes[0].td.ks != null ? genes[0].td.ks : '–'), el('div', { class: 'l' }, 'array median Ks')),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, (genes[0].td && genes[0].td.age || '–').replace(/_/g, ' ').replace('aWGD', 'aWGT')), el('div', { class: 'l' }, 'age bin'))),
     el('div', { class: 'arr-actions' },
       el('a', { class: 'btn', href: '#', 'data-arr-tsv': '', onclick: (e) => { e.preventDefault(); download(`717atlas_${aid}_members.tsv`, tsv(genes)); } }, 'Download members (TSV)'),
       saveBtn,

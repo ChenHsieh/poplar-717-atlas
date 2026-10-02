@@ -62,7 +62,7 @@ export async function statusView() {
       el('h1', {}, 'Build status'),
       el('div', { class: 'card' }, el('p', { style: 'margin:0' },
         'No gate record is published for this build. That means the validator ran without '
-        + 'writing one, not that it passed — treat the absence as unknown, not as clean.')));
+        + 'writing one, not that it passed, treat the absence as unknown, not as clean.')));
   }
 
   const stale = gates.data_version && man.data_version && gates.data_version !== man.data_version;
@@ -104,7 +104,7 @@ export async function statusView() {
     el('div', { class: 'card' },
       el('h2', {}, 'What these do and do not prove'),
       el('p', { style: 'margin:0;font-size:13.5px;color:var(--ink-2)' },
-        'Each gate checks the committed data against itself — that an ID resolves to the '
+        'Each gate checks the committed data against itself, that an ID resolves to the '
         + 'shard holding it, that a pointer is not dangling, that a count matches the canonical '
         + 'set it claims. They cannot tell you a measurement upstream was correct, only that '
         + 'this build did not corrupt or contradict it.'),
@@ -112,7 +112,7 @@ export async function statusView() {
         'A gate that passes over zero rows proves nothing, and this project has shipped exactly '
         + 'that: after one layer was repacked, "every pointer resolves" passed while iterating '
         + 'over an empty set. Where a gate asserts a count rather than a shape, the count is in '
-        + 'its detail line above — that is the difference worth reading.'),
+        + 'its detail line above, that is the difference worth reading.'),
       el('p', { class: 'muted', style: 'font-size:12.5px;margin:10px 0 0' },
         'The rendered-page checks are separate and run in a browser: ',
         el('span', { class: 'mono' }, 'scripts/check.mjs'),

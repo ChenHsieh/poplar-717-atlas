@@ -31,8 +31,8 @@ async function loadFamilies() {
 
 const EDGE = {
   tandem: { label: 'tandem', colour: 'var(--c-tandem)' },
-  salicoid: { label: 'salicoid WGD', colour: 'var(--c-core)' },
-  gamma: { label: 'gamma', colour: 'var(--c-priv)' },
+  salicoid: { label: 'sWGD', colour: 'var(--c-core)' },
+  gamma: { label: 'aWGT', colour: 'var(--c-priv)' },
   allele: { label: 'the other haplotype', colour: 'var(--ink-3)' },
   paralog: { label: 'paralog pair', colour: 'var(--c-disp)' },
 };
@@ -133,13 +133,13 @@ export async function familyView(geneId) {
         : (focalRow ? el('span', { class: 'muted' }, 'focal') : info.depth)),
       el('td', {}, info.via
         ? el('span', { style: `color:${EDGE[info.via].colour};font-weight:500` }, EDGE[info.via].label)
-        : el('span', { class: 'muted' }, '—')),
-      el('td', { class: 'num' }, info.ds == null ? el('span', { class: 'muted' }, '—')
+        : el('span', { class: 'muted' }, '–')),
+      el('td', { class: 'num' }, info.ds == null ? el('span', { class: 'muted' }, '–')
         : (info.ds < 0.1 ? info.ds.toFixed(4) : info.ds.toFixed(3))),
-      el('td', { class: 'muted', style: 'font-size:12px' }, r ? `${r.chr}` : '—'),
-      el('td', { class: 'muted', style: 'font-size:12px' }, r ? hapLabel(r.hap).split(' ')[0] : '—'),
-      el('td', { class: 'num' }, r && r.x && r.x.max != null ? r.x.max.toFixed(1) : el('span', { class: 'muted' }, '—')),
-      el('td', { class: 'muted', style: 'font-size:12px' }, r && r.x ? (r.x.top || '—') : '—'),
+      el('td', { class: 'muted', style: 'font-size:12px' }, r ? `${r.chr}` : '–'),
+      el('td', { class: 'muted', style: 'font-size:12px' }, r ? hapLabel(r.hap).split(' ')[0] : '–'),
+      el('td', { class: 'num' }, r && r.x && r.x.max != null ? r.x.max.toFixed(1) : el('span', { class: 'muted' }, '–')),
+      el('td', { class: 'muted', style: 'font-size:12px' }, r && r.x ? (r.x.top || '–') : '–'),
       el('td', {}, el('a', { href: `#/gene/${id}`, style: 'font-size:12px' }, 'gene →')));
   }));
 
@@ -172,7 +172,7 @@ export async function familyView(geneId) {
       el('p', { class: 'muted', style: 'font-size:11.5px;margin:10px 0 0' },
         kinds ? `Edges used to reach these members: ${kinds}. ` : '',
         '"Steps" is graph distance from this gene, and "first reached by" is the edge type that '
-        + 'reached it at that distance — a member two steps away is a relative of a relative, '
+        + 'reached it at that distance, a member two steps away is a relative of a relative, '
         + 'not a direct partner. The dS column is that edge’s own value, so it is blank '
         + 'wherever the pair was never scored. Click any gene to recentre the family on it.')),
 
@@ -180,8 +180,8 @@ export async function familyView(geneId) {
       el('h2', {}, 'Why this is a table and not a picture'),
       el('p', { style: 'margin:0;font-size:13.5px;color:var(--ink-2)' },
         'The obvious design is a radial layout with radius = dS from this gene. It cannot be '
-        + 'drawn honestly: most members have no dS to this gene at all — they are reached '
-        + 'through another member — so their radius would be invented. A force-directed '
+        + 'drawn honestly: most members have no dS to this gene at all, they are reached '
+        + 'through another member, so their radius would be invented. A force-directed '
         + 'layout is worse, because its equilibrium encodes nothing while a reader correctly '
         + 'assumes that position in a scientific figure means something. Graph distance is what '
         + 'the data supports, and it is exact.'),

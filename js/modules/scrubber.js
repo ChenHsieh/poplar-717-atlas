@@ -123,8 +123,8 @@ function geneCard(g) {
   if (!g.x) return null;
 
   const card = el('div', { class: 'card' },
-    el('h2', {}, 'Expression across the neighbourhood',
-      el('span', { class: 'tag' }, 'neighbours painted by expression')));
+    el('h2', {}, 'Expression across the neighborhood',
+      el('span', { class: 'tag' }, 'neighbors painted by expression')));
   const modeRow = el('div', { style: 'display:flex;gap:6px;margin-bottom:8px' });
   const tissueRow = el('div', { style: 'display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px' });
   const contrastRow = el('div', { style: 'display:none;margin-bottom:8px' });
@@ -134,7 +134,7 @@ function geneCard(g) {
   const readout = el('div', { class: 'locus-readout muted' }, ' ');
   const legend = el('div', { style: 'margin-top:6px;font-size:11.5px' });
   const caption = el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' },
-    'Loading the neighbourhood…');
+    'Loading the neighborhood…');
   card.append(modeRow, tissueRow, contrastRow, stage, readout, legend, caption);
 
   /** The card had no legend at all: a reader saw shaded boxes with no idea what shade meant
@@ -352,7 +352,7 @@ function geneCard(g) {
     }
     contrastRow.append(el('p', { class: 'muted', style: 'margin:0 0 6px;font-size:11.5px' },
       'Treatment and genotype contrasts are the primary comparisons (117). Growth condition '
-      + 'and other condition are secondary design factors (74) — nested inside a study rather '
+      + 'and other condition are secondary design factors (74), nested inside a study rather '
       + 'than its main question, not lower quality. Where two contrasts share a label, the '
       + 'factor that separates them is shown in brackets.'));
     sel.addEventListener('change', () => {

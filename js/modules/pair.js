@@ -32,7 +32,7 @@ export async function resolvePair(id) {
   return g.hap === 'hap1' ? { a: g, b: other, ks: g.allele } : { a: other, b: g, ks: other.allele };
 }
 
-const DUP_CODE = { A: 'gamma', S: 'salicoid', T: 'tandem', D: 'dispersed', C: 'none' };
+const DUP_CODE = { A: 'aWGT', S: 'sWGD', T: 'tandem', D: 'dispersed', C: 'none' };
 const dupWords = (d) => (!d ? null : (d.t === 'C' ? 'none detected'
   : [...(d.t || '')].map((c) => DUP_CODE[c]).filter(Boolean).join(' + ')));
 
@@ -116,7 +116,7 @@ function tissueCompare(a, b) {
   tissues.forEach((t, i) => {
     const y = 14 + i * rowH;
     svg.append(svgEl('text', { x: L - 8, y: y + 11, class: 'pr-tl', 'text-anchor': 'end' }, t.replace(/_/g, ' ')));
-    svg.append(svgEl('text', { x: L - 8, y: y + 23, class: 'pr-tn', 'text-anchor': 'end' }, n[t] == null ? 'n —' : `n ${n[t]}`));
+    svg.append(svgEl('text', { x: L - 8, y: y + 23, class: 'pr-tn', 'text-anchor': 'end' }, n[t] == null ? 'n –' : `n ${n[t]}`));
     [[ta[t], 'hap1', 0], [tb[t], 'hap2', 13]].forEach(([v, h, dy]) => {
       if (v == null) {
         svg.append(svgEl('text', { x: L + 4, y: y + dy + 10, class: 'pr-tn' }, 'no value'));
@@ -175,7 +175,7 @@ async function modelsFigure(a, b, holder) {
     holder.replaceChildren(el('div', { class: 'scroll-x' }, svg),
       el('p', { class: 'arr-note' }, 'Both models share one axis in base pairs, each starting at its own 5′ end. Tall blocks are '
         + 'coding exons, short blocks untranslated exon parts, lines introns. '
-        + `Exon counts: ${a.gs ? a.gs.ex : '—'} and ${b.gs ? b.gs.ex : '—'}.`
+        + `Exon counts: ${a.gs ? a.gs.ex : '–'} and ${b.gs ? b.gs.ex : '–'}.`
         + (missing.length ? ` No exon structure is available for ${missing.join(' and ')}; drawn as one block.` : '')));
   } catch (e) {
     holder.replaceChildren(el('p', { class: 'muted' }, `Gene models unavailable: ${e.message}`));
@@ -183,7 +183,7 @@ async function modelsFigure(a, b, holder) {
 }
 
 /** The shared two-haplotype browser around a gene. With an allele, that allele is the linked
- *  gene; without one, the nearest neighbours' alleles line the two haplotypes up (dashed). */
+ *  gene; without one, the nearest neighbors' alleles line the two haplotypes up (dashed). */
 async function locusOnBoth(g, partner, holder) {
   try {
     const pad = Math.max(60000, (g.end - g.start) * 3);
@@ -197,10 +197,10 @@ async function locusOnBoth(g, partner, holder) {
         anchors = new Set(region.anchors.map(([x]) => x));
         otherChr = region.chr;
         note = `${g.id} has no allele, so the lower haplotype is lined up by the alleles of ${anchors.size} `
-          + 'neighbouring genes (dashed). Where the gap between them holds no gene, the other parent has '
+          + 'neighboring genes (dashed). Where the gap between them holds no gene, the other parent has '
           + 'nothing annotated in that position.';
       } else {
-        note = 'No neighbour within 6 genes has an allele, so the lower haplotype cannot be lined up here.';
+        note = 'No neighbor within 6 genes has an allele, so the lower haplotype cannot be lined up here.';
       }
     }
     const browser = await chromosomeBrowser({
@@ -263,7 +263,7 @@ export async function pairView(id) {
   }
   if (res.solo) {
     const g = res.solo;
-    const nb = el('div', { 'data-pair-neighbourhood': '' }, el('p', { class: 'muted' }, 'Drawing the neighbourhood on both haplotypes…'));
+    const nb = el('div', { 'data-pair-neighborhood': '' }, el('p', { class: 'muted' }, 'Drawing the neighborhood on both haplotypes…'));
     locusOnBoth(g, null, nb);
     return el('div', { 'data-pair-solo': g.id },
       el('div', { class: 'kicker' }, `Allele pair · ${hapLabel(g.hap)}`),
@@ -302,17 +302,17 @@ export async function pairView(id) {
     el('h1', {}, 'Allele pair'),
     el('p', { class: 'sub' },
       el('span', { class: 'mono' }, a.id), ' · ', el('span', { class: 'mono' }, b.id),
-      ' — the same locus in the two phased haplotypes of clone INRA 717-1B4.'),
+      ', the same locus in the two phased haplotypes of clone INRA 717-1B4.'),
 
     el('div', { class: 'stat-row' },
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.ks != null ? ks.ks.toFixed(4) : '—'),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.ks != null ? ks.ks.toFixed(4) : '–'),
         el('div', { class: 'l' }, 'dS between alleles')),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.ka != null ? ks.ka.toFixed(4) : '—'),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.ka != null ? ks.ka.toFixed(4) : '–'),
         el('div', { class: 'l' }, 'dN')),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.w != null ? ks.w.toFixed(3) : '—'),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.w != null ? ks.w.toFixed(3) : '–'),
         el('div', { class: 'l' }, 'ω')),
     ),
-    el('p', { class: 'arr-note' }, 'dS, dN and ω are for this allele pair (HAP1 against HAP2). '
+    el('p', { class: 'arr-note' }, 'dS, dN and ω are for this allele pair (HAP1 vs. HAP2). '
       + (ks && ks.w == null ? 'ω is not given where dS is zero or not estimable, since the ratio is undefined. ' : '')
       + 'The per-gene ω against P. trichocarpa is a different comparison and sits in the table below.'),
 

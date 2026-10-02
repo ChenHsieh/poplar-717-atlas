@@ -47,13 +47,13 @@ const METRIC_NOTE = {
   lsg: 'Share in the lineage-specific pool (PS ≥ 18 in the genEra rerun that added Idesia).',
   tau: 'Mean tissue-specificity of genes in the bin that have a baseline at all.',
   omega: 'Mean Ka/Ks over the genes in the bin that HAVE a reciprocal-best P. trichocarpa '
-    + 'ortholog — 81.7% of genes, and the ones without are the youngest, so a bin’s '
+    + 'ortholog, 81.7% of genes, and the ones without are the youngest, so a bin’s '
     + 'value describes its pairable genes.',
   ms: 'Share of genes with a peptide in any of five public Populus mass-spec datasets. '
     + 'Indirect: most such peptides are shared with P. trichocarpa and with other 717 genes.',
   acr: 'Share of leaf-expressed P. trichocarpa ORTHOLOGS with accessible chromatin. This is '
     + 'the ortholog’s chromatin, not this genome’s, and its denominator is only the '
-    + 'genes with a 1:1 ortholog expressed in leaf — smaller than the bin.',
+    + 'genes with a 1:1 ortholog expressed in leaf, smaller than the bin.',
 };
 
 function metricRange(overview, hap, metricKey) {

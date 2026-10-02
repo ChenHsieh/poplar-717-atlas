@@ -13,6 +13,6 @@ export function el(tag, attrs = {}, ...kids) {
   }
   return n;
 }
-export const fmt = (n) => (n == null ? '—' : n.toLocaleString('en-US'));
-export const pct = (a, b) => (b ? ((a / b) * 100).toFixed(1) + '%' : '—');
+export const fmt = (n) => (n == null ? '–' : n.toLocaleString('en-US'));
+export const pct = (a, b) => (b ? ((a / b) * 100).toFixed(1) + '%' : '–');
 export function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); return node; }

@@ -27,7 +27,7 @@ function overview(man) {
   return el('div', {},
     el('h1', {}, 'About & provenance'),
     el('p', { class: 'sub' },
-      `Data version ${man.data_version || '—'}, built ${(man.built || '').slice(0, 10)} from `
+      `Data version ${man.data_version || '–'}, built ${(man.built || '').slice(0, 10)} from `
       + `${Object.keys(man.sources || {}).length} source files on the UGA Sapelo2 cluster. `
       + `Every file below is recorded with a checksum at build time.`),
 
@@ -39,7 +39,7 @@ function overview(man) {
         + 'dissertation chapter on lineage-specific genes, and a general-purpose resource for '
         + 'anyone working in this clone.'),
       el('dl', { class: 'kv' },
-        el('dt', {}, 'Genes'), el('dd', {}, `${fmt(man.n_genes)} — HAP1 32,137 (PtXaTreH), HAP2 31,823 (PtXaAlbH)`),
+        el('dt', {}, 'Genes'), el('dd', {}, `${fmt(man.n_genes)}, HAP1 32,137 (PtXaTreH), HAP2 31,823 (PtXaAlbH)`),
         el('dt', {}, 'Synteny'), el('dd', {}, 'GENESPACE over a 12-genome panel (10 syntenic + O. sativa / P. patens as orthogroup-only outgroups)'),
         el('dt', {}, 'Phylostratigraphy'), el('dd', {}, 'genEra, 19 strata'),
         el('dt', {}, 'Annotation'), el('dd', {}, `${fmt(a.n_annotated)} genes; ${fmt(a.go_terms)} GO terms; ${fmt(a.n_allele)} with a HAP1↔HAP2 allele`),
@@ -96,7 +96,7 @@ function overview(man) {
           + `(${fmt(3222)} HAP2 genes vs ${fmt(26132)} on HAP1). An absent domain on a HAP2 gene is `
           + 'usually a release gap, not biology.'),
         el('li', {}, el('strong', {}, 'Private calls are panel-dependent. '),
-          'P. alba — a parent species of this hybrid — is deliberately not in the synteny panel. '
+          'P. alba, a parent species of this hybrid, is deliberately not in the synteny panel. '
           + '41% of genes called private have a detectable P. alba homolog, against 98.8% of core '
           + 'genes; the call is sound but panel-conditioned.'),
         el('li', {}, el('strong', {}, 'ω is undefined for 716 syntelog pairs '),
@@ -108,7 +108,7 @@ function overview(man) {
           + `${fmt((man.expression || {}).combat_eligible_genes)} genes that passed the upstream `
           + 'low-count filter; the tissue baselines and τ are always computed on raw TPM.'),
         el('li', {}, el('strong', {}, 'Curation notes are summarised, not quoted. '),
-          'Tandem-array genes carry a curation flag — hand-rejected, pseudogene-like, or '
+          'Tandem-array genes carry a curation flag, hand-rejected, pseudogene-like, or '
           + 'disagreeing with the automatic gate. The curator\'s identity and verbatim wording '
           + 'are deliberately not published.'),
         el('li', {}, el('strong', {}, 'An independent τ was audited out, not shipped. '),
@@ -124,7 +124,7 @@ function overview(man) {
         el('li', {}, el('strong', {}, 'Three layers are derived here, not imported. '),
           'Exon/intron counts and TE distance are computed from the v5.1 GFF3 and repeatmasked '
           + 'annotation that ship with the genome, and genomic order from the atlas\'s own '
-          + 'coordinates — because the tables offering them sat in case-study, calibration and '
+          + 'coordinates, because the tables offering them sat in case-study, calibration and '
           + '"structural exploration" folders with no canonical status.'),
         el('li', {}, el('strong', {}, 'Duplication calls come from a mirrored repo. '),
           'The per-gene duplication class is ms1-dup’s master duplication table v9. That '
@@ -144,7 +144,7 @@ function overview(man) {
       sourceTable(man.sources || {}),
       el('p', { class: 'muted', style: 'margin:12px 0 0;font-size:12px' },
         'Source files live on Sapelo2 and are not in this repository, so the build is not '
-        + 'reproducible from a clone alone — the committed data/ directory is the artifact.'),
+        + 'reproducible from a clone alone, the committed data/ directory is the artifact.'),
       // The page claims the data is validated; this is where the claim can be checked.
       el('p', { style: 'margin:10px 0 0;font-size:13px' },
         el('a', { href: '#/status' }, 'See every integrity gate this build ran, and its verdict →'))),
@@ -155,7 +155,7 @@ function overview(man) {
       el('h2', {}, 'Citation & licence'),
       el('p', { style: 'margin:0 0 8px;font-size:13.5px;color:var(--ink-2)' },
         'Cite this atlas via CITATION.cff in the repository, and cite the underlying study for '
-        + 'any expression data you use — each study page carries its own DOI.'),
+        + 'any expression data you use, each study page carries its own DOI.'),
       el('p', { class: 'muted', style: 'margin:0;font-size:12.5px' },
         'Code is MIT. The derived data is unpublished dissertation material and is not yet '
         + 'openly licensed; CC BY 4.0 is intended at publication.')),

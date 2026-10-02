@@ -304,7 +304,7 @@ function geneCard(g) {
               + `${fmt(ms.psm)} spectrum match${ms.psm === 1 ? '' : 'es'}`
               + (ms.hs != null ? `, best hyperscore ${ms.hs.toFixed(1)}` : '')
               + (ms.sp ? '. At least one peptide maps only to 717 proteins.'
-                       : '. No peptide here is unique to 717 — each also matches a P. trichocarpa protein.'))
+                       : '. No peptide here is unique to 717, each also matches a P. trichocarpa protein.'))
           : null,
         (ms.n === 1 && ms.psm === 1)
           ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:3px' },
@@ -373,7 +373,7 @@ function geneCard(g) {
                 : ' · also in P. trichocarpa'));
           }))),
         el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' },
-          'A shared peptide is not a failed measurement — it is real evidence that the protein '
+          'A shared peptide is not a failed measurement, it is real evidence that the protein '
           + 'family is translated. It just cannot single out this gene as the source. Across the '
           + 'whole atlas that is the common case: 94% of peptides matching a 717 gene are also '
           + 'in the P. trichocarpa proteome, and only 12% match exactly one 717 gene.')));
@@ -419,10 +419,10 @@ function geneCard(g) {
       'Across all 40,685 modelled genes, coil fraction correlates with mean pLDDT at r = −0.49, '
       + 'against only +0.16 for helix. A high-coil, low-pLDDT model says the structure was hard '
       + 'to predict, not that the protein is unstructured. Read coil alongside the pLDDT above, '
-      + 'never alone — the disorder prediction is the separate, dedicated signal.'));
+      + 'never alone, the disorder prediction is the separate, dedicated signal.'));
   } else if (p.dis != null || ms) {
     card.append(el('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' },
-      'No ESMFold model for this gene. Structure covers 40,685 of 63,960 genes (64%) — '
+      'No ESMFold model for this gene. Structure covers 40,685 of 63,960 genes (64%), '
       + 'absence here is coverage, not a structural claim.'));
   }
   if (ms) {
@@ -432,7 +432,7 @@ function geneCard(g) {
       + 'makes a blank row here mean something: an earlier version of this page matched peptide '
       + 'names against tables built from another species, where a 717-specific peptide could '
       + 'never have appeared and "not detected" carried no information. Each dataset is kept '
-      + 'separate — their depths differ by sixteenfold — and the 1% error rate accumulates '
+      + 'separate, their depths differ by sixteenfold, and the 1% error rate accumulates '
       + 'across the five, so a single match in a single dataset is weak on its own.'));
   }
   return card;
@@ -474,19 +474,19 @@ async function overview(man) {
           + 'are too large for this static site. Yellow and orange mean the model is guessing, '
           + 'and most of a lineage-specific gene\'s model is yellow and orange.'),
         el('li', {}, el('strong', {}, 'Peptide detection is asymmetric evidence. '),
-          'Detection is strong evidence a predicted protein is real and translated — which '
+          'Detection is strong evidence a predicted protein is real and translated, which '
           + 'matters most for young, lineage-specific genes whose existence rests on gene '
           + 'prediction. Non-detection is weak: it also reflects tissue, abundance, and '
           + 'whether the protein yields observable tryptic peptides at all.'),
         el('li', {}, el('strong', {}, 'The five datasets are never pooled. '),
-          'Their depths differ by sixteenfold — 3,248 to 52,056 peptides — so pooling would '
+          'Their depths differ by sixteenfold, 3,248 to 52,056 peptides, so pooling would '
           + 'let the deepest dataset silently define the answer. The 1% false-discovery rate '
           + 'also accumulates across five searches, so a single match in a single dataset is '
           + 'expected to happen by chance somewhere in the genome.'),
         el('li', {}, el('strong', {}, 'Absence has a denominator, and it is on the page. '),
           'A protein with no fully-tryptic peptide in the searchable mass range cannot be '
           + 'found however abundant it is, and that is a property of its lysine and arginine '
-          + 'content and its length — composition, on which young genes differ from old ones. '
+          + 'content and its length, composition, on which young genes differ from old ones. '
           + `Counting such a gene as "not detected" would inflate the negative. `
           + `${fmt(((man.proteomics || {}).undetectable_by_construction || {}).hap1 || 0)} HAP1 and `
           + `${fmt(((man.proteomics || {}).undetectable_by_construction || {}).hap2 || 0)} HAP2 `

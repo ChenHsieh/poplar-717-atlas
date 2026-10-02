@@ -132,7 +132,7 @@ function contrastCard(g) {
         el('dt', {}, 'Median |log2FC|'), el('dd', { class: 'mono' }, med.toFixed(3)),
         el('dt', {}, 'Largest'),
         el('dd', {}, el('span', { class: 'mono' }, shown[0].lfc.toFixed(2)), ' in ',
-          el('strong', {}, shown[0].tissue), ` — ${shown[0].label}`,
+          el('strong', {}, shown[0].tissue), `, ${shown[0].label}`,
           el('span', { class: 'muted' }, `, mean ${fmt(Math.round(shown[0].base))} TPM on the larger side`))),
       lowN ? el('p', { class: 'warn-n-note' },
         el('strong', {}, `${lowN} of these ${rows.length} contrasts have a single sample on one side. `),
@@ -145,7 +145,7 @@ function contrastCard(g) {
         + 'descriptive ratio, not a differential-expression test: no dispersion model, no '
         + 'multiple-testing correction, and study is not accounted for. The card’s median '
         + 'is computed over every scorable contrast here, which need not match the '
-        + '“responsiveness” figure on the Tissues view — that one uses the upstream '
+        + '“responsiveness” figure on the Tissues view, that one uses the upstream '
         + 'eligibility rule.'));
     status.remove();
   })().catch((e) => { status.textContent = `Contrast response unavailable: ${e.message}`; });
@@ -165,23 +165,23 @@ function geneCard(g) {
   },
     el('h2', {}, 'Expression', el('span', { class: 'tag' }, 'kallisto k21')),
     el('p', { class: 'sub', style: 'margin:0 0 10px' },
-      `Median TPM across the WT-control subset (used for the baseline and τ below only — `,
+      `Median TPM across the WT-control subset (used for the baseline and τ below only, `,
       `perturbation and the full 652-sample profile are separate views, see below). Peak: `,
-      el('strong', {}, x.top || '—'), ` (${fmt(x.t[x.top])} TPM). `,
-      `τ = ${x.tau ?? '—'} — ${tauNote(x.tau)}.`),
+      el('strong', {}, x.top || '–'), ` (${fmt(x.t[x.top])} TPM). `,
+      `τ = ${x.tau ?? '–'}, ${tauNote(x.tau)}.`),
     baselineChart(x),
     el('p', { class: 'muted', style: 'font-size:11px;margin:6px 0 0' },
       `τ computed over ${orderTissues(Object.keys(x.t).filter((t) => t !== 'callus')).join(' / ')} `,
-      '(callus excluded — 1 sample, not part of the manuscript panel per the delivery notes). ',
+      '(callus excluded, 1 sample, not part of the manuscript panel per the delivery notes). ',
       'callus is still shown above. leaf_young/leaf_old (study 1 only) and the unsplit leaf ',
-      '(every other study) are three separate tissues here, not one — see docs/DATA_AUDIT.md.'),
+      '(every other study) are three separate tissues here, not one, see docs/DATA_AUDIT.md.'),
     g.resp && g.resp.v != null ? el('p', { style: 'font-size:12.5px;margin:9px 0 0' },
       el('strong', {}, 'Responsiveness: '),
       'median |log2 fold-change| across perturbation contrasts is ',
       el('span', { class: 'mono' }, g.resp.v.toFixed(3)),
       g.resp.n ? el('span', { class: 'muted' }, ` over ${g.resp.n} eligible contrasts.`) : '.') : null,
     g.nb && g.nb.k5 != null ? el('p', { style: 'font-size:12.5px;margin:9px 0 0' },
-      el('strong', {}, 'Neighbourhood: '),
+      el('strong', {}, 'Neighborhood: '),
       'co-expression with the 5 nearest genes is ',
       el('span', { class: 'mono' }, g.nb.k5.toFixed(3)),
       g.nb.k10 != null ? el('span', {}, ', with the nearest 10 ', el('span', { class: 'mono' }, g.nb.k10.toFixed(3))) : null,
@@ -254,7 +254,7 @@ function geneCard(g) {
         rawBtn.dataset.on = 'true'; rawBtn.style.background = 'var(--accent)'; rawBtn.style.color = '#fff';
         src.append(rawBtn, cbBtn,
           el('span', { style: 'font-size:11px' },
-            '— batch-adjusted for comparing this gene ACROSS studies; raw stays primary everywhere else on this site.'));
+            '– batch-adjusted for comparing this gene ACROSS studies; raw stays primary everywhere else on this site.'));
         holder.insertBefore(src, tabs);
       }
 
@@ -304,9 +304,9 @@ function conditionTable(vec, samples, studies) {
           el('th', { class: 'num' }, 'Mean TPM'), el('th', {}, ''))),
         el('tbody', {}, ...rows.map((r) => el('tr', {},
           el('td', {}, el('a', { href: `#/study/${r.s.study}`, class: 'mono' }, r.s.study)),
-          el('td', { style: 'font-size:12px' }, r.s.tissue_analysis || r.s.tissue || '—'),
+          el('td', { style: 'font-size:12px' }, r.s.tissue_analysis || r.s.tissue || '–'),
           el('td', { style: 'font-size:12px' }, cond(r.s)),
-          el('td', { style: 'font-size:12px' }, r.s.genotype || '—'),
+          el('td', { style: 'font-size:12px' }, r.s.genotype || '–'),
           el('td', { class: 'num' }, r.n),
           el('td', { class: 'num' }, r.mean.toFixed(2)),
           el('td', { style: 'width:30%' },
@@ -364,7 +364,7 @@ function studyRow(s) {
         first ? `${first}${year ? ' ' + year[1] : ''}` : `study ${s.id}`)),
     el('td', { class: 'num' }, fmt(s.n)),
     el('td', {}, s.tissues.join(', ')),
-    el('td', {}, s.panel_type.join(', ') || el('span', { class: 'muted' }, '—')),
+    el('td', {}, s.panel_type.join(', ') || el('span', { class: 'muted' }, '–')),
     el('td', {}, ...s.bioprojects.map((b, i) => el('span', {},
       i ? ', ' : '',
       el('a', { href: `https://www.ebi.ac.uk/ena/browser/view/${b}`, target: '_blank',
@@ -373,7 +373,7 @@ function studyRow(s) {
     el('td', {}, s.doi && s.doi.length
       ? el('a', { href: s.doi[0], target: '_blank', rel: 'noopener',
                   onclick: (e) => e.stopPropagation() }, 'paper')
-      : el('span', { class: 'muted' }, '—')),
+      : el('span', { class: 'muted' }, '–')),
   );
 }
 
@@ -396,7 +396,7 @@ async function overview(man) {
     el('p', { class: 'sub' },
       `${fmt(e.n_samples)} samples, ${e.n_studies} curated studies, ${e.n_bioprojects} BioProjects. `
       + `kallisto k21 pseudoalignment against the combined HAP1+HAP2 v5.1 transcriptome. `
-      + `TPM, raw (not batch-corrected) — see each study for design and caveats.`),
+      + `TPM, raw (not batch-corrected), see each study for design and caveats.`),
     el('div', { class: 'stat-row' },
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(e.n_samples)), el('div', { class: 'l' }, 'samples')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, e.n_studies), el('div', { class: 'l' }, 'studies')),
@@ -407,7 +407,7 @@ async function overview(man) {
       el('h2', {}, 'WT-control samples per tissue', el('span', { class: 'tag' }, 'baseline denominator')),
       el('p', { class: 'muted', style: 'font-size:12px;margin:0 0 10px' },
         `Every gene's tissue-baseline bars are the median TPM across these WT-control samples. `
-        + `stem, bud, catkin and callus are thin (≤5) — read differences with that in mind.`),
+        + `stem, bud, catkin and callus are thin (≤5), read differences with that in mind.`),
       tissuePanelMatrix(man)),
     el('div', { class: 'card' },
       el('h2', {}, 'Studies', el('span', { class: 'tag' }, 'click a row to open it')),
@@ -418,7 +418,7 @@ async function overview(man) {
         el('tbody', {}, ...list.map(studyRow))))),
     el('p', { class: 'muted', style: 'font-size:11.5px' },
       'Full matrix CSVs (TPM/FPKM/counts, all 652 samples × 63,960 genes) are not bundled in ',
-      'this repo — the per-gene and per-study JSON above carry the same values. Ask the author for the raw CSVs.'),
+      'this repo, the per-gene and per-study JSON above carry the same values. Ask the author for the raw CSVs.'),
   );
 }
 

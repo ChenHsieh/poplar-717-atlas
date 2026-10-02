@@ -33,7 +33,7 @@ export const QUESTIONS = [
   {
     id: 'hemizygous',
     q: 'Which genes exist on only one haplotype?',
-    sub: 'no allele in the other haplotype — the phased-hybrid question',
+    sub: 'no allele in the other haplotype, the phased-hybrid question',
     params: { allele: 'no' },
   },
   {
@@ -52,7 +52,7 @@ export const QUESTIONS = [
   {
     id: 'fast-evolving',
     q: 'Which genes look fast-evolving against P. trichocarpa?',
-    sub: 'ω ≥ 1 against the reciprocal-best ortholog — a flag to inspect, not a selection claim',
+    sub: 'ω ≥ 1 compared with the reciprocal-best ortholog, a flag to inspect, not a selection claim',
     params: { w_min: '1.0' },
   },
   {

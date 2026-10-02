@@ -125,7 +125,7 @@ function initSearch() {
             href: `#/search/${encodeURIComponent(q)}`,
             onclick: (e) => { e.preventDefault(); goToResults(q); },
             style: 'font-weight:600;color:var(--accent);border-top:1px solid var(--line)',
-          }, `${fmt(total)} results for "${q}" — compare them all →`));
+          }, `${fmt(total)} results for "${q}", compare them all →`));
         }
       }
       hits.style.display = 'block';
@@ -188,7 +188,7 @@ route(/^\/$/, async (navigation) => {
   const MODULE_BLURB = {
     annotation: 'What the gene is: description, Arabidopsis hit, Pfam, GO, and its allele in the other haplotype.',
     synteny: 'Whether it has orthologs, in how many of 12 genomes, and how that changed when the panel was completed.',
-    phylostrat: 'How old it is — which phylostratum, and whether genEra was confident about it.',
+    phylostrat: 'How old it is, which phylostratum, and whether genEra was confident about it.',
     duplication: 'What it duplicated from: paralog pairs with divergence, and tandem-array membership.',
     expression: `Where it is expressed, across ${fmt(e.n_samples)} samples from ${e.n_studies} curated studies.`,
     about: 'Provenance, known limitations, and how to cite this.',
@@ -272,7 +272,7 @@ route(/^\/$/, async (navigation) => {
             + 'tandem copies, not four.'),
           el('dt', {}, el('a', { href: '#/gene/PtXaTreH.10G046700' }, 'PtXaTreH.10G046700')),
           el('dd', { class: 'muted' }, 'A seven-copy nucleoredoxin array with no one-to-one '
-            + 'allele called on the other haplotype — the pattern a hemizygous locus leaves, '
+            + 'allele called on the other haplotype, the pattern a hemizygous locus leaves, '
             + 'though an uncalled allele is not by itself proof of one.'))),
 
       el('div', { class: 'card' },
@@ -798,7 +798,7 @@ route(/^\/gene\/(.+)$/, async (id, navigation) => {
     geneHeader(g, kb),
     (ord.p || ord.n) ? el('p', { class: 'gh-nb' },
       ord.p ? el('a', { href: `#/gene/${ord.p}`, class: 'mono' }, '← ' + ord.p) : null,
-      (ord.p && ord.n) ? el('span', { class: 'muted' }, '   neighbours on the chromosome   ') : null,
+      (ord.p && ord.n) ? el('span', { class: 'muted' }, '   neighbors on the chromosome   ') : null,
       ord.n ? el('a', { href: `#/gene/${ord.n}`, class: 'mono' }, ord.n + ' →') : null) : null,
     glance,
     sectionNav(bands),
@@ -893,7 +893,7 @@ route(/^\/map(?:\/(hap[12]))?(?:\/(\w+))?$/, async (hapArg, chrArg, navigation) 
   const body = await renderMap(hap, chrArg || null);
   setView(el('div', {},
     el('h1', {}, 'Genome map'),
-    el('p', { class: 'sub' }, 'Semantic zoom from all 19 chromosomes to one gene\'s neighbourhood.'),
+    el('p', { class: 'sub' }, 'Semantic zoom from all 19 chromosomes to one gene\'s neighborhood.'),
     el('div', { style: 'display:flex;gap:8px;margin:10px 0 14px' },
       hapBtn('hap1', 'HAP1 (TreH)'), hapBtn('hap2', 'HAP2 (AlbH)')),
     body));
@@ -933,7 +933,7 @@ route(/^\/study\/(\d+)$/, async (idStr, navigation) => {
   const all = await loadExprSamples();
   const mine = all.filter((x) => x.study === id).sort((a, b) => a.label.localeCompare(b.label));
   const anyNotes = mine.some((x) => x.notes);
-  const cell = (v) => (v == null || v === '' ? el('span', { class: 'muted' }, '—') : v);
+  const cell = (v) => (v == null || v === '' ? el('span', { class: 'muted' }, '–') : v);
   const sampleCard = el('div', { class: 'card' },
     el('h2', {}, `Samples (${mine.length})`),
     el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
@@ -952,9 +952,9 @@ route(/^\/study\/(\d+)$/, async (idStr, navigation) => {
         el('td', {}, x.ctrl === 'control'
           ? el('span', { class: 'badge', style: 'font-size:11px' }, 'control')
           : el('span', { class: 'muted' }, 'perturbation')),
-        el('td', { class: 'muted', style: 'font-size:11.5px' }, x.layout || '—'),
-        el('td', { class: 'num' }, x.reads == null ? '—' : (x.reads / 1e6).toFixed(1) + 'M'),
-        el('td', { class: 'num' }, x.pct_aligned == null ? '—' : x.pct_aligned.toFixed(1)),
+        el('td', { class: 'muted', style: 'font-size:11.5px' }, x.layout || '–'),
+        el('td', { class: 'num' }, x.reads == null ? '–' : (x.reads / 1e6).toFixed(1) + 'M'),
+        el('td', { class: 'num' }, x.pct_aligned == null ? '–' : x.pct_aligned.toFixed(1)),
         anyNotes ? el('td', { class: 'muted', style: 'font-size:11px;max-width:230px' },
           cell(x.notes)) : null))))),
     el('p', { class: 'muted', style: 'margin:11px 0 0;font-size:12px' },
@@ -975,7 +975,7 @@ route(/^\/study\/(\d+)$/, async (idStr, navigation) => {
       ).flatMap((a, i) => i ? [', ', a] : [a])),
     s.flags.includes('prefer_counts_over_tpm') && el('div', { class: 'warn' },
       'This study\'s single-end fragment length was not individually calibrated. Effective-length ',
-      'inflation is measurable here — prefer est_counts over TPM/FPKM for this study.'),
+      'inflation is measurable here, prefer est_counts over TPM/FPKM for this study.'),
     el('div', { class: 'card' },
       el('h2', {}, 'Design'),
       el('p', {}, factorRow('Tissue', s.tissues), factorRow('Panel', s.panel_type),

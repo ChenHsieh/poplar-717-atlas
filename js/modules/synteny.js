@@ -13,7 +13,7 @@ export const CLASSES = {
 
 export function classBadge(cls) {
   const c = CLASSES[cls];
-  if (!c) return el('span', { class: 'badge' }, cls || '—');
+  if (!c) return el('span', { class: 'badge' }, cls || '–');
   // Swatch ALWAYS ships with its text label -- three light-mode hues sit under 3:1
   // contrast, so identity may never be carried by color alone.
   return el('span', { class: 'badge', title: c.blurb }, el('i', { class: 'dot ' + c.dot }), c.label);
@@ -27,7 +27,7 @@ function geneCard(g) {
 
   add('Class', classBadge(s.cls));
   add('Orthogroup', s.og ? el('span', { class: 'mono' }, s.og) : el('span', { class: 'muted' }, 'unassigned by OrthoFinder'));
-  add('Genomes in orthogroup', s.n == null ? '—' : `${s.n} of 12`);
+  add('Genomes in orthogroup', s.n == null ? '–' : `${s.n} of 12`);
 
   const f = s.flags || {};
   const on = Object.entries({ 'syntenic (PASS)': f.pass, 'non-syntenic ortholog': f.ns, 'tandem array': f.ar })
@@ -45,7 +45,7 @@ function geneCard(g) {
     el('h2', {}, 'Synteny', el('span', { class: 'tag' }, 'GENESPACE')), kv);
   if (s.cls === 'private_no_ortholog') {
     card.append(el('div', { class: 'warn' },
-      'Private calls are panel-dependent. P. alba — a parent species of this hybrid — is not in ' +
+      'Private calls are panel-dependent. P. alba, a parent species of this hybrid, is not in ' +
       'the panel; 41% of private genes have a P. alba homolog vs 98.8% of core genes.'));
   }
   return card;
@@ -89,7 +89,7 @@ function overview(man) {
           el('th', { class: 'num' }, 'Share'), el('th', {}, ''))),
         el('tbody', {}, ...rows))),
       el('div', { class: 'muted', style: 'margin-top:10px;font-size:12px' },
-        Object.entries(CLASSES).map(([, c]) => c.label + ' — ' + c.blurb).join('  ·  ')),
+        Object.entries(CLASSES).map(([, c]) => c.label + ', ' + c.blurb).join('  ·  ')),
     ),
   );
 }

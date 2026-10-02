@@ -78,7 +78,7 @@ function cellBox(c, g, s, cell, max) {
   const t = n ? 0.10 + 0.40 * (Math.log10(n + 1) / Math.log10(max + 1)) : 0;
   const bg = n ? `background:color-mix(in srgb, var(--accent) ${Math.round(t * 100)}%, transparent)` : '';
   const inner = el('div', { class: 'kp-cell' + (n ? '' : ' empty'), style: bg },
-    el('div', { class: 'kp-total' }, n ? fmt(n) : '—'),
+    el('div', { class: 'kp-total' }, n ? fmt(n) : '–'),
     n ? el('div', { class: 'kp-haps' }, `HAP1 ${fmt(cell.hap1)}`, el('br'), `HAP2 ${fmt(cell.hap2)}`) : null);
   if (!n) {
     return el('div', { title: 'No collinear anchor in either haplotype carries this slot. '
@@ -86,7 +86,7 @@ function cellBox(c, g, s, cell, max) {
   }
   return el('a', {
     class: 'kp-celllink', href: cellHref(c, g, s), 'data-kp-cell': `${c}|${g}|${s}`, 'data-n': n,
-    title: `AEK${c}, gamma copy ${g || 'none'}, salicoid copy ${s || 'none'}: ${fmt(n)} genes `
+    title: `AEK${c}, aWGT copy ${g || 'none'}, sWGD copy ${s || 'none'}: ${fmt(n)} genes `
       + `(${fmt(cell.hap1)} HAP1 + ${fmt(cell.hap2)} HAP2). Click to browse them.`,
   }, inner);
 }
@@ -109,7 +109,7 @@ function categoriesFor(mode, focus) {
     return CHRS.map((c) => ({ key: `a${c}`, label: `AEK${c}`, aek: aekValue(c) }));
   }
   if (mode === 'gamma') {
-    return [...GAMMA.map((g) => ({ key: `g${g}`, label: `AEK${focus} gamma copy ${g}`, aek: aekValue(focus, g) })),
+    return [...GAMMA.map((g) => ({ key: `g${g}`, label: `AEK${focus} aWGT copy ${g}`, aek: aekValue(focus, g) })),
       { key: 'g0', label: `AEK${focus}, no copy assigned`, aek: null }];
   }
   return [...GAMMA.flatMap((g) => SALICOID.map((s) => ({
@@ -185,7 +185,7 @@ export async function karyotypeView() {
 
   function renderControls() {
     clear(controls);
-    const modes = [['aek', 'Ancestral chromosome'], ['gamma', 'Gamma copy'], ['salicoid', 'Gamma × salicoid copy']];
+    const modes = [['aek', 'Ancestral chromosome'], ['gamma', 'aWGT copy'], ['salicoid', 'aWGT × sWGD copy']];
     controls.append(el('span', { class: 'muted', style: 'font-size:13px' }, 'Colour by'),
       ...modes.map(([m, label]) => el('button', {
         type: 'button', class: 'btn' + (state.mode === m ? ' on' : ''), 'data-kp-mode': m,
@@ -302,7 +302,7 @@ export async function karyotypeView() {
     const g2 = state.mode === 'aek' ? 0 : g;
     const s2 = state.mode === 'salicoid' ? s : 0;
     const what = state.mode === 'aek' || c === state.focus
-      ? `AEK${c}${g2 ? ` gamma copy ${g2}` : ''}${s2 ? ` salicoid copy ${s2}` : ''}${state.mode !== 'aek' && !g ? ' (no copy assigned)' : ''}`
+      ? `AEK${c}${g2 ? ` aWGT copy ${g2}` : ''}${s2 ? ` sWGD copy ${s2}` : ''}${state.mode !== 'aek' && !g ? ' (no copy assigned)' : ''}`
       : 'genes from ancestral chromosomes other than the one in focus';
     const q = state.mode === 'aek' || (c === state.focus && g) ? aekValue(c, g2 || 0, g2 ? s2 : 0) : aekValue(c);
     const n = count(sel.hap, sel.chr, q);
@@ -350,7 +350,7 @@ export async function karyotypeView() {
             el('div', { class: 'kp-say' }, say)];
         });
         brk.append(el('div', { class: 'kp-slot' },
-          el('h4', {}, `AEK${c} · gamma copy ${g} · salicoid copy ${s}`), ...bars.flat()));
+          el('h4', {}, `AEK${c} · aWGT copy ${g} · sWGD copy ${s}`), ...bars.flat()));
       }
     }
   }
@@ -400,21 +400,21 @@ export async function karyotypeView() {
       el('p', { style: 'margin:0 0 8px;font-size:13.5px;color:var(--ink-2)' },
         'Each bar is one modern chromosome drawn to scale; each coloured stretch is a run of '
         + 'consecutive genes that descend from the same ancestral chromosome. Switch to a copy view '
-        + 'to see, within one ancestral chromosome, which gamma or salicoid copy each stretch is.'),
+        + 'to see, within one ancestral chromosome, which gamma or sWGD copy each stretch is.'),
       controls, figs, detail),
 
     el('div', { class: 'card' },
       el('h2', {}, 'The 42 cells', el('span', { class: 'tag' }, 'both haplotypes, split below')),
       el('p', { style: 'margin:0 0 10px;font-size:13.5px;color:var(--ink-2)' },
         'A cell counts the genes (HAP1 and HAP2 together, then each haplotype on its own line) '
-        + 'whose ancestral chromosome is the column and whose gamma and salicoid copy ranks are '
+        + 'whose ancestral chromosome is the column and whose gamma and sWGD copy ranks are '
         + 'the row. Click a cell to browse exactly those genes.'),
       el('div', { class: 'scroll-x' },
         el('table', { class: 'data kp-grid', style: 'width:100%' },
           el('thead', {}, header), el('tbody', {}, ...body))),
       el('p', { class: 'muted', style: 'font-size:11.5px;margin:12px 0 0' },
         'Shading is the gene count on a log scale, not confidence. A dash means no collinear '
-        + 'anchor in either haplotype carries that slot — that is an absence of evidence, '
+        + 'anchor in either haplotype carries that slot, that is an absence of evidence, '
         + 'not evidence the gene was lost. The HAP1 and HAP2 lines under each count show where '
         + 'the haplotypes disagree without opening anything.')),
 
@@ -428,12 +428,12 @@ export async function karyotypeView() {
     el('div', { class: 'card' },
       el('h2', {}, 'What these numbers are, and are not'),
       el('p', { style: 'margin:0;font-size:13.5px;color:var(--ink-2)' },
-        'Gamma copy (1 to 3) and salicoid copy (1 to 2) are completeness ',
+        'aWGT copy (1 to 3) and sWGD copy (1 to 2) are completeness ',
         el('strong', {}, 'ranks'),
         ' from Wang et al.’s karyotype projection, ranked within one ancestral chromosome. ',
         el('strong', {}, 'They are not subgenomes'),
         ', and copy 1 of AEK3 has no relationship to copy 1 of AEK5. A copy says which '
-        + 'ancestral copy a gene descends from, not whether its duplicate survived — that '
+        + 'ancestral copy a gene descends from, not whether its duplicate survived, that '
         + 'is the whole-genome-duplication call on each gene page.'),
       el('p', { class: 'muted', style: 'font-size:12px;margin:10px 0 0' },
         'Route C, exploratory. Ancestral chromosomes come from collinearity between the 717 '

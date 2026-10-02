@@ -7,7 +7,7 @@
 // Highlighting is explicit, so a reader can tell which genes and links matter:
 //   focus   -- genes on the top haplotype the page is about (the query gene, the array members)
 //   linked  -- their own alleles on the other haplotype
-//   anchors -- neighbouring genes whose alleles are used ONLY to line the two haplotypes up,
+//   anchors -- neighboring genes whose alleles are used ONLY to line the two haplotypes up,
 //              when the focus genes have no allele of their own (dashed links)
 // Every other allele link in view is drawn thin and grey.
 //
@@ -117,8 +117,8 @@ export const fmtMb = (bp, d = 2) => `${(bp / 1e6).toFixed(d)}`;
 // Duplication class letters, first match wins -- the same precedence as the locus card.
 const DUP = [
   { k: 'T', label: 'tandem', tok: 'tandem' },
-  { k: 'A', label: 'gamma WGD', tok: 'priv' },
-  { k: 'S', label: 'salicoid WGD', tok: 'core' },
+  { k: 'A', label: 'aWGT', tok: 'priv' },
+  { k: 'S', label: 'sWGD', tok: 'core' },
   { k: 'D', label: 'dispersed', tok: 'disp' },
   { k: 'C', label: 'none detected', tok: 'nonsyn' },
 ];
@@ -595,8 +595,8 @@ export async function chromosomeBrowser(opts) {
       const g = hit.rec, t = tiles[hit.hap].get(g.g) || {};
       const d = dupOf(g.c), sy = SYN.find((x) => x.k === t.y);
       readout.textContent = `${g.g} · ${chr}:${g.s.toLocaleString('en-US')}–${g.e.toLocaleString('en-US')} `
-        + `(${g.d < 0 ? '−' : '+'}) · ${d ? d.label : '—'} · ${sy ? sy.label : 'synteny —'} · `
-        + `τ ${g.t == null ? '—' : g.t.toFixed(2)}${g.p ? ' · peaks in ' + g.p : ''}`
+        + `(${g.d < 0 ? '−' : '+'}) · ${d ? d.label : '–'} · ${sy ? sy.label : 'synteny –'} · `
+        + `τ ${g.t == null ? '–' : g.t.toFixed(2)}${g.p ? ' · peaks in ' + g.p : ''}`
         + `${g.l ? ' · LSG pool' : ''}${t.al ? ' · allele ' + t.al : ''}`;
     } else {
       readout.textContent = p.x > GUTTER
@@ -657,7 +657,7 @@ export async function chromosomeBrowser(opts) {
       summary,
       el('div', { class: 'lb-keys' },
         focus.size ? key('lb-focus', opts.focusLabel || 'highlighted gene and its allele') : null,
-        anchors.size ? key('lb-anchor', 'neighbouring gene used only to line the haplotypes up') : null,
+        anchors.size ? key('lb-anchor', 'neighboring gene used only to line the haplotypes up') : null,
         M.outline.size ? el('span', { class: 'lb-key' }, el('i', { class: 'lb-box', 'aria-hidden': 'true' }), opts.outlineLabel || 'outlined on the lower haplotype') : null,
         key('lb-other', 'other allele pairs in view')),
       el('p', { class: 'muted map-note' },

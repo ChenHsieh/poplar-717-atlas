@@ -1,7 +1,7 @@
 // Module: mirror. The gene's locus on both phased haplotypes, drawn with the shared locus
 // browser (core/locusbrowser.js) -- the same draggable view as the genome map, the array page
 // and the pair page. The gene is highlighted on its own haplotype and its allele on the other,
-// joined by a solid line; when it has no allele, the nearest neighbours' alleles line the two
+// joined by a solid line; when it has no allele, the nearest neighbors' alleles line the two
 // haplotypes up and are drawn dashed, so they are not mistaken for this gene's allele.
 //
 // This replaced a fixed canvas (no zoom, no exon structure) and the folded single-haplotype
@@ -36,7 +36,7 @@ function geneCard(g) {
       if (region) { anchors = new Set(region.anchors.map(([x]) => x)); otherChr = region.chr; }
       caption.textContent = `${HAP_LABEL[g.hap]} above, ${HAP_LABEL[other]} below. This gene has no allele on `
         + `${otherShort}, a candidate hemizygous locus, with none drawn for it. `
-        + (region ? `The lower haplotype is lined up by ${anchors.size} neighbouring genes' alleles (dashed).`
+        + (region ? `The lower haplotype is lined up by ${anchors.size} neighboring genes' alleles (dashed).`
           : 'No nearby gene has an allele either, so the lower haplotype is not lined up.');
     }
     holder.replaceChildren(await chromosomeBrowser({

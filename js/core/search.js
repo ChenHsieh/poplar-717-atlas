@@ -24,14 +24,14 @@ function rowsTable(page, byId, ann) {
     return el('tr', {},
       el('td', {}, el('a', { href: `#/gene/${id}`, class: 'mono' }, id)),
       el('td', { style: 'font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis' },
-        (a.d || a.atd || '') || el('span', { class: 'muted' }, '—')),
-      el('td', {}, r ? r.hap.toUpperCase() : '—'),
-      el('td', {}, r ? (r.cls ? r.cls.replace(/_/g, ' ') : '—') : '—'),
-      el('td', {}, a.dup || '—'),
-      el('td', {}, r ? (r.chr || '—') : '—'),
-      el('td', { class: 'num' }, r && r.ps != null ? 'PS' + r.ps : '—'),
-      el('td', {}, r ? (r.top || '—') : '—'),
-      el('td', { class: 'num' }, r && r.tau != null ? r.tau.toFixed(2) : '—'));
+        (a.d || a.atd || '') || el('span', { class: 'muted' }, '–')),
+      el('td', {}, r ? r.hap.toUpperCase() : '–'),
+      el('td', {}, r ? (r.cls ? r.cls.replace(/_/g, ' ') : '–') : '–'),
+      el('td', {}, a.dup || '–'),
+      el('td', {}, r ? (r.chr || '–') : '–'),
+      el('td', { class: 'num' }, r && r.ps != null ? 'PS' + r.ps : '–'),
+      el('td', {}, r ? (r.top || '–') : '–'),
+      el('td', { class: 'num' }, r && r.tau != null ? r.tau.toFixed(2) : '–'));
   });
   return el('div', { class: 'scroll-x' }, el('table', { class: 'data compare' },
     el('thead', {}, el('tr', {},

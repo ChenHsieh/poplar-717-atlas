@@ -79,7 +79,7 @@ function plan(g) {
       if (p.e !== e || seen.has(p.id)) continue;
       seen.add(p.id);
       rows.push({ id: p.id, role: e === 'S' ? 'salicoid' : 'gamma',
-                  layer: e === 'S' ? 'salicoid WGD' : 'gamma', r: p.r == null ? null : p.r,
+                  layer: e === 'S' ? 'sWGD' : 'aWGT', r: p.r == null ? null : p.r,
                   ds: p.ks });
     }
   }
@@ -142,7 +142,7 @@ function draw(ctx, view, state) {
     ctx.textAlign = 'center';
     // The focal row reads "self", not a dash: a dash in this column means "not comparable",
     // and a gene's correlation with itself is neither that nor a missing value.
-    const rTxt = row.role === 'focal' ? 'self' : (row.r == null ? '—' : row.r.toFixed(2));
+    const rTxt = row.role === 'focal' ? 'self' : (row.r == null ? '–' : row.r.toFixed(2));
     if (row.role === 'focal') ctx.fillStyle = P.ink3;
     ctx.fillText(rTxt, LABEL_W + (PCC_W - 4) / 2, y + ROW_H / 2 + 3.5);
     // label
@@ -190,7 +190,7 @@ function scaleBar(topTpm) {
   const fmtv = (v) => (v >= 10 ? v.toFixed(0) : v.toFixed(1));
   return el('span', { style: 'display:inline-flex;align-items:center;gap:6px;font-size:11px' },
     el('span', {}, '0'), strip, el('span', {}, `${fmtv(topTpm)} TPM`),
-    el('span', { class: 'muted' }, `(the bar's midpoint is ${fmtv(mid)} TPM — it is log2, not linear)`));
+    el('span', { class: 'muted' }, `(the bar's midpoint is ${fmtv(mid)} TPM, it is log2, not linear)`));
 }
 
 function swatchLegend(samples, order) {
@@ -218,7 +218,7 @@ function geneCard(g) {
   const load = el('button', { class: 'btn' }, 'Load the heatmap →');
   body.append(
     el('p', { class: 'muted', style: 'font-size:12px;margin:0 0 10px' },
-      `This gene and ${p.rows.length - 1} of its duplicates over every sample in the atlas — `
+      `This gene and ${p.rows.length - 1} of its duplicates over every sample in the atlas, `
       + 'tandem copies, the other haplotype’s allele, and the salicoid and gamma partners. '
       + `Each row is one full 652-value profile, fetched on demand (${p.rows.length} requests).`),
     load);
@@ -287,7 +287,7 @@ function geneCard(g) {
 
       const notes = [];
       notes.push('Left strip is the Pearson correlation to this gene on log2(ComBat TPM + 1) '
-        + 'across the same 652 samples — the same number the Duplication card shows. A dash '
+        + 'across the same 652 samples, the same number the Duplication card shows. A dash '
         + 'means the pair is not comparable on that matrix, not that the two are uncorrelated.');
       if (missing.length) notes.push(`${missing.length} row${missing.length === 1 ? '' : 's'} `
         + 'had no expression profile and are drawn flat grey.');
@@ -297,7 +297,7 @@ function geneCard(g) {
         + `${TPM_CUTOFF} TPM in any sample; they are shown by default because a silent copy is `
         + 'a result, not noise.');
       notes.push('Columns are grouped by study, then tissue; vertical rules are study '
-        + 'boundaries. Values are raw TPM, not batch-corrected — compare within a study block.');
+        + 'boundaries. Values are raw TPM, not batch-corrected, compare within a study block.');
 
       body.replaceChildren(
         el('div', { style: 'display:flex;flex-wrap:wrap;gap:12px;align-items:center' },

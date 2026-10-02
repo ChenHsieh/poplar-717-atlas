@@ -52,7 +52,7 @@ export const GENE_SECTIONS = [
     blurb: 'Which events produced this gene, who its copies are, and how they diverged.' },
   { id: 'synteny', label: 'Synteny & position',
     modules: ['synteny', 'mirror', 'locus'],
-    blurb: 'Syntelogs, the same locus on the other haplotype, and the neighbourhood.' },
+    blurb: 'Syntelogs, the same locus on the other haplotype, and the neighborhood.' },
   { id: 'expression', label: 'Expression',
     modules: ['expression', 'scrubber'],
     blurb: 'Where this gene is on, across 652 RNA-seq samples.' },

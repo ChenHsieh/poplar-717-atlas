@@ -37,7 +37,7 @@ function tataLine(t) {
     return el('span', {},
       'No canonical core-promoter TATA box. A TATA-like sequence occurs ',
       el('strong', {}, `${t.pos.toLocaleString()} bp upstream`),
-      ' of the TSS — outside the −45..−20 core window, so this is not a core promoter TATA box.');
+      ' of the TSS, outside the −45..−20 core window, so this is not a core promoter TATA box.');
   }
   return el('span', {}, 'No TATA-like sequence found anywhere in the scanned promoter.');
 }
@@ -193,7 +193,7 @@ function chromatinCard(g) {
       + 'single row. It is the ORTHOLOG\u2019s chromatin: nothing here was measured on 717, and '
       + 'no chromatin data exists for this hybrid or for either parent species. It is LEAF '
       + 'only, so a mark absent here may be present in another tissue. And accessibility and '
-      + 'H3K4me3 establish that a locus has a promoter, never where transcription starts \u2014 '
+      + 'H3K4me3 establish that a locus has a promoter, never where transcription starts, '
       + 'only a method that sequences 5\u2032 ends can do that, and none exists for any Populus.'));
 }
 
@@ -284,7 +284,7 @@ function positionTrack(cre, cm) {
       'Each tick is one match, placed at the motif\u2019s far (5\u2032) edge; the '
       + 'transcription start is at the right and upstream runs left. Lanes are ordered by how '
       + 'many matches a family has, and the count is beside its name. Ticks share one colour '
-      + 'on purpose \u2014 the lane says which family it is.',
+      + 'on purpose, the lane says which family it is.',
       cre.tata && cre.tata.pos != null
         ? el('span', {}, ' The single amber line is the canonical TATA box at '
             + `\u2212${cre.tata.pos} bp.`)
@@ -300,7 +300,7 @@ function geneCard(g, man) {
     el('h2', {}, 'Promoter', el('span', { class: 'tag' }, 'JASPAR motif scan')),
     el('p', { class: 'sub', style: 'margin:0 0 10px' },
       `${(cre.gc * 100).toFixed(1)}% GC over the ${cm.promoter_window_bp} bp upstream of the TSS`,
-      cre.ov > 0 ? el('span', {}, `, of which ${cre.ov} bp overlaps the neighbouring gene`) : null,
+      cre.ov > 0 ? el('span', {}, `, of which ${cre.ov} bp overlaps the neighboring gene`) : null,
       cre.nf > 0 ? el('span', {}, ` (${(cre.nf * 100).toFixed(0)}% unassembled)`) : null, '.'),
     el('p', { style: 'font-size:12.5px;margin:0 0 12px' }, tataLine(cre.tata)),
     el('h3', { style: 'font-size:12.5px;margin:0 0 6px;color:var(--ink-2)' },
@@ -309,7 +309,7 @@ function geneCard(g, man) {
     positionTrack(cre, cm),
     el('p', { class: 'muted', style: 'font-size:11px;margin:8px 0 0' },
       'These are matches to JASPAR position-weight matrices for each family (log-odds ≥ 85% of a ',
-      "matrix's own maximum score, both strands) — evidence a family's binding site COULD sit there, ",
+      "matrix's own maximum score, both strands), evidence a family's binding site COULD sit there, ",
       'not a confirmed or gene-specific regulatory element. Families are built from very different ',
       'numbers of matrices, so bars are normalized per matrix; raw hit counts are not comparable ',
       'across families on their own.'));

@@ -77,7 +77,7 @@ function annotationCard(g) {
     add('Best Arabidopsis hit',
       el('a', { href: `https://www.arabidopsis.org/locus?name=${a.at}`, target: '_blank',
         rel: 'noopener', class: 'mono' }, a.at),
-      a.atd ? el('span', {}, ' — ', a.atd) : null);
+      a.atd ? el('span', {}, ', ', a.atd) : null);
   }
   if (a.pf && a.pf.length) add('Pfam', el('span', { style: 'display:flex;gap:5px;flex-wrap:wrap' }, ...accBadges(a.pf)));
   else if (g.hap === 'hap2') {
@@ -95,7 +95,7 @@ function annotationCard(g) {
     card.append(el('div', { class: 'warn' },
       'Domain coverage is thinner on HAP2: the v5.1 release left the Pfam/PANTHER columns empty ',
       'for this haplotype, so only accessions recoverable from the defline are shown. ',
-      'An absent domain here does not mean the gene lacks one — check the HAP1 allele.'));
+      'An absent domain here does not mean the gene lacks one, check the HAP1 allele.'));
   }
   // The P. trichocarpa ortholog is the key that unlocks the wider Populus resources for
   // someone holding a 717 gene id, so it sits with the other cross-references.
@@ -105,10 +105,10 @@ function annotationCard(g) {
       el('dd', {},
         el('a', { href: phytozomeGeneUrl(PTRICHOCARPA_GENOME, g.ptri.id), target: '_blank', rel: 'noopener', class: 'mono' }, g.ptri.id),
         one ? el('span', { class: 'muted' }, '  reciprocal 1:1')
-            : el('span', { class: 'muted' }, `  ambiguous — ${g.ptri.n ? `${g.ptri.n} syntenic hits` : 'not reciprocal'}`),
+            : el('span', { class: 'muted' }, `  ambiguous, ${g.ptri.n ? `${g.ptri.n} syntenic hits` : 'not reciprocal'}`),
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
           one ? 'Syntenic ortholog from this atlas’s own GENESPACE run. Use it to look the gene up in PopGenIE or Phytozome.'
-              : 'Shown for orientation only — the syntenic relationship is not one-to-one, so this is not an ortholog call.')));
+              : 'Shown for orientation only, the syntenic relationship is not one-to-one, so this is not an ortholog call.')));
   } else if (g.ptri) {
     kv.append(el('dt', {}, 'P. trichocarpa ortholog'),
       el('dd', { class: 'muted' }, 'no syntenic hit'));
@@ -166,7 +166,7 @@ function alleleCard(g, man) {
       el('h2', {}, 'Allele', el('span', { class: 'tag' }, 'syntelog')),
       el('p', { class: 'muted', style: 'margin:0;font-size:13px' },
         `No 1:1 ${other} syntelog in the 25,931-pair map. That is expected for genes in tandem `
-        + `arrays, hemizygous regions, or where synteny breaks down — not evidence of absence.`),
+        + `arrays, hemizygous regions, or where synteny breaks down, not evidence of absence.`),
       viaArray,
       loc ? el('p', { style: 'margin:8px 0 0;font-size:13px' },
         `Its copies on both haplotypes${unann ? ', including pieces the annotation does not call,' : ''} `
@@ -189,7 +189,7 @@ function alleleCard(g, man) {
     kv.append(el('dt', {}, 'Divergence'),
       el('dd', {}, el('span', {}, 'identical at synonymous sites (Ks = 0)'),
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
-          'ω is undefined when Ks is 0 — the aligner reports a 99 placeholder, not selection.')));
+          'ω is undefined when Ks is 0, the aligner reports a 99 placeholder, not selection.')));
     if (a.ka != null) kv.append(el('dt', {}, 'Ka'), el('dd', { class: 'mono' }, a.ka.toFixed(4)));
   } else {
     if (a.ks != null) kv.append(el('dt', {}, 'Ks'), el('dd', { class: 'mono' }, a.ks.toFixed(4)));
@@ -209,7 +209,7 @@ function alleleCard(g, man) {
       + 'compared against these in September 2026: it picks the same partner gene for 100% of '
       + 'the 50,656 genes both cover, and its Nei–Gojobori ω tracks the ω here at r = 0.94. '
       + 'Its own Yang–Nielsen ω tracks it at only r = 0.08, and fails on a third of the pairs '
-      + '— at a median Ks near 0.03 that estimator is unstable gene by gene, so the '
+      + '– at a median Ks near 0.03 that estimator is unstable gene by gene, so the '
       + 'disagreement is on that side, not this one.'));
 }
 
@@ -236,8 +236,8 @@ function selectionCard(g) {
               + 'hybrid-only stratum, meaning no homolog was found in any other species, so '
               + 'there is nothing to measure against. Only 1 of 681 genes in that stratum has '
               + 'a pair at all.')
-          : el('span', {}, ' Genes lose their ortholog for ordinary reasons too — tandem arrays, '
-              + 'broken synteny, assembly gaps — so this is not evidence of absence.')));
+          : el('span', {}, ' Genes lose their ortholog for ordinary reasons too, tandem arrays, '
+              + 'broken synteny, assembly gaps, so this is not evidence of absence.')));
   }
   const kv = el('dl', { class: 'kv' });
   kv.append(el('dt', {}, 'Ortholog'),
@@ -275,8 +275,8 @@ function selectionCard(g) {
     el('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' },
       'Nei\u2013Gojobori estimates against the reciprocal-best P. trichocarpa ortholog, over '
       + '52,232 of 63,960 genes. Across the gene set \u03c9 rises with how young a gene is '
-      + '\u2014 0.24 for the most ancient, 0.33 conserved, 0.47 rosid-level, 0.57 '
-      + 'Salicaceae-level, 0.72 for the Populus-specific pool \u2014 while staying well below '
+      + '\u2013 0.24 for the most ancient, 0.33 conserved, 0.47 rosid-level, 0.57 '
+      + 'Salicaceae-level, 0.72 for the Populus-specific pool, while staying well below '
       + 'the 1 that neutral evolution would give. Young genes here are constrained, just less '
       + 'constrained. Note the genes that pair up get fewer as they get younger, so a young '
       + 'stratum\u2019s figure is measured on its more conserved members.'));
@@ -305,7 +305,7 @@ function presenceVariationCard(g) {
       const evText = g.pav.evalue ? `, E=${g.pav.evalue})` : (g.pav.pident != null ? ')' : '');
       const targetLink = g.pav.target
         ? el('a', { href: `#/gene/${g.pav.target}`, class: 'mono' }, g.pav.target)
-        : '—';
+        : '–';
       verdict = el('div', { style: 'margin-top:4px' },
         el('span', { class: 'muted' }, 'not confirmed'),
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },

@@ -110,6 +110,12 @@ export const FILTERS = [
 // beside FILTERS rather than inside it so the predicates above stay exactly what the home page
 // counts with. `adv` filters live in the folded "Disputed and exploratory" group, which opens by
 // itself when a deep link sets one of them.
+// Display names for option values. The values themselves stay as they are, because they are
+// URL parameters and saved links depend on them; only the label follows the dissertation's
+// names for the two whole-genome events (aWGT, sWGD).
+const OPTION_LABEL = { salicoid: 'sWGD', gamma: 'aWGT', aWGD_era: 'aWGT era' };
+const optLabel = (v) => OPTION_LABEL[v] || String(v).replace(/_/g, ' ');
+
 export const FILTER_GROUPS = [
   { id: 'where', label: 'Genome', ids: ['hap', 'chr', 'allele'] },
   { id: 'age', label: 'Age and conservation', ids: ['ps_min', 'cls'] },
@@ -245,12 +251,12 @@ function resultsTable(state, onSort) {
     const d = state.desc ? state.desc[i] : '';
     return el('tr', {},
       el('td', {}, el('a', { href: `#/gene/${state.ids[i]}`, class: 'mono' }, state.ids[i])),
-      el('td', { class: 'bz-desc', title: d || '' }, d ? d.toLowerCase() : el('span', { class: 'muted' }, '\u2014')),
-      el('td', {}, r.chr || '\u2014'),
-      el('td', {}, r.cls ? r.cls.replace(/_/g, ' ') : '\u2014'),
-      el('td', { class: 'num' }, r.ps == null ? '\u2014' : 'PS' + r.ps),
-      el('td', { class: 'num' }, r.tau == null ? '\u2014' : r.tau.toFixed(2)),
-      el('td', {}, r.top || '\u2014'),
+      el('td', { class: 'bz-desc', title: d || '' }, d ? d.toLowerCase() : el('span', { class: 'muted' }, '\u2013')),
+      el('td', {}, r.chr || '\u2013'),
+      el('td', {}, r.cls ? r.cls.replace(/_/g, ' ') : '\u2013'),
+      el('td', { class: 'num' }, r.ps == null ? '\u2013' : 'PS' + r.ps),
+      el('td', { class: 'num' }, r.tau == null ? '\u2013' : r.tau.toFixed(2)),
+      el('td', {}, r.top || '\u2013'),
       el('td', { class: 'num' }, r.npres === 0
         ? el('span', { class: 'muted', title: 'OrthoFinder assigned no orthogroup' }, 'none')
         : r.npres + '/12'),
@@ -262,7 +268,7 @@ function resultsTable(state, onSort) {
             r.w === -1 ? 'no ortholog' : 'n/e')),
       el('td', { class: 'num' }, r.ms > 0
         ? `${r.ms}/5`
-        : el('span', { class: 'muted' }, '\u2014')));
+        : el('span', { class: 'muted' }, '\u2013')));
   });
   const head = COLUMNS.map((c) => {
     const on = state.sort.col === c.id;
@@ -435,7 +441,7 @@ export async function browseView(navigation) {
       ? el('select', { onchange: onchangeFor(f) },
           el('option', { value: '' }, 'any'),
           ...((f.id === 'top' ? [] : f.options) || [])
-            .map((o) => el('option', { value: o }, String(o).replace(/_/g, ' '))))
+            .map((o) => el('option', { value: o }, optLabel(o))))
       : el('input', { type: 'number', step: f.step || '1', placeholder: f.placeholder || '',
           inputmode: 'decimal', oninput: onchangeFor(f) });
     inputs.set(f.id, input);
@@ -519,7 +525,7 @@ export async function browseView(navigation) {
           if (!applyFilters(state, navigation)) return;
           render();
         },
-      }, `${f.label} ${String(state.values[f.id]).replace(/_/g, ' ')}  \u00d7`);
+      }, `${f.label} ${optLabel(state.values[f.id])}  \u00d7`);
       chipRow.append(chip);
     }
     chipRow.append(el('button', {
@@ -776,7 +782,7 @@ export async function browseView(navigation) {
       + 'P. trichocarpa proteome and only 12% match exactly one 717 gene. Open a gene to see '
       + 'which kind of evidence it has.'),
     el('p', {}, el('strong', {}, 'ω is Nei–Gojobori against P. trichocarpa'),
-      ', blank where the gene has no reciprocal-best ortholog — a measured absence, not '
+      ', blank where the gene has no reciprocal-best ortholog, a measured absence, not '
       + 'missing data.'));
   const side = el('details', { class: 'bz-side', open: 'open' },
     sideToggle,
@@ -817,7 +823,7 @@ export async function browseView(navigation) {
     clear(input).append(
       el('option', { value: '' }, 'any'),
       ...options.get(filter.id).map((value) =>
-        el('option', { value }, String(value).replace(/_/g, ' '))));
+        el('option', { value }, optLabel(value))));
   }
 
   // The URL is the whole truth about the filter set. Values are seeded only after widgets

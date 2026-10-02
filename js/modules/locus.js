@@ -20,7 +20,7 @@ function geneModelCard(g) {
   if (!gm) return null;
   const kv = el('dl', { class: 'kv' });
   const add = (k, ...v) => { kv.append(el('dt', {}, k), el('dd', {}, ...v)); };
-  const N = (v) => (v == null ? '—' : v.toLocaleString());
+  const N = (v) => (v == null ? '–' : v.toLocaleString());
 
   const i = gm.in;
   if (i) {
@@ -45,8 +45,8 @@ function geneModelCard(g) {
           : el('div', { class: 'muted', style: 'font-size:12px;margin-top:3px' },
               i.seen === i.n
                 ? 'Every annotated intron is supported by spliced reads.'
-                : 'Detection rises steeply with depth — 98.8% of introns are seen above 5,000 '
-                  + 'reads — so read the missing ones against this gene\u2019s coverage.')));
+                : 'Detection rises steeply with depth, 98.8% of introns are seen above 5,000 '
+                  + 'reads, so read the missing ones against this gene\u2019s coverage.')));
   }
 
   if (gm.sp) {
@@ -81,7 +81,7 @@ function geneModelCard(g) {
           el('strong', {}, 'A flag, not a verdict, and not a lineage-specific problem. '),
           '1,422 of the 1,435 flagged pairs are two conserved genes; only 13 involve a '
           + 'lineage-specific gene. At matched gap and depth, lineage-specific pairs are fused '
-          + 'LESS often than conserved ones (0.96% against 3.61%). ',
+          + 'LESS often than conserved ones (0.96% compared with 3.61%). ',
           lsgArm ? 'This pair is one of the 13.' : 'This pair is a conserved-with-conserved one.')));
   } else if (gm.nev === 0 && gm.np > 0) {
     add('Possible split model',
@@ -100,7 +100,7 @@ function geneModelCard(g) {
     el('h2', {}, 'Gene model, from RNA-seq',
       el('span', { class: 'tag' }, '94 public libraries')), kv,
     el('p', { class: 'muted', style: 'font-size:11px;margin:10px 0 0' },
-      'Spliced-read evidence only \u2014 the strong readout. Read-pair spanning and gap '
+      'Spliced-read evidence only, the strong readout. Read-pair spanning and gap '
       + 'occupancy alone are not used to call anything, because readthrough and unspliced '
       + 'pre-mRNA both produce them. Each haplotype was aligned to its own genome, so HAP1 and '
       + 'HAP2 are not independent replicates. A larger-panel rerun is under review upstream and '

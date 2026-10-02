@@ -42,7 +42,7 @@ const KNOWN = [
 function renderSidecar(obj) {
   const wrap = el('div', {});
   const walk = (v, depth) => {
-    if (v === null || v === undefined) return el('span', { class: 'muted' }, '—');
+    if (v === null || v === undefined) return el('span', { class: 'muted' }, '–');
     if (Array.isArray(v)) {
       return el('ul', { style: 'margin:4px 0 0;padding-left:18px' },
         ...v.map((x) => el('li', { style: 'font-size:12.5px' }, walk(x, depth + 1))));
@@ -78,7 +78,7 @@ export function evidenceCard() {
     el('p', { class: 'muted', style: 'font-size:12.5px;margin:0 0 10px' },
       'Each source ships a provenance record stating what it is for, the gate that had to pass '
       + 'before it was allowed in, what it deliberately does not claim, and what was tried and '
-      + 'rejected. These are the project’s own words, fetched as written — not '
+      + 'rejected. These are the project’s own words, fetched as written, not '
       + 'summarised here, because a summary would be a second thing to keep true.'),
     body);
 
@@ -109,7 +109,7 @@ export function evidenceCard() {
           // is more useful than an empty panel.
           detail.replaceChildren(el('p', { class: 'muted', style: 'font-size:12.5px' },
             `No provenance record is published for ${label} (${e.message}). That means the `
-            + 'layer predates the sidecar convention, not that it is undocumented — see '
+            + 'layer predates the sidecar convention, not that it is undocumented, see '
             + 'the source table above and the CHANGELOG entry for that release.'));
         }
       },

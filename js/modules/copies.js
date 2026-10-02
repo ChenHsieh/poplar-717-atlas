@@ -24,7 +24,7 @@ const NS = 'http://www.w3.org/2000/svg';
 const HAP = (h) => (h === 'hap1' ? 'HAP1' : 'HAP2');
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const pc = (v) => `${Math.round(v)}%`;
-const tpm = (v) => (v == null ? '—' : v < 1 ? v.toFixed(2) : v < 100 ? v.toFixed(1) : fmt(Math.round(v)));
+const tpm = (v) => (v == null ? '–' : v < 1 ? v.toFixed(2) : v < 100 ? v.toFixed(1) : fmt(Math.round(v)));
 
 /** Protein positions a set of segments covers (union), as a count. */
 function coveredAa(segs) {
@@ -140,7 +140,7 @@ function draw(holder, L, recs, focalId) {
   // ---- one row per copy
   const stats = (r, top, pidText) => {
     const p = r.gene ? peakTpm(recs.get(r.gene)) : null;
-    const tpmText = r.gene ? (p ? tpm(p.v) : 'n/a') : '—';
+    const tpmText = r.gene ? (p ? tpm(p.v) : 'n/a') : '–';
     // data-tpm-for names the gene whose peak TPM the element ends with, so a check can hold
     // it equal to the number the same gene's summary strip prints.
     if (narrow) {
@@ -180,7 +180,7 @@ function draw(holder, L, recs, focalId) {
     // top+26); rows advance by h+6, so two outlined rows in a row never touch.
     const hit = add(svg, 'rect', { x: 0, y: top - 6, width: W, height: h + 4, class: 'cp-hit' });
     add(hit, 'title', {}, `${r.gene || 'not annotated'} · ${r.chr}:${fmt(r.start)}–${fmt(r.end)} (${r.strand})`
-      + ` · covers ${r.cov_pct}% of the reference · identity ${r.pid ?? '—'}%`);
+      + ` · covers ${r.cov_pct}% of the reference · identity ${r.pid ?? '–'}%`);
     if (r.gene && r.gene === focalId) {
       add(svg, 'rect', { x: 0, y: top - 6, width: W, height: h + 4, class: 'cp-focalbg' });
       add(svg, 'rect', { x: 0, y: top - 6, width: 3, height: h + 4, class: 'cp-focalbar' });
@@ -207,7 +207,7 @@ function draw(holder, L, recs, focalId) {
       y += 34;
     }
     for (const r of rs.sort((a, b) => a.start - b.start)) {
-      const pidText = r.pid == null ? '—' : pc(r.pid);
+      const pidText = r.pid == null ? '–' : pc(r.pid);
       if (r.pieces.length > 1) {
         // One gene model laid over separate pieces: a sub-row per piece, bracketed as one row.
         const sub = narrow ? 20 : 20;

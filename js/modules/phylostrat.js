@@ -32,13 +32,13 @@ function qcSummary(qc) {
   flags.push(el('div', {}, el('span', { class: 'muted' }, 'abSENSE: '), verdictLabel,
     qc.hdf === 'detection_failure_plausible'
       ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
-          'This is about the reliability of the age call, not the gene — an ancestral homolog '
+          'This is about the reliability of the age call, not the gene, an ancestral homolog '
           + 'could exist and be undetectable at this sensitivity. It does not mean the gene is old.')
       : null,
     el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
       'How well calibrated is that? Measured for the first time in September 2026: abSENSE\u2019s '
       + 'nominal 99% prediction intervals contain 87 to 88% of true bitscores overall, but only '
-      + '59 to 61% at Salix purpurea — and every abSENSE flag on this pool is a prediction at '
+      + '59 to 61% at Salix purpurea, and every abSENSE flag on this pool is a prediction at '
       + 'Salix purpurea, because that is the boundary species a Populus-specific call is made '
       + 'against. The bias there is about +19 bitscore units, in the direction that makes an '
       + 'absence look more surprising than it is. So this flag over-calls rather than '
@@ -53,7 +53,7 @@ function qcSummary(qc) {
       'A 12-genome OrthoFinder rerun disputes this gene\'s orthogroup slot.'));
   }
   if (qc.short) {
-    other.push(el('div', {}, `Short ORF (${qc.plen} aa) — a known annotation-artifact class.`));
+    other.push(el('div', {}, `Short ORF (${qc.plen} aa), a known annotation-artifact class.`));
   }
   // `stable` is the source's sens_stable column: whether this gene's synteny call is the same
   // in the default and the --ultra-sensitive DIAMOND runs of the 12-genome GENESPACE rerun
@@ -74,7 +74,7 @@ function qcSummary(qc) {
           el('div', { class: 'muted' }, 'Other evidence, not QC flags:'), ...other)
       : null,
     el('div', { class: 'muted', style: 'font-size:11px;margin-top:4px' },
-      'Flags, not filters — nothing here removes or renumbers a gene, and the pool size is '
+      'Flags, not filters, nothing here removes or renumbers a gene, and the pool size is '
       + 'never set by these fields; every claim about this gene should cite the flag alongside it. '
       + 'The two QC checks are abSENSE and the synteny window search.'));
 }
@@ -87,7 +87,7 @@ function geneCard(g) {
 
   add('Stratum', p.name
     ? el('span', {}, p.name, p.rank != null ? el('span', { class: 'muted' }, ` · PS${p.rank} of 19`) : null)
-    : el('span', { class: 'muted' }, 'unplaced — genEra could not assign a stratum'));
+    : el('span', { class: 'muted' }, 'unplaced, genEra could not assign a stratum'));
   if (p.tr != null) {
     add('Taxonomic representativeness', `${p.tr}%`,
       el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
@@ -96,7 +96,7 @@ function geneCard(g) {
   }
   if (p.rank != null) {
     add('LSG pool', p.rank >= LSG_MIN
-      ? el('strong', {}, `yes — PS${p.rank}`)
+      ? el('strong', {}, `yes, PS${p.rank}`)
       : el('span', { class: 'muted' }, `no (pool is PS ≥ ${LSG_MIN})`));
   }
   // The frozen 2026-04 genEra call, where its rank differs from the pool's call shown above.
@@ -264,13 +264,13 @@ async function overview(man) {
         el('li', {}, el('strong', {}, `${fmt(ps.n_ambiguous)} genes carry an ambiguity flag. `),
           'genEra could not resolve them to one node and lists several candidate strata. They '
           + 'still get a rank, so the flag is the only thing separating a confident call from a '
-          + 'coin flip — every affected gene page says so.'),
+          + 'coin flip, every affected gene page says so.'),
         el('li', {}, el('strong', {}, `${fmt(naH1)} HAP1 and ${fmt(naH2)} HAP2 genes are unplaced. `),
           'No rank at all in the current call. They are excluded from the pool and from these '
           + 'counts rather than defaulted in either direction.'),
         el('li', {}, el('strong', {}, 'A young stratum is not proof of a young gene. '),
           'Phylostratigraphy under-detects fast-evolving homologs, so PS ≥ 18 is a candidate '
-          + 'pool, not a verdict — which is why the synteny module’s independent orthology '
+          + 'pool, not a verdict, which is why the synteny module’s independent orthology '
           + 'call sits beside it on every gene page.'),
         el('li', {}, el('strong', {}, 'PS19 is annotation-artifact-enriched. '),
           'The hybrid-only stratum is where mis-annotation accumulates; the chapter reports the '

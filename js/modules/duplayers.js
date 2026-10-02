@@ -54,8 +54,8 @@ const LAYER = {
   F: { key: 'F', label: 'this gene', full: 'this gene' },
   T: { key: 'T', label: 'tandem', full: 'tandem duplication' },
   H: { key: 'H', label: 'other haplotype', full: 'the same locus on the other haplotype' },
-  S: { key: 'S', label: 'salicoid WGD', full: 'salicoid whole-genome duplication (~60 Ma)' },
-  A: { key: 'A', label: 'gamma', full: 'gamma whole-genome triplication (~120 Ma)' },
+  S: { key: 'S', label: 'sWGD', full: 'salicoid whole-genome duplication (sWGD) (~60 Ma)' },
+  A: { key: 'A', label: 'aWGT', full: 'ancient whole-genome triplication (aWGT) (~120 Ma)' },
 };
 
 const svgEl = (name, attrs = {}, ...kids) => {
@@ -218,8 +218,8 @@ async function buildRows(g, opts = {}) {
   });
   // Genomic context. Without it every partner track holds ONE gene, that gene is centred by
   // construction, and every arc on the card lands at the same x -- a picture with no
-  // horizontal information in it at all. A few real neighbours put each anchor where it
-  // actually sits in its own neighbourhood, which is what makes the arcs mean something.
+  // horizontal information in it at all. A few real neighbors put each anchor where it
+  // actually sits in its own neighborhood, which is what makes the arcs mean something.
   await Promise.all(rows.map(async (r) => {
     const have = new Set(r.genes.map((x) => x.id));
     const extra = [];
@@ -279,7 +279,7 @@ function arcPath(from, to, bow) {
   if (dy === 0) {
     // Same track -- a tandem partner a few kb away. A vertical bezier would collapse to a
     // zero-length path, so these bow ABOVE the track instead, height scaled to the horizontal
-    // distance so neighbouring links do not sit on top of each other.
+    // distance so neighboring links do not sit on top of each other.
     const span = Math.abs(to.x - from.x);
     const h = Math.max(6, Math.min(24, 8 + span * 0.18) + bow);
     const top = from.y - GENE_H / 2 - 2 - h;
@@ -319,7 +319,7 @@ function drawDiagram(g, built, width) {
   });
 
   // Every row shares ONE kilobase scale -- the widest row's span -- so a 40 kb tandem array
-  // and a 300 kb WGD neighbourhood are not silently drawn the same width. Rows narrower
+  // and a 300 kb WGD neighborhood are not silently drawn the same width. Rows narrower
   // than the widest are centred, exactly as the manuscript figure does it.
   const widest = Math.max(...rows.map((r) => r.hi - r.lo), 1);
   const at = (r, bp) => {
@@ -676,7 +676,7 @@ function legend(built, g) {
   if (built.rows.some((r) => r.context)) {
     items.push(el('span', { style: 'display:inline-flex;align-items:center;gap:5px;margin-right:14px' },
       el('span', { style: `width:14px;height:5px;border-radius:2px;display:inline-block;background:${P.line}` }),
-      el('span', {}, 'neighbouring gene, for position only')));
+      el('span', {}, 'neighboring gene, for position only')));
   }
   return el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' }, ...items);
 }
@@ -690,7 +690,7 @@ function caption(built, g, suppressed, dropped) {
       + 'without a number is not a link between identical copies.');
   }
   if ((g.td || {}).ks != null) {
-    bits.push(`The array’s MEDIAN dS is ${g.td.ks.toFixed(3)} — a property of the array, not of any link here.`);
+    bits.push(`The array’s MEDIAN dS is ${g.td.ks.toFixed(3)}, a property of the array, not of any link here.`);
   }
   if (g.allele && built.rows.some((r) => r.key === 'H')) {
     bits.push('The long-dashed grey link is the same gene on the other haplotype, not a duplication.');
@@ -702,8 +702,8 @@ function caption(built, g, suppressed, dropped) {
     const n = built.between.length;
     bits.push(`${n} dashed link${n === 1 ? '' : 's'} join${n === 1 ? 's' : ''} two PARTNERS `
       + 'rather than this gene: gamma came first, so this gene\u2019s salicoid sister and its '
-      + 'gamma copy are themselves a gamma pair. Each is drawn only where the anchor table '
-      + 'carries that pair, with that pair\u2019s own dS \u2014 never inferred from the other two.');
+      + 'aWGT copy are themselves a gamma pair. Each is drawn only where the anchor table '
+      + 'carries that pair, with that pair\u2019s own dS, never inferred from the other two.');
   }
   // The whole-array history, stated as the array's. The distinction carried here is the
   // point of the feature: the array went through the event, this copy did not retain a
@@ -714,7 +714,7 @@ function caption(built, g, suppressed, dropped) {
       + `ARRAY MEMBERS, not of this gene, and each one starts at the member it belongs to.`);
     if (built.novelEvents.length) {
       const orNames = built.novelEvents.map((k) => LAYER[k].label).join(' or ');
-      bits.push(`This array went through ${names(built.novelEvents)} — but this gene retains no `
+      bits.push(`This array went through ${names(built.novelEvents)}, but this gene retains no `
         + `${orNames} partner of its own, so its duplication class above does not name `
         + `${built.novelEvents.length > 1 ? 'them' : 'it'}. The event is a property of the `
         + 'locus; the class is a property of the gene.');
@@ -834,7 +834,7 @@ function geneCard(g) {
     }, 'Reset the layout');
     const howto = el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' },
       'Any link or dS label in the way can be moved: drag it, or focus it with Tab and use the '
-      + 'arrow keys (Shift for bigger steps, Escape to put it back). A link only bends — both '
+      + 'arrow keys (Shift for bigger steps, Escape to put it back). A link only bends, both '
       + 'ends stay pinned to the genes they join, so moving one cannot change which genes it '
       + 'says are duplicates.');
     const render = () => {
@@ -876,7 +876,7 @@ function geneCard(g) {
             const n2 = b2.rows.reduce((n, r) => n + r.genes.length, 0);
             const head2 = el('p', { class: 'muted', style: 'font-size:11.5px;margin:10px 0 2px' },
               el('strong', {}, `${hapOf(other.id)} · ${other.id}`),
-              ` — found via ${cp.how}.`,
+              `, found via ${cp.how}.`,
               n2 < 2 ? ' No partner could be placed, so there is nothing to draw here.' : '');
             const stage2 = el('div', {});
             stage2wrap.replaceChildren(head2, stage2);
@@ -913,7 +913,7 @@ function geneCard(g) {
       modeWrap.append(btn, el('span', { class: 'muted', style: 'font-size:11.5px;margin-left:9px' },
         g.allele && g.allele.id
           ? `the same gene on the other haplotype is ${g.allele.id}`
-            + (g.allele.ks != null ? `, dS ${g.allele.ks}` : '') + ' — not a duplication'
+            + (g.allele.ks != null ? `, dS ${g.allele.ks}` : '') + ', not a duplication'
           : 'this gene has no 1-to-1 allele; the counterpart is taken from its family'));
       reset.after(modeWrap, stage2wrap);
     }

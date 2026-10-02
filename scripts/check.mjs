@@ -2486,10 +2486,10 @@ for (const scheme of ['light', 'dark']) {
     ns: document.querySelectorAll('[data-pair-expr] .pr-tn').length,
     desc: !!document.querySelector('[data-pair-row="Description"]') }));
   await pp.goto(base + '/#/pair/PtXaTreH.01G175200', { waitUntil: 'networkidle' });
-  await pp.waitForSelector('[data-pair-neighbourhood] [data-locus-browser][data-tiles="ready"]', { timeout: 15000 }).catch(() => perr.push('no neighbourhood'));
+  await pp.waitForSelector('[data-pair-neighborhood] [data-locus-browser][data-tiles="ready"]', { timeout: 15000 }).catch(() => perr.push('no neighbourhood'));
   const solo = await pp.evaluate(() => ({
     id: (document.querySelector('[data-pair-solo]') || {}).dataset?.pairSolo,
-    tracks: document.querySelectorAll('[data-pair-neighbourhood] [data-locus-browser] canvas').length }));
+    tracks: document.querySelectorAll('[data-pair-neighborhood] [data-locus-browser] canvas').length }));
   const pok = !perr.length && withA.pair === 'PtXaTreH.05G120200|PtXaAlbH.05G122300' && withA.bars >= 2
     && withA.ns > 0 && withA.desc && solo.id === 'PtXaTreH.01G175200' && solo.tracks >= 1;
   if (!pok) failures++;
