@@ -236,7 +236,7 @@ export async function arrayView(aid) {
     }
     // Then: the members' own allele calls, which are what the solid lines draw.
     if (alleles.length) {
-      lines.push(el('p', {}, `${withAllele.length} of ${genes.length} members have their own allele on ${otherL}; `
+      lines.push(el('p', {}, `${withAllele.length} of ${genes.length} members ${withAllele.length === 1 ? 'has its' : 'have their'} own allele on ${otherL}; `
         + 'those alleles are filled and joined by solid lines.'));
     } else if (region) {
       lines.push(el('p', {}, `No member has its own allele on ${otherL}. The view is lined up by the alleles of `
@@ -403,7 +403,8 @@ function relTable(rows) {
   const T = { hap1: tot('hap1'), hap2: tot('hap2') };
   const cell = (h, k) => {
     const n = rows.filter((r) => r.hap === h && r.rel === k).length;
-    return el('td', { class: 'num' }, n ? `${fmt(n)} (${(100 * n / T[h]).toFixed(1)}%)` : '0');
+    const p = 100 * n / T[h];
+    return el('td', { class: 'num' }, n ? `${fmt(n)} (${p < 0.1 ? p.toFixed(2) : p.toFixed(1)}%)` : '0');
   };
   return el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
     el('thead', {}, el('tr', {}, el('th', {}, 'Status'),
