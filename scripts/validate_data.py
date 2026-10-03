@@ -253,20 +253,50 @@ def main():
     check("tandem (TD) gene counts match the canonical union set", td_by_hap == Counter(hap1=6663, hap2=6385),
           f"{dict(td_by_hap)}")
 
-    pav_confirmed = Counter()
-    bad_target = []
+    # Strict PAV and the relationship categories (2026-10-03). The strict set is the
+    # dissertation's (528 / 605); the old DIAMOND candidate record must be GONE, not merely
+    # unread, so nothing can render the superseded call. Every gene carries a `rel` record; its
+    # category is null exactly for the quality-flagged genes, and a strict-PAV gene is exactly a
+    # gene whose category says so. Allele partners must be mutual and on the other haplotype.
+    REL = {"1:1", "N:N_TD", "N:N_nonTD", "CNV_TD", "CNV_nonTD", "hemizygous_strict_PAV",
+           "hemizygous_TD_array", "hemizygous_nonPAV"}
+    pav_strict, old_pav, bad_rel, pav_mismatch, bad_mutual, no_ks = Counter(), [], [], [], [], []
     for gid, (_, _, rec) in genes.items():
-        p = rec.get("pav")
-        if not p:
-            continue
-        if p["confirmed"]:
-            pav_confirmed["hap1" if gid.startswith("PtXaTreH") else "hap2"] += 1
-        elif p.get("target") and p["target"] not in genes:
-            bad_target.append(gid)
-    check("PAV confirmed counts match the canonical tier1_floor call", pav_confirmed == Counter(hap1=805, hap2=859),
-          f"{dict(pav_confirmed)}")
-    check("every PAV 'not confirmed' target names a real gene", not bad_target,
-          f"{len(bad_target)} dangling, e.g. {bad_target[:3]}" if bad_target else "")
+        H = "hap1" if gid.startswith("PtXaTreH") else "hap2"
+        p, rel = rec.get("pav"), rec.get("rel")
+        if p and set(p) != {"strict"}:
+            old_pav.append(gid)
+        if p and p.get("strict"):
+            pav_strict[H] += 1
+        if not rel or (rel.get("c") is None) != bool(rel.get("qc")) or (rel.get("c") and rel["c"] not in REL):
+            bad_rel.append(gid)
+        elif bool(p and p.get("strict")) != (rel.get("c") == "hemizygous_strict_PAV"):
+            pav_mismatch.append(gid)
+        al = rec.get("allele")
+        if al:
+            o = genes.get(al["id"])
+            if not o or o[0] == genes[gid][0] or (o[2].get("allele") or {}).get("id") != gid:
+                bad_mutual.append(gid)
+            if al.get("ks") is None:
+                no_ks.append(gid)
+    check("strict PAV counts are the dissertation's 528 / 605", pav_strict == Counter(hap1=528, hap2=605),
+          f"{dict(pav_strict)}")
+    check("no gene still carries the superseded DIAMOND PAV record", not old_pav,
+          f"{len(old_pav)}, e.g. {old_pav[:3]}" if old_pav else "")
+    check("every gene has a relationship record; null category exactly on quality-flagged genes",
+          not bad_rel, f"{len(bad_rel)}, e.g. {bad_rel[:3]}" if bad_rel else "")
+    check("strict PAV flag equals the strict PAV category", not pav_mismatch,
+          f"{len(pav_mismatch)}, e.g. {pav_mismatch[:3]}" if pav_mismatch else "")
+    check("allele partners are mutual and on the other haplotype", not bad_mutual,
+          f"{len(bad_mutual)}, e.g. {bad_mutual[:3]}" if bad_mutual else "")
+    check("every allele pair carries a divergence value", not no_ks,
+          f"{len(no_ks)}, e.g. {no_ks[:3]}" if no_ks else "")
+    ast_path = f"{DATA}/index/array_status.json"
+    ast = json.load(open(ast_path)) if os.path.exists(ast_path) else {}
+    arrays_all = json.load(open(f"{DATA}/index/arrays.json"))
+    counted = {a for a, mem in arrays_all.items() if any((genes.get(g) or (0, 0, {}))[2].get("dup", {}).get("td") for g in mem)}
+    check("array status covers exactly the counted tandem arrays", set(ast) == counted,
+          f"status {len(ast)} vs counted {len(counted)}")
 
     # LSG QC flags (Chen, 2026-09-21 evening; ms2-lsg CORRECTIONS C5): only abSENSE and the
     # synteny window search are QC checks. The C4 fields must be gone, not merely unread: qc.rr

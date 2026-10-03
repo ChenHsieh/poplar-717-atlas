@@ -46,11 +46,11 @@ STAGES=(
   "sapelo2|patch_gene_model.py|build_data.py|RNA-seq intron and split-model evidence"
   "sapelo2|patch_structure.py|build_layers.py|ESMFold C-alpha structure buckets"
 
-  "onedrive|patch_dup_v9_and_pav.py|build_duplication.py|duplication v9 + PAV"
+  "repo|patch_syntelog_categories.py|build_duplication.py|duplication classes, allele partners, strict PAV, relationship categories"
   "repo|patch_wgd_pairs.py|build_data.py|WGD anchor partners and pair correlations"
   "repo|patch_duplicate_partners.py|build_layers.py|array members + duplicate co-expression"
   "repo|patch_td_pair_ks.py|patch_duplicate_partners.py|per-pair tandem dS"
-  "repo|patch_wgd_combined_call.py|patch_dup_v9_and_pav.py|route C combined Ks + topology WGD call"
+  "repo|patch_wgd_combined_call.py|patch_syntelog_categories.py|route C combined Ks + topology WGD call"
   "repo|patch_lsg_pool.py|build_phylostrat.py|LSG pool (genEra rerun with Idesia) with the frozen call beside it"
   "repo|patch_lsg_qc.py|patch_lsg_pool.py|LSG evidence flags"
   "repo|patch_founder_rerun.py|build_phylostrat.py,patch_lsg_pool.py|founder families from the pool's genEra run"

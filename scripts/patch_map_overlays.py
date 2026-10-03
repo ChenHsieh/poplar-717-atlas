@@ -134,6 +134,7 @@ def main():
         json.dump(ov, fh, separators=(",", ":"))
     print(f"wrote {OV}: {os.path.getsize(OV)/1e3:.0f} KB, 7 metrics per bin")
     sync_tile_pool()
+    sync_tile_dup_allele()
 
 
 def sync_tile_pool():
@@ -178,6 +179,39 @@ def sync_tile_pool():
             json.dump(rows, fh, separators=(",", ":"))
     print(f"locus tiles + index: {len(changed)} pool marks rewritten from ps.lsg in {len(tiles)} files "
           f"(all on genes whose membership differs from the frozen call)")
+
+
+def sync_tile_dup_allele():
+    """The tiles' class letters `c` and allele id `al`, and the index's `c`, rewritten from the
+    shards (dup.t, allele.id). build_locus.py writes them when it runs, but it needs the
+    OneDrive tree; the duplication / allele source can change on this machine
+    (patch_syntelog_categories.py), and the map would keep the old calls. No gate beyond the
+    shards themselves: these fields are pure copies, so the shard value is right by definition."""
+    want = {}
+    for hap in ("hap1", "hap2"):
+        for p in shard_paths(os.path.join(DATA, "genes", hap)):
+            for gid, r in json.load(open(p)).items():
+                want[gid] = ((r.get("dup") or {}).get("t"), (r.get("allele") or {}).get("id"))
+    n_c, n_al, files = 0, 0, 0
+    for d in ("tile", "index"):
+        for dp, _, fs in os.walk(os.path.join(DATA, "locus", d)):
+            for fn in sorted(fs):
+                if not fn.endswith(".json"):
+                    continue
+                p = os.path.join(dp, fn)
+                rows = json.load(open(p))
+                hit = False
+                for r in rows:
+                    c, al = want[r["g"]]
+                    if r.get("c") != c:
+                        r["c"] = c; n_c += 1; hit = True
+                    if d == "tile" and r.get("al") != al:
+                        r["al"] = al; n_al += 1; hit = True
+                if hit:
+                    files += 1
+                    with open(p, "w") as fh:
+                        json.dump(rows, fh, separators=(",", ":"))
+    print(f"locus tiles + index: {n_c} class letters and {n_al} allele ids resynced in {files} files")
 
 
 if __name__ == "__main__":

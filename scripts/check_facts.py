@@ -53,7 +53,7 @@ HEMI = {"hemizygous_HAP1", "hemizygous_HAP2"}
 # The duplication version this atlas's `dup` layer is built on. The shards carry no version
 # marker of their own -- a gap worth closing when that layer is next built -- so it is declared
 # here and then VERIFIED below rather than trusted.
-DECLARED_BASIS = "v9"
+DECLARED_BASIS = "v10"
 
 # atlas quantity -> the FACTS key it must equal, given DECLARED_BASIS.
 BASIS_MAP = {
@@ -63,11 +63,16 @@ BASIS_MAP = {
 
 # Divergences that are known, deliberate and explained. Anything NOT listed here fails.
 # Keep the reason and the date: an entry with no reason is how a defect becomes permanent.
-DECLARED_DIVERGENCES = {
-    "duplication_basis": (
-        "The atlas serves duplication v9 while ms1-dup publishes v10. Chen's hold, 2026-09-20. "
-        "Every duplication fact is still checked, against its v9 counterpart -- see "
-        "DECLARED_BASIS. Remove this entry when the v10 cutover lands."),
+# 2026-10-03: the atlas moved to the current per-gene table (dup_type_v10 letters and anchors,
+# strict PAV, relationship categories) at Chen's decision, so there is no declared divergence.
+DECLARED_DIVERGENCES = {}
+CATEGORY_PIN = os.path.join(ROOT, "sources", "syntelog_categories.pin.json")
+CATEGORY_FACTS = {   # shard rel.c code -> the owning analysis's fact key
+    "1:1": "cj_1to1_genes", "N:N_TD": "cj_NN_TD_genes", "N:N_nonTD": "cj_NN_nonTD_genes",
+    "CNV_TD": "cj_CNV_TD_genes", "CNV_nonTD": "cj_CNV_nonTD_genes",
+    "hemizygous_strict_PAV": "cj_hemizygous_strict_PAV_genes",
+    "hemizygous_TD_array": "cj_hemizygous_TD_array_genes",
+    "hemizygous_nonPAV": "cj_hemizygous_nonPAV_genes",
 }
 
 fails, notes = [], []
@@ -90,7 +95,8 @@ def shard_paths(hap):
 def measure():
     """Recompute every checkable quantity from the committed shards."""
     m = {k: {"HAP1": 0, "HAP2": 0} for k in
-         ("genes", "swgd", "awgd", "tandem", "pav_confirmed", "pav_strict", "pav_present")}
+         ("genes", "swgd", "awgd", "tandem", "pav_strict")}
+    m.update({c: {"HAP1": 0, "HAP2": 0} for c in CATEGORY_FACTS})
     letter = {"HAP1": {}, "HAP2": {}}
     for hap, H in HAPS.items():
         for path in shard_paths(hap):
@@ -102,13 +108,11 @@ def measure():
                 for key, fld in (("swgd", "s"), ("awgd", "a"), ("tandem", "td")):
                     if d.get(fld):
                         m[key][H] += 1
-                p = r.get("pav")
-                if p:
-                    m["pav_present"][H] += 1
-                    if p.get("confirmed"):
-                        m["pav_confirmed"][H] += 1
-                        if p.get("rel") in HEMI:
-                            m["pav_strict"][H] += 1
+                if (r.get("pav") or {}).get("strict"):
+                    m["pav_strict"][H] += 1
+                c = (r.get("rel") or {}).get("c")
+                if c:
+                    m[c][H] += 1
     return m, letter
 
 
@@ -208,11 +212,21 @@ def main():
                      if not alt else
                      f"the atlas actually matches {other}; DECLARED_BASIS says {DECLARED_BASIS}")
 
-    print("\n== presence/absence ==")
-    cmp_hap("PAV, the quotable figure", m["pav_strict"], facts, "pav_strict_postQC",
-            "  <- shards carry diamond_pav, not the post-QC call")
-    cmp_hap("PAV candidate set is unchanged", m["pav_confirmed"], facts, "diamond_pav",
-            "  (not-for-quoting; equality here means the atlas is serving THIS one)")
+    print("\n== relationship categories and strict PAV, against the category facts ==")
+    cpin = json.load(open(CATEGORY_PIN))
+    for root in [r for r in MS1_CANDIDATES if r and os.path.isdir(r)]:
+        res = subprocess.run(["git", "-C", root, "show",
+                              f"{cpin['ms1_dup_commit']}:{cpin['files']['facts']['path']}"], capture_output=True)
+        if res.returncode == 0:
+            break
+    ok = res.returncode == 0 and hashlib.sha256(res.stdout).hexdigest() == cpin["files"]["facts"]["sha256"]
+    check("read the pinned category facts", ok, cpin["files"]["facts"]["path"])
+    if ok:
+        cf = json.loads(res.stdout)["facts"]
+        for code, key in CATEGORY_FACTS.items():
+            cmp_hap(f"category {code}", m[code], cf, key)
+        cmp_hap("strict PAV genes (the dissertation's set)", m["pav_strict"], cf,
+                "cj_hemizygous_strict_PAV_genes")
 
     # The manifest is a summary of the shards and stale by default. Check it separately: the
     # rendered pages read it, so a manifest that disagrees with its own shards is its own bug.
@@ -220,9 +234,9 @@ def main():
     man = json.load(open(os.path.join(DATA, "meta", "manifest.json")))
     pav = man.get("pav") or {}
     for h, H in (("hap1", "HAP1"), ("hap2", "HAP2")):
-        k = f"confirmed_{h}"
-        check(f"manifest.pav.{k} matches the shards", pav.get(k) == m["pav_confirmed"][H],
-              f"manifest {pav.get(k)} vs shards {m['pav_confirmed'][H]:,}")
+        k = f"strict_{h}"
+        check(f"manifest.pav.{k} matches the shards", pav.get(k) == m["pav_strict"][H],
+              f"manifest {pav.get(k)} vs shards {m['pav_strict'][H]:,}")
 
     print("\n== declared divergences ==")
     for k, why in DECLARED_DIVERGENCES.items():

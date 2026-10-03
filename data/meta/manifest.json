@@ -253,7 +253,7 @@
   "n_pairs": 1346,
   "n_saturated": 11,
   "scope": "Chapter tier-2 selection, NOT genome-wide: pairs are concentrated at phylostrata 16-18 with a rank-12 Pentapetalae comparator set. Any Ks distribution here describes that selection, not the genome.",
-  "source": "master_duplication_table_v9.csv (rule 5c + 178-conflict WGD resolution, TD union set) -- supersedes dupclass_membership_v8.csv",
+  "source": "ms1-dup 3a7a3cf data/131_master_v12_20261002/tables/master_per_gene_v12.csv (dup_type_v10 and anchors)",
   "sources": {
    "founder": 861,
    "synteny": 485
@@ -326,15 +326,15 @@
  "families": {
   "definition": "connected components over tandem membership, WGD anchor pairs, HAP1/HAP2 alleles and paralog pairs. A singleton is NOT a family and carries no id -- a gene with no homology edge is not in one.",
   "edges": {
-   "allele": 51862,
+   "allele": 56386,
    "para": 2692,
    "tandem": 60036,
    "wgd": 46308
   },
-  "genes_in_a_family": 60612,
+  "genes_in_a_family": 61060,
   "largest": 85,
-  "n_families": 16266,
-  "singletons": 3348,
+  "n_families": 16062,
+  "singletons": 2900,
   "why_drawable": "measured before building the view: the largest component is 85 genes, so no family is too large to render."
  },
  "gene_model": {
@@ -710,11 +710,9 @@
  ],
  "n_genes": 63960,
  "pav": {
-  "candidate_genes": 6092,
-  "confirmed_hap1": 805,
-  "confirmed_hap2": 859,
-  "confirmed_pav": 1664,
-  "source": "hemizygous_pav_diamond.csv (canonical DIAMOND-based tier1_floor call)"
+  "source": "ms1-dup 3a7a3cf per-gene table, strict protein-level set",
+  "strict_hap1": 528,
+  "strict_hap2": 605
  },
  "phylostrat": {
   "by_rank": {
@@ -1049,6 +1047,42 @@
   },
   "union_fdr_caveat": "1% per dataset ACCUMULATES over five datasets. Read a single-dataset singleton against the pooled false-peptide expectation, not one dataset's.",
   "version": 2
+ },
+ "relationship": {
+  "array_status": {
+   "HAP1|HAP1_specific_expansion": 285,
+   "HAP1|TD_associated_PAV": 48,
+   "HAP1|diff_copy_number_arrays_both": 557,
+   "HAP1|same_copy_number": 1229,
+   "HAP2|HAP2_specific_expansion": 259,
+   "HAP2|TD_associated_PAV": 47,
+   "HAP2|diff_copy_number_array_on_smaller_side": 1,
+   "HAP2|diff_copy_number_arrays_both": 550,
+   "HAP2|same_copy_number": 1228
+  },
+  "counts": {
+   "HAP1|1:1": 22704,
+   "HAP1|CNV_TD": 3897,
+   "HAP1|CNV_nonTD": 98,
+   "HAP1|N:N_TD": 2999,
+   "HAP1|N:N_nonTD": 68,
+   "HAP1|hemizygous_TD_array": 159,
+   "HAP1|hemizygous_nonPAV": 1366,
+   "HAP1|hemizygous_strict_PAV": 528,
+   "HAP2|1:1": 22704,
+   "HAP2|CNV_TD": 3673,
+   "HAP2|CNV_nonTD": 116,
+   "HAP2|N:N_TD": 2999,
+   "HAP2|N:N_nonTD": 68,
+   "HAP2|hemizygous_TD_array": 141,
+   "HAP2|hemizygous_nonPAV": 1282,
+   "HAP2|hemizygous_strict_PAV": 605
+  },
+  "source": "ms1-dup 3a7a3cf",
+  "unclassified": {
+   "HAP1": 318,
+   "HAP2": 235
+  }
  },
  "shards": {
   "hap1/Chr01/0": 249,
@@ -1492,13 +1526,13 @@
  "tier": "public",
  "wgd_combined_call": {
   "canonical": "master_duplication_table_v9 (v8 rule 5c + dS resolution) remains the atlas's called class. The combined call is shown beside it as a proposed correction, NOT applied upstream as of 2026-09-16.",
-  "genes_disagreeing_with_v9": 904,
+  "genes_disagreeing_with_v9": 1355,
   "genes_with_a_call": 32170,
   "movement": {
-   "into_gamma": 122,
-   "into_salicoid": 567,
-   "out_of_gamma": 485,
-   "out_of_salicoid": 173
+   "into_gamma": 2,
+   "into_salicoid": 1160,
+   "out_of_gamma": 1088,
+   "out_of_salicoid": 5
   },
   "rule": "topology where grape and segment Ks independently agree; v8 otherwise; split-evidence pairs set aside as `review`."
  }

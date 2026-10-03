@@ -22,6 +22,8 @@ ENVIRONMENTS = {"sapelo2", "onedrive", "repo", "any"}
 # would be redundant. New patchers must be stages, not additions to this escape hatch.
 EXEMPT_PATCHERS = {
     "patch_leaf_tissue_analysis.py": "one-time correction superseded by build_expression.py",
+    "patch_dup_v9_and_pav.py": "superseded by patch_syntelog_categories.py; kept because build_all.sh "
+                               "and make_karyotype_source.py read the OneDrive root from it",
 }
 
 # These create committed source artifacts from upstream analyses. Their matching patch/build
