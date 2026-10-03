@@ -693,7 +693,7 @@ def main():
                 if (x not in genes or genes[x][0] != hap or (xk.get("g"), xk.get("s")) != (sg, ss)
                         or aid not in [a["id"] for a in xk.get("an", [])]):
                     kar_slot_bad.append((x, aid, "listed but not reciprocal"))
-    check("ancestral karyotype counts match the route C coverage, per haplotype",
+    check("ancestral karyotype counts match the placement coverage, per haplotype",
           all(all(kar[h][f] == n for f, n in KAR_WANT[h].items()) for h in KAR_WANT),
           "; ".join(f"{h}: {dict(kar[h])}" for h in KAR_WANT))
     man_kar = man.get("karyotype") or {}

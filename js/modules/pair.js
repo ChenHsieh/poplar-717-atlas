@@ -77,7 +77,7 @@ function comparisonTable(a, b) {
       { absentLabel: 'no protein model', differs: (x, y) => false }),
     row('Synteny class', a, b, (g) => (g.syn ? (g.syn.cls || '').replace(/_/g, ' ') : null)),
     row('Phylostratum', a, b, (g) => (g.ps && g.ps.rank != null ? `PS${g.ps.rank} · ${g.ps.name}` : null)),
-    row('Duplication (canonical v9)', a, b, (g) => dupWords(g.dup)),
+    row('Duplication', a, b, (g) => dupWords(g.dup)),
     row('Tandem array', a, b, (g) => (g.td ? el('a', { href: `#/array/${g.td.aid}`, class: 'mono' }, `${g.td.aid} · ${g.td.n} members`) : 'not in one'),
       { absentLabel: 'not in one',
         // array ids differ by construction (one per haplotype); membership and size do not

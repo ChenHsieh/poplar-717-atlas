@@ -33,14 +33,14 @@ export const QUESTIONS = [
   {
     id: 'hemizygous',
     q: 'Which genes exist on only one haplotype?',
-    sub: 'no allele in the other haplotype, the phased-hybrid question',
-    params: { allele: 'no' },
+    sub: 'Strict PAV: no syntelog and no protein-level match on the other haplotype',
+    params: { rel: 'hemizygous_strict_PAV' },
   },
   {
     id: 'three-layers',
     q: 'Which genes carry all three duplication types at once?',
-    sub: 'a curated tandem array AND both whole-genome events (route C call)',
-    params: { tandem: 'yes', wgd: 'both' },
+    sub: 'a curated tandem array AND both whole-genome events',
+    params: { tandem: 'yes', wgd9: 'both' },
   },
   {
     id: 'never-expressed',
@@ -67,7 +67,7 @@ export const QUESTIONS = [
     // NOT { wgd: 'salicoid', wgd9: 'gamma' }. That was the first draft and it reported
     // 7,574, because a gene carrying BOTH events under BOTH calls matches it while agreeing
     // about everything. The disagreement is its own fact and needs its own column.
-    sub: 'route C re-adjudication against the canonical v9 letters, gene by gene',
+    sub: 'the exploratory topology re-check compared with the primary call, gene by gene',
     params: { wgd_disputed: 'yes' },
   },
 ];

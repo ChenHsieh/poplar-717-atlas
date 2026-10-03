@@ -199,7 +199,7 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.16.3",
+ "data_version": "0.17.0",
  "duplicate_coexpr": {
   "basis": "Pearson r on log2(ComBat-corrected TPM + 1) over 652 samples -- the same matrix the neighbour co-expression (nb) uses, because a 652-sample correlation spans 28 studies and is therefore a cross-study comparison.",
   "coverage": "A pair needs BOTH partners in the ComBat matrix (59,599 of 63,960 genes), so 7,707 of 32,333 duplicate pairs have no value. Absence means 'not comparable', not 'uncorrelated'.",
@@ -300,7 +300,7 @@
   }
  },
  "facets": {
-  "bytes": 2932396,
+  "bytes": 3060997,
   "cols": [
    "hap",
    "chr",
@@ -319,7 +319,8 @@
    "xin",
    "w",
    "ms",
-   "aek"
+   "aek",
+   "rel"
   ],
   "n_rows": 63960
  },

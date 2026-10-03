@@ -13,6 +13,7 @@ import { saveSet } from '../core/geneset.js';
 import { browseHref } from '../core/browse.js';
 import { genesIn, matchingRegion, tissueList, tissueN } from '../core/locusfig.js';
 import { chromosomeBrowser } from '../core/locusbrowser.js';
+import { loadArrayStatus, statusName, STATUS_ORDER } from '../core/relationship.js';
 
 const HAP_OF = (aid) => (aid.startsWith('HAP2') ? 'hap2' : 'hap1');
 const CHR_RE = /^PtXa(?:TreH|AlbH)\.(\d+)G/;
@@ -158,7 +159,7 @@ function memberTable(genes, other) {
     el('thead', {}, el('tr', {}, el('th', { class: 'num' }, '#'), el('th', {}, 'Gene'), el('th', {}, 'Strand'),
       el('th', { class: 'num' }, 'Length kb'), el('th', { class: 'num' }, 'Exons'),
       el('th', {}, 'Phylostratum'), el('th', { title: 'GENESPACE synteny class: a different call from the curated tandem set' }, 'Synteny class'),
-      el('th', { title: 'master duplication table v9, the canonical call' }, 'WGD (canonical v9)'),
+      el('th', { title: 'whole-genome duplication partners, the primary call' }, 'WGD'),
       el('th', {}, `Allele (${hapLabel(other)})`), el('th', {}, 'Peak tissue'), el('th', {}, 'Description'))),
     el('tbody', {}, ...rows)));
 }
@@ -213,42 +214,43 @@ export async function arrayView(aid) {
       region = await matchingRegion(hap, wide, ids, 12, 2);
       if (region) { anchors = new Set(region.anchors.map(([a]) => a)); otherChr = region.chr; }
     }
-    // Which array on the other haplotype holds the members' alleles -- the one that matters.
-    const arrayOf = new Map();
-    for (const [k, members] of Object.entries(all)) for (const id of members) arrayOf.set(id, k);
-    const byArray = new Map();
-    let loose = 0;
-    for (const o of alleles) {
-      const k = arrayOf.get(o.id);
-      if (k) byArray.set(k, (byArray.get(k) || 0) + 1); else loose += 1;
-    }
     const otherL = hapLabel(other);
-    const ranked = [...byArray.entries()].sort((x, y) => y[1] - x[1]);
+    const st = (await loadArrayStatus())[aid] || null;
     const lines = [];
-    if (alleles.length) {
-      lines.push(el('p', {}, el('strong', {}, `${withAllele.length} of ${genes.length} members`),
-        ` have their own allele on ${otherL}; those alleles are highlighted and joined by solid lines.`));
-      if (ranked.length) {
-        ranked.forEach(([k, n], i) => lines.push(el('p', { 'data-arr-linked-array': k },
-          i === 0 ? 'Matching array: ' : 'Also: ',
-          el('a', { href: `#/array/${k}`, class: 'mono' }, k),
-          ` holds ${n} of those alleles (it has ${all[k].length} member${all[k].length === 1 ? '' : 's'}).`)));
+    // First: how the array relates to the other haplotype, from the syntenic group as a whole.
+    if (st) {
+      lines.push(el('p', { 'data-arr-rel': st.k },
+        el('strong', {}, statusName(st.k)), st.dt ? `: ${st.dt}.` : '.',
+        ` Its syntenic group holds ${st.n1} HAP1 and ${st.n2} HAP2 quality-filtered genes.`));
+      if (st.o.length) {
+        lines.push(el('p', { 'data-arr-linked-array': st.o[0] },
+          `Matching array${st.o.length > 1 ? 's' : ''} on ${otherL}: `,
+          ...st.o.flatMap((k, i) => [i ? ', ' : '', el('a', { href: `#/array/${k}`, class: 'mono' }, k)]),
+          '. Its genes are outlined in the figure.'));
+      } else if (st.og.length) {
+        lines.push(el('p', {}, `On ${otherL} the group is ${st.og.length} gene${st.og.length === 1 ? '' : 's'} outside any tandem array `
+          + '(outlined in the figure): ', ...st.og.flatMap((g2, i) => [i ? ', ' : '', el('a', { href: `#/gene/${g2}`, class: 'mono' }, g2)])));
       }
-      if (loose) lines.push(el('p', {}, `${loose} allele${loose === 1 ? ' is' : 's are'} not in any tandem array on ${otherL}.`));
-      if (!ranked.length) lines.push(el('p', {}, `No tandem array on ${otherL} holds these alleles: the copies are tandem on this haplotype only.`));
+    } else {
+      lines.push(el('p', {}, 'This detected array is not counted (the pseudogene screen removed its members), so it has no relationship status.'));
+    }
+    // Then: the members' own allele calls, which are what the solid lines draw.
+    if (alleles.length) {
+      lines.push(el('p', {}, `${withAllele.length} of ${genes.length} members have their own allele on ${otherL}; `
+        + 'those alleles are filled and joined by solid lines.'));
     } else if (region) {
-      lines.push(el('p', {}, el('strong', {}, 'No member has an allele'), ` on ${otherL}, so nothing on that side is this array's allele. `
-        + `The view is lined up by the alleles of ${anchors.size} neighboring gene${anchors.size === 1 ? '' : 's'} (dashed lines); `
-        + 'any tandem array you see there is not linked to this one.'));
+      lines.push(el('p', {}, `No member has its own allele on ${otherL}. The view is lined up by the alleles of `
+        + `${anchors.size} neighboring gene${anchors.size === 1 ? '' : 's'} (dashed lines).`));
     } else {
       lines.push(el('p', {}, `No member and no gene within 300 kb has an allele on ${otherL}, so the matching region cannot be placed.`));
     }
+    const outline = st ? new Set(st.og) : new Set();
     linkBox.replaceChildren(...lines);
     figHolder.replaceChildren(await chromosomeBrowser({
       hap, chr, otherChr: otherChr || chr, start: Math.max(0, from - pad), end: to + pad, embed: true,
       focus: new Set(ids), linked: new Set(alleleIds), anchors,
-      outline: new Set(ranked.length ? all[ranked[0][0]] : []),
-      outlineLabel: ranked.length ? `members of the matching array ${ranked[0][0]}` : null,
+      outline,
+      outlineLabel: outline.size ? `the syntenic group on ${hapLabel(other)}` : null,
       focusLabel: 'array member and its own allele' }));
   })().catch((e) => { figHolder.replaceChildren(el('p', { class: 'muted' }, `Locus unavailable: ${e.message}`)); });
 
@@ -299,16 +301,15 @@ export async function arrayView(aid) {
       el('p', { class: 'arr-note' },
         `Phylostratum: ${psSet.length} distinct rank${psSet.length === 1 ? '' : 's'} among the members. `
         + 'Synteny class is GENESPACE’s call and can read "tandem array member" or not independently of '
-        + 'this array. The WGD column is the canonical master duplication table v9, not the route C re-adjudication.')),
+        + 'this array. The WGD column is the primary call, not the exploratory topology re-check.')),
     divergenceCard(genes),
     exprCard(genes));
 }
 
 // ---------------------------------------------------------------------------------------------
 export async function arraysIndexView() {
-  const [all, facets, geneIds] = await Promise.all([loadArrays(), loadFacets(), loadGeneIndex()]);
-  // Counted = passed the pseudogene screen (dup.td, the facet index's `tandem` column; master v11
-  // counted_in_manuscript). arrays.json lists every DETECTED array, so 167 of its 4,371 have no
+  const [all, facets, geneIds, ast] = await Promise.all([loadArrays(), loadFacets(), loadGeneIndex(), loadArrayStatus()]);
+  // Counted = passed the pseudogene screen (dup.td, the facet index's `tandem` column). arrays.json lists every DETECTED array, so 167 of its 4,371 have no
   // counted member at all and 89 lost some.
   const ti = facets.cols.indexOf('tandem');
   const td = new Map(geneIds.map((id, i) => [id, facets.rows[i][ti] === 1]));
@@ -317,9 +318,10 @@ export async function arraysIndexView() {
     const k = ids.filter((id) => td.get(id)).length;
     return { aid, hap: HAP_OF(aid), chr: chrOf(ids[0]), n: ids.length, k,
       status: k === 0 ? 'removed' : k < ids.length ? 'reduced' : 'counted',
+      rel: (ast[aid] || {}).k || null,
       first: ids[0], last: ids[ids.length - 1] };
   });
-  const state = { sort: 'n', dir: -1, hap: '', chr: '', status: '', shown: 150 };
+  const state = { sort: 'n', dir: -1, hap: '', chr: '', status: '', rel: '', shown: 150 };
   const body = el('tbody');
   const count = el('p', { class: 'arr-note', 'data-arrays-count': '' });
   const more = el('button', { class: 'btn', type: 'button', onclick: () => { state.shown += 300; render(); } }, 'Show more');
@@ -329,13 +331,15 @@ export async function arraysIndexView() {
   };
   function render() {
     const list = rows.filter((r) => (!state.hap || r.hap === state.hap) && (!state.chr || r.chr === state.chr)
-      && (!state.status || (state.status === 'in' ? r.k > 0 : r.status === state.status)))
+      && (!state.status || (state.status === 'in' ? r.k > 0 : r.status === state.status))
+      && (!state.rel || r.rel === state.rel))
       .sort((a, b) => state.dir * cmp[state.sort](a, b) || (a.aid < b.aid ? -1 : 1));
     body.replaceChildren(...list.slice(0, state.shown).map((r) => el('tr', { 'data-arrays-row': r.aid },
       el('td', {}, el('a', { href: `#/array/${r.aid}`, class: 'mono' }, r.aid)),
       el('td', {}, hapLabel(r.hap)), el('td', {}, r.chr), el('td', { class: 'num' }, r.n),
       el('td', { class: 'num' }, r.k === r.n ? r.k : el('span', { title: 'members that passed the pseudogene screen' },
         `${r.k} of ${r.n}`)),
+      el('td', { 'data-arrays-rel': r.rel || '' }, r.rel ? statusName(r.rel) : el('span', { class: 'muted' }, 'not counted')),
       el('td', { class: 'mono arr-desc' }, `${r.first} … ${r.last}`))));
     const byHap = (h) => list.filter((r) => r.hap === h);
     count.textContent = `Showing ${Math.min(state.shown, list.length)} of ${list.length} arrays `
@@ -350,9 +354,12 @@ export async function arraysIndexView() {
     el('option', { value: '' }, 'Both haplotypes'), el('option', { value: 'hap1' }, hapLabel('hap1')), el('option', { value: 'hap2' }, hapLabel('hap2')));
   const statusSel = el('select', { 'data-arrays-status': '', onchange: (e) => { state.status = e.target.value; render(); } },
     el('option', { value: '' }, 'Every detected array'),
-    el('option', { value: 'in' }, 'Counted in the manuscript'),
+    el('option', { value: 'in' }, 'Counted'),
     el('option', { value: 'reduced' }, 'Counted, some members removed'),
     el('option', { value: 'removed' }, 'Not counted (removed by the screen)'));
+  const relSel = el('select', { 'data-arrays-rel-filter': '', onchange: (e) => { state.rel = e.target.value; render(); } },
+    el('option', { value: '' }, 'Any relationship to the other haplotype'),
+    ...STATUS_ORDER.map((k) => el('option', { value: k }, statusName(k))));
   const chrSel = el('select', { onchange: (e) => { state.chr = e.target.value; render(); } },
     el('option', { value: '' }, 'All chromosomes'), ...chrs.map((c) => el('option', { value: c }, c)));
   // Size histogram, one bar per size, per haplotype -- never summed.
@@ -370,19 +377,40 @@ export async function arraysIndexView() {
       el('p', { class: 'sub' }, 'Every array in the curated union tandem set, per haplotype. Pick one to see its members '
         + 'to scale, their divergence, expression and the matching region on the other haplotype.'),
       el('p', { class: 'arr-note', 'data-arrays-counted': '' },
-        `Counted in the manuscript: ${fmt(rows.filter((r) => r.hap === 'hap1' && r.k > 0).length)} ${hapLabel('hap1')} and `
+        `Counted: ${fmt(rows.filter((r) => r.hap === 'hap1' && r.k > 0).length)} ${hapLabel('hap1')} and `
         + `${fmt(rows.filter((r) => r.hap === 'hap2' && r.k > 0).length)} ${hapLabel('hap2')} arrays. The list also holds `
         + `${rows.filter((r) => r.k === 0).length} detected arrays the pseudogene screen removed; use the filter to hide them.`)),
     el('div', { class: 'card' }, el('h2', {}, 'Array sizes', el('span', { class: 'tag' }, 'count of arrays per haplotype')), hist),
+    el('div', { class: 'card', 'data-arrays-rel-table': '' },
+      el('h2', {}, 'Relationship to the other haplotype', el('span', { class: 'tag' }, 'counted arrays, per haplotype')),
+      relTable(rows)),
     el('div', { class: 'card' },
-      el('div', { class: 'arr-actions' }, hapSel, chrSel, statusSel),
+      el('div', { class: 'arr-actions' }, hapSel, chrSel, statusSel, relSel),
       count,
       el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
         el('thead', {}, el('tr', {}, el('th', {}, sortBtn('aid', 'Array')), el('th', {}, sortBtn('hap', 'Haplotype')),
           el('th', {}, sortBtn('chr', 'Chromosome')), el('th', { class: 'num' }, sortBtn('n', 'Members')),
-          el('th', { class: 'num', title: 'members that passed the pseudogene screen' }, 'Counted'), el('th', {}, 'First … last member'))),
+          el('th', { class: 'num', title: 'members that passed the pseudogene screen' }, 'Counted'),
+          el('th', {}, 'Relationship to the other haplotype'), el('th', {}, 'First … last member'))),
         body)),
       more));
+}
+
+/** Counted arrays by relationship status, one column per haplotype, n and % of that
+ *  haplotype's counted arrays. Never pooled. */
+function relTable(rows) {
+  const tot = (h) => rows.filter((r) => r.hap === h && r.rel).length;
+  const T = { hap1: tot('hap1'), hap2: tot('hap2') };
+  const cell = (h, k) => {
+    const n = rows.filter((r) => r.hap === h && r.rel === k).length;
+    return el('td', { class: 'num' }, n ? `${fmt(n)} (${(100 * n / T[h]).toFixed(1)}%)` : '0');
+  };
+  return el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
+    el('thead', {}, el('tr', {}, el('th', {}, 'Status'),
+      el('th', { class: 'num' }, `${hapLabel('hap1')} (n = ${fmt(T.hap1)})`),
+      el('th', { class: 'num' }, `${hapLabel('hap2')} (n = ${fmt(T.hap2)})`))),
+    el('tbody', {}, ...STATUS_ORDER.map((k) => el('tr', { 'data-arrays-rel-row': k },
+      el('td', {}, statusName(k)), cell('hap1', k), cell('hap2', k))))));
 }
 
 export default { id: 'arrays', label: 'Tandem arrays' };

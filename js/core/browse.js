@@ -4,6 +4,7 @@
 // Filtering runs over data/index/facets.json (274 KB gzipped, one fetch) rather than the gene
 // shards -- a filter that had to read 39 MB of shards plus 208 MB of expression buckets would
 // not be a filter anyone waits for.
+import { CATEGORY, CATEGORY_ORDER } from './relationship.js';
 import { el, clear, fmt } from './dom.js';
 import { loadFacets, facetRow, loadGeneIndex, loadDescIndex, loadStructure, dataVersion } from './data.js';
 import { query, setQuery } from './router.js';
@@ -44,6 +45,9 @@ export const FILTERS = [
     test: (r, v) => r.chr === v },
   { id: 'allele', label: 'Has allele', kind: 'select', options: ['yes', 'no'],
     test: (r, v) => (r.allele ? 'yes' : 'no') === v },
+  { id: 'rel', label: 'Relationship to the other haplotype', kind: 'select',
+    options: [...CATEGORY_ORDER, 'not_classified'],
+    test: (r, v) => (r.rel || 'not_classified') === v },
   { id: 'at', label: 'Has Arabidopsis hit', kind: 'select', options: ['yes', 'no'],
     test: (r, v) => (r.at ? 'yes' : 'no') === v },
   // The CURATED union set (13,048 genes), the same one the Duplication card and the class
@@ -59,7 +63,7 @@ export const FILTERS = [
   // figure's 229, which reads as a broken filter rather than as two different calls. The
   // canonical v9 call stays selectable directly below, so the published numbers remain
   // reproducible here. Neither is a correction of the other in this UI -- see the gene page.
-  { id: 'wgd', label: 'WGD event (route C call)', kind: 'select',
+  { id: 'wgd', label: 'WGD event, exploratory re-check', kind: 'select',
     options: ['salicoid', 'gamma', 'both', 'either', 'neither'],
     test: (r, v) => ({ salicoid: (r.wgd & 1) > 0, gamma: (r.wgd & 2) > 0, both: r.wgd === 3,
                        either: r.wgd > 0, neither: r.wgd === 0 })[v] },
@@ -67,9 +71,9 @@ export const FILTERS = [
   // a gene carrying BOTH events under BOTH calls matches "route C salicoid AND v9 gamma"
   // while agreeing completely, which is how a first draft of the home page's question
   // reported 7,574 disagreements instead of 904.
-  { id: 'wgd_disputed', label: 'WGD call disputed (route C vs v9)', kind: 'select',
+  { id: 'wgd_disputed', label: 'WGD call disputed (re-check vs primary call)', kind: 'select',
     options: ['yes', 'no'], test: (r, v) => (r.ccd ? 'yes' : 'no') === v },
-  { id: 'wgd9', label: 'WGD event (canonical v9)', kind: 'select',
+  { id: 'wgd9', label: 'WGD event', kind: 'select',
     options: ['salicoid', 'gamma', 'both', 'either', 'neither'],
     test: (r, v) => ({ salicoid: (r.wgd9 & 1) > 0, gamma: (r.wgd9 & 2) > 0, both: r.wgd9 === 3,
                        either: r.wgd9 > 0, neither: r.wgd9 === 0 })[v] },
@@ -113,18 +117,19 @@ export const FILTERS = [
 // Display names for option values. The values themselves stay as they are, because they are
 // URL parameters and saved links depend on them; only the label follows the dissertation's
 // names for the two whole-genome events (aWGT, sWGD).
-const OPTION_LABEL = { salicoid: 'sWGD', gamma: 'aWGT', aWGD_era: 'aWGT era' };
+const OPTION_LABEL = { salicoid: 'sWGD', gamma: 'aWGT', aWGD_era: 'aWGT era', not_classified: 'not classified (quality-flagged)',
+  ...Object.fromEntries(Object.entries(CATEGORY).map(([k, c]) => [k, c.name])) };
 const optLabel = (v) => OPTION_LABEL[v]
   || String(v).replace(/gamma_copy/g, 'aWGT_copy').replace(/salicoid_copy/g, 'sWGD_copy').replace(/_/g, ' ');
 
 export const FILTER_GROUPS = [
-  { id: 'where', label: 'Genome', ids: ['hap', 'chr', 'allele'] },
+  { id: 'where', label: 'Genome', ids: ['hap', 'chr', 'allele', 'rel'] },
   { id: 'age', label: 'Age and conservation', ids: ['ps_min', 'cls'] },
-  { id: 'dup', label: 'Duplication', ids: ['tandem', 'wgd'] },
+  { id: 'dup', label: 'Duplication', ids: ['tandem', 'wgd9'] },
   { id: 'expr', label: 'Expression', ids: ['xin', 'top', 'tau_min'] },
   { id: 'func', label: 'Function and protein', ids: ['at', 'ms'] },
   { id: 'sel', label: 'Selection against P. trichocarpa', ids: ['w_min', 'w_max'] },
-  { id: 'adv', label: 'Disputed and exploratory calls', ids: ['ps', 'wgd_disputed', 'wgd9', 'aek'], adv: true },
+  { id: 'adv', label: 'Disputed and exploratory calls', ids: ['ps', 'wgd', 'wgd_disputed', 'aek'], adv: true },
 ];
 const HINTS = {
   hap: 'HAP1 is the tremula haplotype, HAP2 alba',
@@ -135,11 +140,12 @@ const HINTS = {
   top: 'tissue with the highest median TPM',
   xin: 'median above 1 TPM in that tissue',
   allele: 'a syntenic partner on the other haplotype',
+  rel: 'counted per gene; tandem genes take their array\u2019s category',
   at: 'a best hit in Arabidopsis',
   tandem: 'the curated union set, 13,048 genes',
-  wgd: 'retained from a whole-genome duplication (route C)',
-  wgd_disputed: 'route C and v9 disagree for this gene',
-  wgd9: 'the canonical v9 letters',
+  wgd: 'exploratory re-check from dS and ancestral topology',
+  wgd_disputed: 'the exploratory re-check and the primary call disagree',
+  wgd9: 'retained from a whole-genome duplication',
   aek: 'ancestral eudicot chromosome and copy',
   w_min: 'Ka/Ks to the reciprocal-best ortholog',
   w_max: 'Ka/Ks to the reciprocal-best ortholog',
@@ -151,7 +157,7 @@ const KEYS = {
   allele: (r) => [r.allele ? 'yes' : 'no'], at: (r) => [r.at ? 'yes' : 'no'],
   tandem: (r) => [r.tandem ? 'yes' : 'no'], ms: (r) => [r.ms > 0 ? 'yes' : 'no'],
   wgd_disputed: (r) => [r.ccd ? 'yes' : 'no'], xin: (r) => r.xin,
-  wgd: (r) => wgdKeys(r.wgd), wgd9: (r) => wgdKeys(r.wgd9),
+  wgd: (r) => wgdKeys(r.wgd), wgd9: (r) => wgdKeys(r.wgd9), rel: (r) => [r.rel || 'not_classified'],
 };
 function wgdKeys(w) {
   const k = [];

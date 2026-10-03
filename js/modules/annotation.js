@@ -3,6 +3,7 @@
 // its other allele, and which genomes have it.
 import { el, fmt } from '../core/dom.js';
 import { loadTerms, arrayAlleles } from '../core/data.js';
+import { CATEGORY, detailText } from '../core/relationship.js';
 
 const PANEL = ['Ptrxalhap1', 'Ptrxalhap2', 'Pnigra', 'Ptrichocarpa', 'Pdeltoides',
   'Peuphratica', 'Spurpurea', 'Egrandis', 'Vvinifera', 'Athaliana', 'Osativa', 'Ppatens'];
@@ -165,8 +166,8 @@ function alleleCard(g, man) {
     return el('div', { class: 'card', 'data-card': 'allele' },
       el('h2', {}, 'Allele', el('span', { class: 'tag' }, 'syntelog')),
       el('p', { class: 'muted', style: 'margin:0;font-size:13px' },
-        `No 1:1 ${other} syntelog in the 25,931-pair map. That is expected for genes in tandem `
-        + `arrays, hemizygous regions, or where synteny breaks down, not evidence of absence.`),
+        `No syntelog partner on ${other}. That is not by itself evidence of absence: the card `
+        + `"Relationship to the other haplotype" says what ${other} carries at this locus.`),
       viaArray,
       loc ? el('p', { style: 'margin:8px 0 0;font-size:13px' },
         `Its copies on both haplotypes${unann ? ', including pieces the annotation does not call,' : ''} `
@@ -282,51 +283,40 @@ function selectionCard(g) {
       + 'stratum\u2019s figure is measured on its more conserved members.'));
 }
 
-// Presence / absence between the haplotypes (moved out of Duplication, 2026-09-11). It sat
-// under "Duplication" because it arrived with that source, but a gene present on one
-// haplotype and absent from the other is an ALLELE fact, not a duplication mode -- it
-// belongs beside the allele card a reader has just looked at. Scope is unchanged: the
-// candidate set is ~6,000 genes from an asymmetric orthogroup, not genome-wide, so a gene
-// outside it simply has no `pav` key and gets no card.
-function presenceVariationCard(g) {
-  if (!g.pav) return null;
+// How this gene relates to the other haplotype: its relationship category, the unit it is
+// counted in (the gene, or its whole tandem array), and the copy number on each side of its
+// syntenic group. Every gene has one, except quality-flagged gene models, which say so.
+function relationshipCard(g) {
+  const rel = g.rel;
+  if (!rel) return null;
   const kv = el('dl', { class: 'kv' });
-
-    const otherHap = g.hap === 'hap1' ? 'HAP2' : 'HAP1';
-    const side = g.pav.rel.endsWith('HAP1') ? 'HAP1' : 'HAP2';
-
-    let verdict;
-    if (g.pav.confirmed) {
-      verdict = el('div', { style: 'margin-top:4px' },
-        el('span', { class: 'badge' }, 'confirmed'),
-        el('span', { class: 'muted', style: 'font-size:12px' }, `  no same-genome hit found in ${otherHap}`));
+  const add = (k, ...v) => kv.append(el('dt', {}, k), el('dd', {}, ...v));
+  if (!rel.c) {
+    add('Category', el('span', { class: 'muted' }, 'not classified'),
+      el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+        'This gene model is flagged by quality control, so it is outside the set the categories cover.'));
+  } else {
+    const c = CATEGORY[rel.c];
+    add('Category', el('strong', { 'data-rel-category': rel.c }, c.name),
+      el('div', { class: 'muted', style: 'font-size:12.5px;margin-top:2px' },
+        c.what[0].toUpperCase() + c.what.slice(1) + '.',
+        detailText(rel.d) ? ` Here: ${detailText(rel.d)}.` : ''));
+    if (rel.ut === 'TD_array' && g.td) {
+      add('Counted as', 'its whole tandem array ',
+        el('a', { href: `#/array/${g.td.aid}`, class: 'mono' }, g.td.aid),
+        `, not this gene alone`);
     } else {
-      const pctText = g.pav.pident != null ? ` (${g.pav.pident}% identity` : '';
-      const evText = g.pav.evalue ? `, E=${g.pav.evalue})` : (g.pav.pident != null ? ')' : '');
-      const targetLink = g.pav.target
-        ? el('a', { href: `#/gene/${g.pav.target}`, class: 'mono' }, g.pav.target)
-        : '–';
-      verdict = el('div', { style: 'margin-top:4px' },
-        el('span', { class: 'muted' }, 'not confirmed'),
-        el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
-          `A hit exists in ${otherHap}: `, targetLink, pctText, evText,
-          el('div', { style: 'margin-top:2px' },
-            'This reads as a detection gap in the original orthogroup call, not a confirmed absence.')));
+      add('Counted as', 'this gene');
     }
-
-    kv.append(
-      el('dt', {}, 'Presence'),
-      el('dd', {},
-        el('strong', {}, `${side}-only, candidate`),
+    if (rel.n1 != null && rel.n2 != null) {
+      add('Copies in its syntenic group', `HAP1 ${rel.n1}, HAP2 ${rel.n2}`,
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
-          `Flagged by orthogroup structure as present only in ${side}. `
-          + 'DIAMOND PAV check, tier1_floor:'),
-        verdict));
-    
-  
-  return el('div', { class: 'card', 'data-card': 'pav' },
-    el('h2', {}, 'Present on one haplotype only',
-      el('span', { class: 'tag' }, 'candidate, DIAMOND-checked')), kv);
+          'Quality-filtered genes on each haplotype that share this syntenic locus.'));
+    }
+  }
+  return el('div', { class: 'card', 'data-card': 'relationship' },
+    el('h2', {}, 'Relationship to the other haplotype',
+      el('span', { class: 'tag' }, 'syntenic group')), kv);
 }
 
 function presenceCard(g) {
@@ -353,7 +343,7 @@ function presenceCard(g) {
 function geneCard(g, man) {
   // Returns a fragment holding several cards; app.js appends whatever geneCard gives it.
   const frag = document.createDocumentFragment();
-  [annotationCard(g), alleleCard(g, man), presenceVariationCard(g), selectionCard(g),
+  [annotationCard(g), alleleCard(g, man), relationshipCard(g), selectionCard(g),
    presenceCard(g)].forEach((c) => c && frag.append(c));
   return frag.childNodes.length ? frag : null;
 }

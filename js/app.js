@@ -271,9 +271,8 @@ route(/^\/$/, async (navigation) => {
             + 'copies, an sWGD partner and an aWGT partner. The other haplotype carries two '
             + 'tandem copies, not four.'),
           el('dt', {}, el('a', { href: '#/gene/PtXaTreH.10G046700' }, 'PtXaTreH.10G046700')),
-          el('dd', { class: 'muted' }, 'A seven-copy nucleoredoxin array with no one-to-one '
-            + 'allele called on the other haplotype, the pattern a hemizygous locus leaves, '
-            + 'though an uncalled allele is not by itself proof of one.'))),
+          el('dd', { class: 'muted' }, 'A seven-copy nucleoredoxin array on HAP1 with a single '
+            + 'copy at the matching locus on HAP2: a HAP1-specific expansion (TD-associated CNV).'))),
 
       el('div', { class: 'card' },
         el('h2', {}, 'Modules'),

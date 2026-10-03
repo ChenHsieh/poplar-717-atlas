@@ -1116,52 +1116,8 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   kerrs.forEach((e) => console.log('   !! ' + e));
 }
 
-// The provenance sidecars, made reachable. They are committed and served over HTTP, and before
-// nothing in the interface linked to any of them -- they are where this project does its most
-// careful writing (the gate a layer had to pass, what it deliberately does not claim, what was
-// tried and rejected). Asserted: the records open and carry their own caveats, and no internal
-// cluster path -- especially an agent worktree directory -- reaches a public page.
-{
-  const ep = await browser.newPage({ viewport: { width: 1180, height: 1400 } });
-  const eerrs = [];
-  ep.on('pageerror', (e) => eerrs.push(e.message));
-  ep.on('console', (m) => { if (m.type() === 'error') eerrs.push('console: ' + m.text()); });
-  await ep.goto(base + '/#/module/about', { waitUntil: 'networkidle' });
-  await ep.waitForTimeout(2200);
-  const card = ep.locator('.card').filter({ has: ep.locator('h2', { hasText: 'Why each layer says what it says' }) }).first();
-  const buttons = await card.locator('button').count();
-
-  await card.locator('button', { hasText: 'Route C re-adjudication' }).click();
-  await ep.waitForTimeout(1100);
-  const routeC = await card.innerText();
-
-  await card.locator('button', { hasText: 'Per-pair tandem dS' }).click();
-  await ep.waitForTimeout(1100);
-  const tdPair = await card.innerText();
-
-  await card.locator('button', { hasText: 'Copies on both haplotypes' }).click();
-  await ep.waitForTimeout(1100);
-  const copies = await card.innerText();
-
-  // The expected count is the list evidence.js declares, read from the file, not a number typed
-  // here: this was `=== 19`, and adding a record made the check fail for being right.
-  const declared = (fs.readFileSync('js/core/evidence.js', 'utf8').match(/^\s*\['[a-z0-9_]+', '/gm) || []).length;
-  const leaks = /\.claude\/worktrees|\/scratch\/ch29576\/|\/home\/ch29576\//.test(routeC + tdPair + copies);
-  const ok = !eerrs.length
-    && declared >= 20 && buttons === declared
-    // each record carries the caveat that is the reason it exists
-    && /not applied/i.test(routeC)
-    && /array median/i.test(tdPair)
-    && /not the same as having no copies/i.test(copies)
-    && !leaks;
-  if (!ok) failures++;
-  console.log(`\n### about:provenance-records-reachable  ${ok ? 'OK' : 'FAIL'}`);
-  console.log(`   ${buttons} records of ${declared} declared; routeC states NOT APPLIED: ${/not applied/i.test(routeC)}; `
-    + `tandem states array-median caveat: ${/array median/i.test(tdPair)}; copies states its scope: `
-    + `${/not the same as having no copies/i.test(copies)}; path leak: ${leaks}`);
-  eerrs.forEach((e) => console.log('   !! ' + e));
-  await ep.close();
-}
+// The provenance records are no longer rendered as page text (Chen, 2026-10-03: internal
+// version and folder names stay in build files). They remain published beside the data.
 
 // #/family/<gene> -- the descent group, walked to exhaustion. Built only after measuring that
 // components are drawable (largest 85, median 3); had the edges chained the genome together
@@ -1427,6 +1383,93 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   console.log(`\n### annotation:go-names  ${ok ? 'OK' : 'FAIL'}`);
   console.log(`   ${named}/${r.length} named: ${r.slice(0, 3).join(' | ')}`);
   await gp.close();
+}
+
+// Relationship categories and array status, as the dissertation names them (2026-10-03).
+// One gene per category must render its reader name on the gene page, the raw code must never
+// render, and every array status must render its reader name on its array page. Never
+// "HAP1 only" / "HAP2 only" for an array: one-sided arrays are expansions.
+{
+  const genes = {
+    '1:1': ['PtXaTreH.01G000200', '1:1'], 'N:N_TD': ['PtXaTreH.01G000300', 'TD-associated N:N'],
+    'N:N_nonTD': ['PtXaTreH.01G017400', 'Non-TD N:N'], 'CNV_TD': ['PtXaTreH.01G002200', 'TD-associated CNV'],
+    'CNV_nonTD': ['PtXaTreH.01G319400', 'Non-TD CNV'], 'hemizygous_strict_PAV': ['PtXaTreH.01G006100', 'Strict PAV'],
+    'hemizygous_TD_array': ['PtXaTreH.03G012100', 'TD-associated PAV'],
+    'hemizygous_nonPAV': ['PtXaTreH.01G000100', 'Non-PAV hemizygous'], none: ['PtXaTreH.01G006600', 'not classified'],
+  };
+  const arrays = {
+    HAP1_U00000: 'N:N (same copy number)', HAP1_U00001: 'CNV, arrays in both haplotypes',
+    HAP1_U00021: 'CNV, HAP1-specific expansion', HAP2_U02223: 'CNV, HAP2-specific expansion',
+    HAP1_U00361: 'PAV (whole array)',
+  };
+  const rp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const rerrs = [];
+  rp.on('pageerror', (e) => rerrs.push(e.message));
+  const bad = [];
+  for (const [code, [gid, name]] of Object.entries(genes)) {
+    await rp.goto(`${base}/#/gene/${gid}`, { waitUntil: 'networkidle' });
+    await rp.waitForTimeout(900);
+    const t = await rp.evaluate(() => {
+      const c = document.querySelector('[data-card="relationship"]');
+      return c ? c.innerText : '';
+    });
+    if (!t.includes(name)) bad.push(`${gid}: no "${name}"`);
+    if (code !== 'none' && code !== '1:1' && t.includes(code)) bad.push(`${gid}: raw code ${code} rendered`);
+  }
+  for (const [aid, name] of Object.entries(arrays)) {
+    await rp.goto(`${base}/#/array/${aid}`, { waitUntil: 'networkidle' });
+    await rp.waitForSelector('[data-arr-rel]', { timeout: 15000 }).catch(() => {});
+    const t = await rp.evaluate(() => document.getElementById('view').innerText);
+    if (!t.includes(name)) bad.push(`${aid}: no "${name}"`);
+    if (/HAP[12] only/.test(t)) bad.push(`${aid}: says "HAP1/2 only"`);
+  }
+  await rp.goto(`${base}/#/arrays`, { waitUntil: 'networkidle' });
+  await rp.waitForTimeout(1200);
+  const tab = await rp.evaluate(() => [...document.querySelectorAll('[data-arrays-rel-row]')]
+    .map((r) => [r.dataset.arraysRelRow, ...[...r.querySelectorAll('td')].slice(1).map((c) => c.textContent)]));
+  const want = { same_copy_number: ['1,229', '1,228'], HAP1_specific_expansion: ['285', '0'],
+    HAP2_specific_expansion: ['0', '259'], TD_associated_PAV: ['48', '47'], diff_copy_number_arrays_both: ['557', '550'] };
+  for (const [k, [h1, h2]] of Object.entries(want)) {
+    const row = tab.find((r) => r[0] === k);
+    if (!row || !row[1].startsWith(h1) || !row[2].startsWith(h2)) bad.push(`arrays table ${k}: ${row ? row.slice(1).join(' / ') : 'missing'}`);
+  }
+  const ok = !bad.length && !rerrs.length;
+  if (!ok) failures++;
+  console.log(`\n### relationship:reader-names  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${Object.keys(genes).length} genes, ${Object.keys(arrays).length} arrays, status table ${tab.length} rows`);
+  [...bad, ...rerrs].forEach((e) => console.log('   !! ' + e));
+  await rp.close();
+}
+
+// No internal version or project names in page text (Chen, 2026-10-03): provenance belongs in
+// the changelog, the citation file and build metadata. A planted positive control proves the
+// scan can see a hit before its silence is trusted.
+{
+  const INTERNAL = /(?:^|[^A-Za-z0-9])v(?:[5-9]|1[0-2])(?![0-9.])|\bmaster v?\d|\bmaster (?:duplication )?table\b|\bCJ\b|\bcj_[a-z]|\b\d{2,3}_[a-z][a-z0-9]*_[a-z0-9_]+|ms1-dup|ms2-lsg|\bMS[12]\b|\broute C\b|FACTS_/i;
+  const routes = ['/', '/browse', '/arrays', '/array/HAP1_U00120', '/pair/PtXaTreH.05G120200', '/map/hap1/Chr01',
+    '/karyotype', '/status', '/module/about', '/module/duplication', '/gene/PtXaTreH.08G070200',
+    '/gene/PtXaAlbH.05G122300', '/gene/PtXaTreH.10G046700', '/gene/PtXaTreH.01G006100', '/family/PtXaTreH.08G070200'];
+  const ip = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const hits = [];
+  for (const r of routes) {
+    await ip.goto(`${base}/#${r}`, { waitUntil: 'networkidle' });
+    await ip.waitForTimeout(1500);
+    const t = await ip.evaluate(() => {
+      document.querySelectorAll('details').forEach((d) => { d.open = true; });
+      document.querySelectorAll('[hidden]').forEach((d) => d.removeAttribute('hidden'));
+      return document.body.innerText;
+    });
+    const m = INTERNAL.exec(t);
+    if (m) hits.push(`${r}: "${t.slice(Math.max(0, m.index - 40), m.index + 40).replace(/\n/g, ' ')}"`);
+  }
+  const control = await ip.evaluate(() => { const p = document.createElement('p'); p.textContent = 'held on master v9'; document.body.append(p); return document.body.innerText; });
+  const sees = INTERNAL.test(control);
+  const ok = !hits.length && sees;
+  if (!ok) failures++;
+  console.log(`\n### wording:no-internal-names  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${routes.length} pages scanned; positive control detected: ${sees}`);
+  hits.forEach((h) => console.log('   !! ' + h));
+  await ip.close();
 }
 
 // One locus browser everywhere (core/locusbrowser.js): the gene, array and pair pages embed the

@@ -9,6 +9,47 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.17.0 - 2026-10-03 - The dissertation's final tables: duplication, alleles, PAV and relationship categories
+
+Chen's decision (2026-10-03): adopt the latest tables fully, in one release. Source: ms1-dup
+3a7a3cf (master v12, data/131_master_v12_20261002; array status, data/133_cj_array_status_20261003),
+read through git at that commit with sha256 pins in `sources/syntelog_categories.pin.json`.
+Nothing from those tables is vendored, because the per-gene table carries held columns.
+
+**Duplication** moves from v9 to the v10 letters and anchors (`dup_type_v10`, `has_S_anchor`,
+`has_A_anchor`): 1,054 genes change class. sWGD 14,152 / 14,188, aWGT 5,419 / 5,434 genes;
+tandem membership is unchanged (6,663 / 6,385).
+
+**Allele partners** are the v11/v12 syntelog partners: 5,654 genes change (5,038 gain a
+partner, 514 lose one, 102 change). Divergence for the 2,543 pairs no published table carried
+was computed on Sapelo2 with ms1-dup's own method (MAFFT + yn00; Slurm 48776839) into
+`sources/allele_ks_added.tsv.gz`; positive control 19 of 20 known pairs within 0.001.
+
+**Presence/absence** is the strict protein-level set, 528 HAP1 / 605 HAP2, equal to the
+dissertation's gene set. The DIAMOND candidate record is removed from every gene.
+
+**Relationship categories** (CJ Tsai's classification tree): every quality-filtered gene carries
+one of 1:1; TD-associated N:N; Non-TD N:N; TD-associated CNV; Non-TD CNV; Strict PAV;
+TD-associated PAV; Non-PAV hemizygous. Tandem arrays are one unit. Counts, HAP1 / HAP2:
+22,704 / 22,704; 2,999 / 2,999; 68 / 68; 3,897 / 3,673; 98 / 116; 528 / 605; 159 / 141;
+1,366 / 1,282; 318 / 235 quality-flagged genes are not classified. Counted tandem arrays carry a
+status: N:N (same copy number) 1,229 / 1,228; CNV, arrays in both haplotypes 557 / 550; CNV,
+HAP1-specific expansion 285; CNV, HAP2-specific expansion 259; CNV, array only on the side with
+fewer copies 0 / 1; PAV (whole array) 48 / 47.
+
+**Pages.** A "Relationship to the other haplotype" card on every gene page; status, matching
+arrays and the syntenic group on each array page (outlined in the locus figure); a status column,
+filter and per-haplotype table on the array list; a Browse filter by category. The WGD Browse
+filter now uses the primary call; the topology re-check moved to the exploratory group (it now
+differs from the primary call on 1,355 genes). No internal version, folder or project names
+render anywhere; the About page no longer renders the provenance records or the source-file
+table, which stay in the build files and the manifest.
+
+**Gates.** `check_facts.py` asserts the v10 duplication basis and all eight category counts plus
+strict PAV against the pinned category facts. `validate_data.py` gates strict PAV, category
+coverage, mutual alleles, divergence coverage and array-status coverage. `check.mjs` adds
+`relationship:reader-names` and `wording:no-internal-names` (with a planted positive control).
+
 ## 0.16.3 - 2026-10-02 - Genome-map LSG marks resynced; dissertation wording
 
 **Data.** 114 genes (66 HAP1, 48 HAP2) were still marked as lineage-specific in the genome

@@ -436,7 +436,7 @@ export async function karyotypeView() {
         + 'ancestral copy a gene descends from, not whether its duplicate survived, that '
         + 'is the whole-genome-duplication call on each gene page.'),
       el('p', { class: 'muted', style: 'font-size:12px;margin:10px 0 0' },
-        'Route C, exploratory. Ancestral chromosomes come from collinearity between the 717 '
+        'Exploratory. Ancestral chromosomes come from collinearity between the 717 '
         + 'genome and the ancestral karyotype genes of Wang et al. 2022, BMC Biology 20:216; '
         + 'copy names come from collinear blocks shared with P. trichocarpa v3.1. Painted '
         + 'positions are gene start and end coordinates of the v5.1 gene models.')));

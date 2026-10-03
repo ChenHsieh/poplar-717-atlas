@@ -10,6 +10,7 @@ import { el } from '../core/dom.js';
 import { getGene } from '../core/data.js';
 import { genesIn, matchingRegion } from '../core/locusfig.js';
 import { chromosomeBrowser, HAP_LABEL } from '../core/locusbrowser.js';
+import { categoryName } from '../core/relationship.js';
 
 function geneCard(g) {
   if (!g.chr || !/^Chr\d+$/.test(g.chr)) return null;
@@ -34,8 +35,9 @@ function geneCard(g) {
       const wide = await genesIn(g.hap, g.chr, g.start - 3e5, g.end + 3e5);
       const region = await matchingRegion(g.hap, wide, [g.id], 6, 2);
       if (region) { anchors = new Set(region.anchors.map(([x]) => x)); otherChr = region.chr; }
-      caption.textContent = `${HAP_LABEL[g.hap]} above, ${HAP_LABEL[other]} below. This gene has no allele on `
-        + `${otherShort}, a candidate hemizygous locus, with none drawn for it. `
+      const cat = categoryName(g.rel && g.rel.c);
+      caption.textContent = `${HAP_LABEL[g.hap]} above, ${HAP_LABEL[other]} below. This gene has no syntelog `
+        + `partner on ${otherShort}, so none is drawn for it${cat ? ` (relationship category: ${cat})` : ''}. `
         + (region ? `The lower haplotype is lined up by ${anchors.size} neighboring genes' alleles (dashed).`
           : 'No nearby gene has an allele either, so the lower haplotype is not lined up.');
     }

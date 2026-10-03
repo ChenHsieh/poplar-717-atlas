@@ -169,31 +169,30 @@ function wgdSection(g) {
       || 'neither';
     const row = el('div', { style: 'margin-top:10px' },
       el('h3', { style: 'font-size:13px;margin:0 0 6px;display:flex;align-items:center;gap:8px' },
-        'Route C re-adjudication',
+        'Topology re-check',
         el('span', { class: 'badge', style: 'font-size:11px;padding:0 6px' }, 'proposed, not adopted')));
     const ckv = el('dl', { class: 'kv' });
     ckv.append(
       el('dt', {}, 'Canonical call'),
       el('dd', {}, el('strong', {}, v9Says),
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
-          'master duplication table v9, rule 5c plus a dS conflict resolution. This is what '
-          + 'the rest of this page, and the manuscript, use.')),
+          'The primary call, from collinear anchor pairs with their dS conflicts resolved. This is what '
+          + 'the rest of this page, and the dissertation, use.')),
       el('dt', {}, 'Combined Ks + topology call'),
       el('dd', {}, el('strong', {}, ccSays),
         cc.r ? el('span', { class: 'muted' }, ' · this gene sits on a split-evidence pair') : null,
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
-          'Re-adjudicated against the ancestral eudicot karyotype (route C): the topology call '
+          'Re-checked against the ancestral eudicot karyotype: the topology call '
           + 'where grape and segment dS independently agree with it, the canonical call '
           + 'otherwise, split-evidence pairs set aside.')));
     row.append(ckv);
     if (d.ccd) {
       row.append(el('div', { class: 'warn' },
         el('strong', {}, 'The two calls disagree for this gene. '),
-        `Canonical says ${v9Says}; the route C re-adjudication says ${ccSays}. `
-        + 'They differ on 904 genes genome-wide: 567 gain sWGD and 173 lose it, 122 gain '
-        + 'aWGT and 485 lose it (net +394 sWGD, −363 aWGT). Neither is overridden here, and nothing downstream on this site '
-        + 'uses the route C call, it is shown so the disagreement is visible rather than '
-        + 'buried in a figure.'));
+        `The primary call says ${v9Says}; the topology re-check says ${ccSays}. `
+        + 'They differ on 1,355 genes genome-wide: the re-check adds sWGD to 1,160 and removes it from 5, '
+        + 'adds aWGT to 2 and removes it from 1,088. Nothing on this site uses the re-check except the '
+        + 'exploratory Browse filter; it is shown so the disagreement is visible rather than buried in a figure.'));
     }
     wrap.append(row);
   }
@@ -230,7 +229,7 @@ function wgdSection(g) {
         el('th', {}, ''))),
       el('tbody', {}, ...rows))));
     wrap.append(el('p', { class: 'muted', style: 'font-size:11.5px;margin:6px 0 0' },
-      'Every anchor pair from the MS1 WGD analysis is listed, unfiltered. aWGT was a '
+      'Every anchor pair from the whole-genome duplication analysis is listed, unfiltered. aWGT was a '
       + 'triplication, so a gene can have two aWGT partners; later sWGD duplication of '
       + 'both copies gives more. Expression r uses the same basis as the other duplicate tables; '
       + '"n/c" means not comparable, not uncorrelated.'));
@@ -339,8 +338,8 @@ function geneCard(g) {
 
   const card = el('div', { class: 'card', 'data-view-group': 'duplication',
     'data-view-key': 'details', 'data-view-label': 'Partners & evidence',
-    'data-view-tag': 'MS1 duplication set' },
-    el('h2', {}, 'Duplication', el('span', { class: 'tag' }, 'MS1 duplication set')));
+    'data-view-tag': 'duplication set' },
+    el('h2', {}, 'Duplication', el('span', { class: 'tag' }, 'duplication set')));
 
   if (g.dup) {
     const kv = el('dl', { class: 'kv' });
@@ -598,7 +597,7 @@ async function overview(man) {
     el('div', { class: 'card' },
       el('h2', {}, 'Duplication class', el('span', { class: 'tag' }, 'genome-wide')),
       el('p', { class: 'muted', style: 'font-size:12.5px;margin:0 0 12px' },
-        'From the MS1 duplication analysis, for all 63,960 genes. Codes concatenate: '
+        'From the duplication analysis, for all 63,960 genes. Codes concatenate: '
         + 'S sWGD, A aWGT, T tandem, D dispersed, C none detected.'),
       dupClassChart(man)),
     wgdOverview(man),
@@ -606,14 +605,14 @@ async function overview(man) {
       el('h2', {}, 'What is not here'),
       el('ul', { style: 'margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2);line-height:1.6' },
         el('li', {}, el('strong', {}, 'The dS panel and the duplication class are different things. '),
-          'The class (sWGD / aWGT / tandem / dispersed) is genome-wide, from the MS1 '
+          'The class (sWGD / aWGT / tandem / dispersed) is genome-wide, from the '
           + 'duplication analysis. The dS pairs below are the chapter\'s stratum-selected subset. '
           + 'Do not read a dS distribution from the latter as a property of the former.'),
         el('li', {}, el('strong', {}, 'No genome-wide dS landscape. '),
           `The ${fmt(d.n_pairs)} pairs here were chosen for the chapter's tier-2 analysis. A `
           + 'genome-wide all-by-all paralog scan is a separate computation.'),
         el('li', {}, el('strong', {}, 'Tandem calls come from the curated union set. '),
-          'ms1-dup supersedes its own v8 tandem tables with a hand-curated union of 13,663 '
+          'An earlier automatic tandem call is superseded by a hand-curated union of 13,663 '
           + 'genes in 4,371 arrays, carrying array identity, age bin and the curator\'s '
           + 'verdict. Genes GENESPACE places in an array but which are absent from that set '
           + 'are shown without an array id rather than given a synthetic one.'))),

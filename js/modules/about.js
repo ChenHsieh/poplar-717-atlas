@@ -1,22 +1,6 @@
 // Provenance page. Renders what the build actually recorded -- every source file with its
 // sha256 and mtime -- rather than a hand-maintained prose list that drifts from the data.
 import { el, fmt, pct } from '../core/dom.js';
-import { evidenceCard } from '../core/evidence.js';
-
-const SHORT = (p) => p.replace('/scratch/ch29576/', '').replace('/work/cjtlab/', 'work:');
-
-function sourceTable(sources) {
-  const rows = Object.entries(sources).sort().map(([path, s]) => el('tr', {},
-    el('td', { class: 'mono', style: 'font-size:11.5px' }, SHORT(path)),
-    el('td', { class: 'num', style: 'font-size:11.5px' }, (s.bytes / 1e6).toFixed(1) + ' MB'),
-    el('td', { class: 'mono muted', style: 'font-size:11px' }, s.sha256),
-    el('td', { class: 'muted', style: 'font-size:11px' }, (s.mtime || '').slice(0, 10)),
-  ));
-  return el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
-    el('thead', {}, el('tr', {}, el('th', {}, 'Source file'), el('th', { class: 'num' }, 'Size'),
-      el('th', {}, 'sha256 (16)'), el('th', {}, 'Modified'))),
-    el('tbody', {}, ...rows)));
-}
 
 function overview(man) {
   const a = man.annotation || {};
@@ -114,23 +98,20 @@ function overview(man) {
         el('li', {}, el('strong', {}, 'An independent τ was audited out, not shipped. '),
           'It is computed on the n=202 expression panel, which the source repo records as '
           + 'superseded on 2026-08-24.'),
-        // No PAV number here on purpose: the shards serve ms1-dup's diamond_pav call, which that
-        // repo marks not-for-quoting, and its quotable post-QC figure is not in this build.
-        // Stating either would contradict the page's own data or quote the wrong column.
-        el('li', {}, el('strong', {}, 'Presence/absence counts are for browsing, not quoting. '),
-          'The layer serves ms1-dup’s DIAMOND-based hemizygosity call; the orthogroup-based '
-          + 'call that repo tells readers not to use was never shipped. ms1-dup’s quotable '
-          + 'figure is now a stricter post-QC call that this build does not carry.'),
+        el('li', {}, el('strong', {}, 'Presence/absence is the strict, protein-level set. '),
+          'A gene is Strict PAV when it has no syntelog on the other haplotype and no protein-level '
+          + 'match to it there: 528 HAP1 and 605 HAP2 genes. Genes without a syntelog whose sequence '
+          + 'is present on the other haplotype are Non-PAV hemizygous, and tandem arrays with no '
+          + 'syntelog for any member are TD-associated PAV.'),
         el('li', {}, el('strong', {}, 'Three layers are derived here, not imported. '),
           'Exon/intron counts and TE distance are computed from the v5.1 GFF3 and repeatmasked '
           + 'annotation that ship with the genome, and genomic order from the atlas\'s own '
           + 'coordinates, because the tables offering them sat in case-study, calibration and '
           + '"structural exploration" folders with no canonical status.'),
-        el('li', {}, el('strong', {}, 'Duplication calls come from a mirrored repo. '),
-          'The per-gene duplication class is ms1-dup’s master duplication table v9. That '
-          + 'repo has since published v10, and the atlas is deliberately held on v9 while v10 '
-          + 'is reviewed. The tandem component is taken from its curated union set. Codes '
-          + 'follow its documented legend.'),
+        el('li', {}, el('strong', {}, 'Duplication and relationship calls match the dissertation. '),
+          'The per-gene duplication class, the allele (syntelog) partners, strict PAV and the '
+          + 'relationship categories are the same tables the dissertation uses. The tandem '
+          + 'component is the curated union set.'),
         // Read from the manifest: the hand-typed "77 leaf" was the pooled count from before the
         // 2026-09-05 leaf regrouping (manifest.corrections), and nothing checked it.
         el('li', {}, el('strong', {}, 'Thin tissue baselines. '),
@@ -141,15 +122,18 @@ function overview(man) {
 
     el('div', { class: 'card' },
       el('h2', {}, 'Sources', el('span', { class: 'tag' }, 'checksummed at build')),
-      sourceTable(man.sources || {}),
-      el('p', { class: 'muted', style: 'margin:12px 0 0;font-size:12px' },
-        'Source files live on Sapelo2 and are not in this repository, so the build is not '
-        + 'reproducible from a clone alone, the committed data/ directory is the artifact.'),
+      el('p', { style: 'margin:0;font-size:13.5px' },
+        `${fmt(Object.keys(man.sources || {}).length)} source files went into this build. Each is recorded `
+        + 'with its size, sha256 and date in the ',
+        el('a', { href: 'data/meta/manifest.json' }, 'build manifest'),
+        ', and each data layer ships a provenance record in the build files.'),
+      el('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' },
+        'Source files live on the UGA Sapelo2 cluster and are not in this repository, so the build is not '
+        + 'reproducible from a clone alone; the committed data directory is the artifact.'),
       // The page claims the data is validated; this is where the claim can be checked.
       el('p', { style: 'margin:10px 0 0;font-size:13px' },
         el('a', { href: '#/status' }, 'See every integrity gate this build ran, and its verdict →'))),
 
-    evidenceCard(),
 
     el('div', { class: 'card' },
       el('h2', {}, 'Citation & licence'),

@@ -94,7 +94,7 @@ export const CARD_EVIDENCE = {
   location: [1, 'from the genome'],
   annotation: [3, 'by homology'],               // Function: Phytozome descriptions, GO, Pfam
   allele: [1, 'from the genome'],               // the syntelog map between the two haplotypes
-  pav: [3, 'by homology'],                      // orthogroup structure + a search of the proteome
+  relationship: [1, 'from the genome'],         // syntenic groups across the two haplotypes
   selection: [1, 'from the genome'],
   'panel-presence': [3, 'by homology'],         // OrthoFinder orthogroup membership
   duplication: [1, 'from the genome'],          // also the merged Duplication card's stamp

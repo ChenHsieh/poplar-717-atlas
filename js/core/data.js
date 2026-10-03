@@ -408,8 +408,8 @@ export function facetRow(facets, i) {
     top: v.top[o.top] ?? null,
     allele: !!o.allele,
     at: !!o.at,
-    wgd: o.wgd | 0,       // route C combined call
-    wgd9: o.wgd9 | 0,     // canonical master v9
+    wgd: o.wgd | 0,       // the Ks + topology re-check (exploratory)
+    wgd9: o.wgd9 | 0,     // the primary call
     ccd: !!o.ccd,         // the two WGD calls disagree for this gene
     tandem: !!o.tandem,
     npres: o.npres,   // 0 means OrthoFinder assigned no orthogroup at all
@@ -423,6 +423,8 @@ export function facetRow(facets, i) {
     // ancestral karyotype (exploratory): chromosome*100 + gamma copy*10 + salicoid copy, a 0 digit
     // where no copy was assigned, -1 when not placed (or when an older index lacks the column)
     aek: o.aek ?? -1,
+    // relationship category code (core/relationship.js), null for quality-flagged gene models
+    rel: o.rel != null && o.rel >= 0 ? (v.rel || [])[o.rel] ?? null : null,
     // decoded from the file's own vocab rather than a hardcoded order, so the bit meaning
     // can never drift from what build_facets.py wrote
     xin: (v.xin || []).filter((_t, k) => (o.xin >> k) & 1),
@@ -446,6 +448,8 @@ export function loadChromatinProfile(potriId) {
 
 /** Members of a tandem array, from the curated union set. */
 export const loadArrays = () => fetchJSON('data/index/arrays.json');
+/** Per counted tandem array: how it relates to the other haplotype (core/relationship.js). */
+export const loadArrayStatus = () => fetchJSON('data/index/array_status.json');
 
 let _arrayOfGene = null;
 /** gene id -> curated union array id, reversed from arrays.json once per page load. */
