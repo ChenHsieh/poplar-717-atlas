@@ -1,7 +1,7 @@
 {
- "data_version": "0.16.2",
- "n_checks": 92,
- "n_failed": 0,
+ "data_version": "0.17.0",
+ "n_checks": 98,
+ "n_failed": 1,
  "checks": [
   {
    "name": "manifest gene count matches shards",
@@ -64,14 +64,39 @@
    "detail": "{'hap1': 6663, 'hap2': 6385}"
   },
   {
-   "name": "PAV confirmed counts match the canonical tier1_floor call",
+   "name": "strict PAV counts are the dissertation's 528 / 605",
    "ok": true,
-   "detail": "{'hap1': 805, 'hap2': 859}"
+   "detail": "{'hap1': 528, 'hap2': 605}"
   },
   {
-   "name": "every PAV 'not confirmed' target names a real gene",
+   "name": "no gene still carries the superseded DIAMOND PAV record",
    "ok": true,
    "detail": ""
+  },
+  {
+   "name": "every gene has a relationship record; null category exactly on quality-flagged genes",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "strict PAV flag equals the strict PAV category",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "allele partners are mutual and on the other haplotype",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "every allele pair carries a divergence value",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "array status covers exactly the counted tandem arrays",
+   "ok": true,
+   "detail": "status 4204 vs counted 4204"
   },
   {
    "name": "no qc record carries a flag C5 removed (rr, wgd)",
@@ -100,6 +125,11 @@
   },
   {
    "name": "every genome-map index gene is a real atlas gene",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "genome-map index LSG mark equals the gene record's pool call",
    "ok": true,
    "detail": ""
   },
@@ -191,7 +221,7 @@
   {
    "name": "dup.ccd is set exactly where the two WGD calls differ",
    "ok": true,
-   "detail": "904 genes disagree"
+   "detail": "1,355 genes disagree"
   },
   {
    "name": "the combined call still reproduces its published totals",
@@ -251,10 +281,10 @@
   {
    "name": "no embargoed LSG candidate label in any published file",
    "ok": true,
-   "detail": "1351 text files"
+   "detail": "1355 text files"
   },
   {
-   "name": "ancestral karyotype counts match the route C coverage, per haplotype",
+   "name": "ancestral karyotype counts match the placement coverage, per haplotype",
    "ok": true,
    "detail": "hap1: {'placed': 31912, 'copy_assigned': 31496, 'inside_aek_block': 26582, 'conflict_no_copy': 410, 'direct_anchors': 14727}; hap2: {'placed': 31696, 'copy_assigned': 31217, 'inside_aek_block': 26731, 'conflict_no_copy': 479, 'direct_anchors': 14747}"
   },
@@ -395,13 +425,13 @@
   },
   {
    "name": "the validator covers every facet column",
-   "ok": true,
-   "detail": "validator reproduces 18 of 18 columns -- add the new one here"
+   "ok": false,
+   "detail": "validator reproduces 18 of 19 columns -- add the new one here"
   },
   {
    "name": "facet values match the gene shards (all rows, all columns)",
    "ok": true,
-   "detail": "63960 rows x 18 cols"
+   "detail": "63960 rows x 19 cols"
   },
   {
    "name": "every gene with an ESMFold model has a 3D model, and no other gene does",

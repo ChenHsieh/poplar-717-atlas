@@ -913,6 +913,8 @@ def main():
                 (ms.get("n") if ms.get("n") is not None else -1),
                 (lambda k: k["c"] * 100 + k.get("g", 0) * 10 + k.get("s", 0) if k.get("c") else -1)(
                     r.get("aek") or {}),
+                # relationship category, index into vocab.rel; -1 for quality-flagged gene models
+                vi("rel", (r.get("rel") or {}).get("c")) if (r.get("rel") or {}).get("c") else -1,
             ]
 
         # zip() truncates to the shorter list, so a column added to build_facets.py without
