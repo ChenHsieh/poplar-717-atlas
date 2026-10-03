@@ -324,13 +324,11 @@ await check('gene-paralog', '#/gene/PtXaTreH.01G330600',
 // A curated tandem-array member: array identity, size, age bin and member links.
 await check('gene-tandem-array', '#/gene/PtXaTreH.01G330700',
   { expect: ['Tandem array', 'Array members', 'neighbors on the chromosome'], wait: 1400  });
-// PAV (TODO 21): a DIAMOND-confirmed hemizygous gene, and a "not confirmed" one whose
-// contradicting hit is named -- so a wrong-branch bug (the confirmed/not-confirmed text
-// swapped) can't hide behind whichever branch happens to render.
-await check('gene-pav-confirmed', '#/gene/PtXaTreH.12G001400',
-  { expect: ['Presence', 'HAP1-only', 'confirmed', 'DIAMOND PAV'], wait: 900 });
-await check('gene-pav-not-confirmed', '#/gene/PtXaTreH.T006000',
-  { expect: ['Presence', 'not confirmed', 'detection gap', 'PtXaAlbH.14G167700'], wait: 900 });
+// PAV is the strict, protein-level set (2026-10-03); the superseded DIAMOND candidate card must
+// be gone. Per-category rendering is driven in relationship:reader-names below.
+await check('gene-strict-pav', '#/gene/PtXaTreH.01G006100',
+  { expect: ['Relationship to the other haplotype', 'Strict PAV', 'no protein-level match'],
+    forbid: ['DIAMOND PAV', 'not confirmed', 'candidate, DIAMOND-checked'], wait: 900 });
 // LSG evidence-quality (TODO 23): a flagged pool gene and a clean one, and -- because the
 // forbidden fields are a real publication risk -- assert neither ever appears in the
 // rendered page, not just that the two intended checks pass.
@@ -394,8 +392,8 @@ await check('module-protein-gradient', '#/module/protein',
 await check('module-about-numbers', '#/module/about',
   { expect: ['no rank for 27 HAP1 and 18 HAP2 genes in the current call',
              '55 leaf (plus 11 young-leaf and 11 old-leaf)',
-             'ComBat-seq', 'held on v9', 'for browsing, not quoting'],
-    forbid: ['no rank for 50 genes', '77 leaf', 'is not in the mirror', 'v6 master'] });
+             'ComBat-seq', 'the strict, protein-level set', '528 HAP1 and 605 HAP2'],
+    forbid: ['no rank for 50 genes', '77 leaf', 'is not in the mirror', 'v6 master', 'held on v9', 'for browsing, not quoting'] });
 {
   const fp = await browser.newPage();
   const ferrs = [];
@@ -776,9 +774,9 @@ await check('gene-array-history', '#/gene/PtXaTreH.04G044000',
 // letters are still what the page leads with, that the badge says it is not adopted, and that
 // a disagreeing gene says so in words. PtXaTreH.09G077400: canonical gamma, route C salicoid.
 await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
-  { expect: ['route c re-adjudication', 'proposed, not adopted', 'canonical call',
+  { expect: ['topology re-check', 'proposed, not adopted', 'canonical call',
              'combined ks + topology call', 'the two calls disagree for this gene',
-             'master duplication table v9', 'retained duplicate'], wait: 1800 });
+             'the primary call', 'retained duplicate'], wait: 1800 });
 // A gene where the two agree must NOT show the disagreement warning.
 {
   const ap = await browser.newPage({ viewport: { width: 1180, height: 1000 } });
@@ -787,7 +785,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   await ap.goto(base + '/#/gene/PtXaTreH.01G176200', { waitUntil: 'networkidle' });
   await ap.waitForTimeout(1600);
   const txt = (await viewText(ap)).toLowerCase();
-  const ok = !aerrs.length && txt.includes('route c re-adjudication')
+  const ok = !aerrs.length && txt.includes('topology re-check')
     && !txt.includes('the two calls disagree for this gene');
   if (!ok) failures++;
   console.log(`\n### routec:agreeing-gene-has-no-warning  ${ok ? 'OK' : 'FAIL'}`);
@@ -808,15 +806,16 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   bp.on('console', (m) => { if (m.type() === 'error') berrs.push('console: ' + m.text()); });
   const want = [
     ['tandem=yes', 13048, 'curated union tandem set'],
-    // route C is the default WGD call, so these must equal the CURRENT class figures
-    ['hap=hap1&tandem=yes&wgd=both', 229, 'HAP1 tandem + both WGDs = route C Venn S n A n T'],
-    ['tandem=yes&wgd=both', 462, 'tandem + both WGDs, both haplotypes (route C)'],
-    ['tandem=yes&wgd=salicoid', 1876, 'tandem AND salicoid (route C)'],
-    ['tandem=yes&wgd=gamma', 776, 'tandem AND gamma (route C)'],
-    ['wgd=neither&tandem=no', 21074, 'neither WGD nor curated tandem (route C)'],
-    // the canonical v9 call stays selectable and must still reproduce the v8/v9 numbers
-    ['hap=hap1&tandem=yes&wgd9=both', 191, 'HAP1 tandem + both WGDs, canonical v9'],
-    ['tandem=yes&wgd9=both', 385, 'tandem + both WGDs, both haplotypes, canonical v9'],
+    // the primary call (wgd9, the default WGD filter since 2026-10-03): letter-code totals of
+    // the dissertation's table, e.g. tandem + both WGDs = the ADST code, 379
+    ['hap=hap1&tandem=yes&wgd9=both', 188, 'HAP1 tandem + both WGDs, primary call'],
+    ['tandem=yes&wgd9=both', 379, 'tandem + both WGDs (= letter code ADST), primary call'],
+    ['tandem=yes&wgd9=salicoid', 1581, 'tandem AND sWGD, primary call'],
+    ['tandem=yes&wgd9=gamma', 1015, 'tandem AND aWGT, primary call'],
+    ['wgd9=neither&tandem=no', 20959, 'neither WGD nor curated tandem, primary call'],
+    // the exploratory topology re-check stays selectable with its own numbers
+    ['hap=hap1&tandem=yes&wgd=both', 229, 'HAP1 tandem + both WGDs, re-check'],
+    ['tandem=yes&wgd=both', 462, 'tandem + both WGDs, re-check'],
   ];
   const got = [];
   for (const [q, n] of want) {
@@ -935,8 +934,8 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   // follow three of them and check the destination agrees
   const checks = [
     ['#/browse?tandem=yes&top=xylem&tau_min=0.8', 283],
-    ['#/browse?wgd_disputed=yes', 904],
-    ['#/browse?allele=no', 12098],
+    ['#/browse?wgd_disputed=yes', 1355],
+    ['#/browse?rel=hemizygous_strict_PAV', 1133],
   ];
   const got = [];
   for (const [href, want] of checks) {
@@ -950,8 +949,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
   const ok = !qerrs.length && found > 0
     && counts.length === 8                                   // every question got a live count
     && links.length === 8
-    && txt.includes('904')                                   // the real disagreement count
-    && !txt.includes('7,574')                                // never the wrong one
+    && txt.includes('1,355')                                 // the real disagreement count
     && checks.every(([, want], i) => got[i] === want);        // home count == destination count
   if (!ok) failures++;
   console.log(`\n### home:questions-round-trip  ${ok ? 'OK' : 'FAIL'}`);
@@ -1477,14 +1475,14 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
 // page's genes, and the links it draws are classified -- the focus genes' own alleles are
 // counted separately from the alignment anchors and from every other allele pair in view.
 // HAP1_U00120: all 3 members have an allele, 2 of them in HAP2_U02345, which must be named as
-// the matching array. HAP1_U00012: no member has an allele, so every emphasised link is an
+// the matching array. HAP1_U00361 (PAV, whole array): no member has an allele, so every emphasised link is an
 // anchor and the page must say nothing on HAP2 is this array's allele.
 {
   const cases = [
     ['gene', '#/gene/PtXaTreH.05G120200', '[data-card="mirror"]', (d) => +d.linksFocus === 1],
     ['pair', '#/pair/PtXaTreH.05G120200', '[data-pair-locus]', (d) => +d.linksFocus === 1],
     ['array-linked', '#/array/HAP1_U00120', '[data-arr-locus]', (d) => +d.linksFocus === 3],
-    ['array-anchored', '#/array/HAP1_U00012', '[data-arr-locus]', (d) => +d.linksFocus === 0 && +d.linksAnchor > 0 && +d.linksAnchor <= 4],
+    ['array-anchored', '#/array/HAP1_U00361', '[data-arr-locus]', (d) => +d.linksFocus === 0 && +d.linksAnchor > 0 && +d.linksAnchor <= 4],
   ];
   for (const [label, route, host, linksOk] of cases) {
     const lp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
@@ -1509,7 +1507,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
     }, host);
     let extra = true;
     if (label === 'array-linked') extra = r.matching && r.matching[0] === 'HAP2_U02345';
-    if (label === 'array-anchored') extra = /No member has an allele/.test(r.linkedText || '') && /not linked to this one/.test(r.linkedText || '');
+    if (label === 'array-anchored') extra = /PAV \(whole array\)/.test(r.linkedText || '') && /No member has its own allele/.test(r.linkedText || '');
     const ok = !r.missing && r.colours > 5 && linksOk(r.d || {}) && extra && !lerrs.length;
     if (!ok) failures++;
     console.log(`\n### locus-browser:${label}  ${ok ? 'OK' : 'FAIL'}`);
@@ -2487,7 +2485,7 @@ for (const scheme of ['light', 'dark']) {
   const hasLink = await link.count() > 0;
   if (hasLink) { await link.scrollIntoViewIfNeeded(); await link.click(); }
   await ap.waitForSelector('[data-arr-page]', { timeout: 15000 }).catch(() => aerrs.push('array page did not render'));
-  await ap.waitForSelector('[data-arr-locus] [data-locus-browser][data-tiles="ready"]', { timeout: 15000 }).catch(() => aerrs.push('no locus browser'));
+  await ap.waitForSelector('[data-arr-locus] [data-locus-browser][data-tiles="ready"][data-genes-in-view]', { timeout: 15000 }).catch(() => aerrs.push('no locus browser'));
   const got = await ap.evaluate(() => ({
     hash: location.hash,
     n: document.querySelectorAll('[data-arr-member]').length,

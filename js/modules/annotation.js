@@ -123,15 +123,27 @@ function annotationCard(g) {
   return card;
 }
 
+/** Where a copy search covers this gene, point to the panel that draws its copies on both
+ *  haplotypes (with or without an allele: an array's copies are the question either way). */
+function copiesLink(g, man) {
+  const cp = man && man.copies && man.copies.genes && man.copies.genes[g.id];
+  const loc = cp && man.copies.loci[cp];
+  if (!loc) return null;
+  const unann = Object.values(loc.summary).some((s) => s.unannotated > 0);
+  return el('p', { style: 'margin:8px 0 0;font-size:13px' },
+    `Its copies on both haplotypes${unann ? ', including pieces the annotation does not call,' : ''} `
+    + 'are drawn in the ',
+    el('a', { href: `#/copies/${cp}`, onclick: (ev) => {
+      const c = document.querySelector('[data-card="copies"]');
+      if (c) { ev.preventDefault(); c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    } }, `${loc.name} panel`), ' in the Duplication band.');
+}
+
 function alleleCard(g, man) {
   const a = g.allele;
   const other = g.hap === 'hap1' ? 'HAP2' : 'HAP1';
   if (!a) {
-    // No allele is exactly where a reader looking for the other haplotype stops. If a copy
-    // search covers this gene, say where its copies on both haplotypes are drawn.
-    const cp = man && man.copies && man.copies.genes && man.copies.genes[g.id];
-    const loc = cp && man.copies.loci[cp];
-    const unann = loc && Object.values(loc.summary).some((s) => s.unannotated > 0);
+    // No allele is exactly where a reader looking for the other haplotype stops.
     // Filled after first paint: the alleles this gene reaches through its tandem array.
     const viaArray = el('div', { 'data-allele-via-array': '' });
     if (g.dup && g.dup.td) {
@@ -169,13 +181,7 @@ function alleleCard(g, man) {
         `No syntelog partner on ${other}. That is not by itself evidence of absence: the card `
         + `"Relationship to the other haplotype" says what ${other} carries at this locus.`),
       viaArray,
-      loc ? el('p', { style: 'margin:8px 0 0;font-size:13px' },
-        `Its copies on both haplotypes${unann ? ', including pieces the annotation does not call,' : ''} `
-        + 'are drawn in the ',
-        el('a', { href: `#/copies/${cp}`, onclick: (ev) => {
-          const c = document.querySelector('[data-card="copies"]');
-          if (c) { ev.preventDefault(); c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-        } }, `${loc.name} panel`), ' in the Duplication band.') : null,
+      copiesLink(g, man),
     );
   }
   const kv = el('dl', { class: 'kv' });
@@ -205,13 +211,9 @@ function alleleCard(g, man) {
   return el('div', { class: 'card', 'data-card': 'allele' },
     el('h2', {}, 'Allele', el('span', { class: 'tag' }, 'syntelog')), kv,
     el('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' },
-      'Yang–Nielsen estimates over the HAP1↔HAP2 syntelog map (25,931 pairs), computed '
-      + 'independently of the GENESPACE run shown above. A second, independent pipeline was '
-      + 'compared against these in September 2026: it picks the same partner gene for 100% of '
-      + 'the 50,656 genes both cover, and its Nei–Gojobori ω tracks the ω here at r = 0.94. '
-      + 'Its own Yang–Nielsen ω tracks it at only r = 0.08, and fails on a third of the pairs '
-      + '– at a median Ks near 0.03 that estimator is unstable gene by gene, so the '
-      + 'disagreement is on that side, not this one.'));
+      'Yang–Nielsen (yn00) estimates over the HAP1↔HAP2 syntelog map (28,193 pairs). At a median '
+      + 'Ks near 0.03 the per-gene ω is noisy; read it as a rough indication, not a test of selection.'),
+    copiesLink(g, man));
 }
 
 // Ka/Ks against Populus trichocarpa. New in v0.6 -- the allele card above compares two

@@ -83,7 +83,7 @@ function overview(man) {
           'P. alba, a parent species of this hybrid, is deliberately not in the synteny panel. '
           + '41% of genes called private have a detectable P. alba homolog, against 98.8% of core '
           + 'genes; the call is sound but panel-conditioned.'),
-        el('li', {}, el('strong', {}, 'ω is undefined for 716 syntelog pairs '),
+        el('li', {}, el('strong', {}, 'ω is undefined for 785 syntelog pairs '),
           'whose Ks is 0. The aligner reports 99.0 there; the atlas shows "identical at '
           + 'synonymous sites" instead, never a selection claim.'),
         el('li', {}, el('strong', {}, 'Expression is raw TPM by default. '),

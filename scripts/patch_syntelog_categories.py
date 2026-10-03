@@ -157,6 +157,9 @@ def main():
                               "ka": None if ka is None else round(ka, 4),
                               # yn00 writes omega 99 when dS is ~0 ("cannot estimate"); never ship it
                               "w": None if w is None or w >= 99 else round(w, 4)}
+                        if al["ks"] == 0:
+                            al["ks0"] = True     # identical at synonymous sites; the card says so
+                            al["w"] = None
                     else:
                         al = None
                     if (rec.get("allele") or {}).get("id") != pid:

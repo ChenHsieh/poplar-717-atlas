@@ -1,7 +1,7 @@
 {
  "data_version": "0.17.0",
  "n_checks": 98,
- "n_failed": 1,
+ "n_failed": 0,
  "checks": [
   {
    "name": "manifest gene count matches shards",
@@ -425,8 +425,8 @@
   },
   {
    "name": "the validator covers every facet column",
-   "ok": false,
-   "detail": "validator reproduces 18 of 19 columns -- add the new one here"
+   "ok": true,
+   "detail": "validator reproduces 19 of 19 columns -- add the new one here"
   },
   {
    "name": "facet values match the gene shards (all rows, all columns)",
