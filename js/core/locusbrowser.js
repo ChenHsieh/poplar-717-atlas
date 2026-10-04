@@ -489,7 +489,7 @@ export async function chromosomeBrowser(opts) {
       row('Duplication', ...DUP.map((d) => item(d.tok, d.label, nums((g) => dupOf(g.c) === d)))),
       row('Synteny', ...SYN.map((c) => item(c.tok, c.label,
         tilesReady ? `${cnt(A, (g) => synA(g) === c.k)} / ${cnt(B, (g) => synB(g) === c.k)}` : '…'))),
-      row('τ', el('span', { class: 'map-li' }, 'bar height = tissue specificity, 0 to 1; with a value ',
+      row('τ', el('span', { class: 'map-li' }, 'bar height = τ (Yanai index), 0 to 1; with a value ',
         el('span', { class: 'mono' }, nums((g) => g.t != null)))),
       row('LSG pool', item('accent', 'in the lineage-specific pool (phylostratum ≥ 18)', nums((g) => g.l))),
       row('Alleles', el('span', { class: 'map-li' }, 'curves join a gene to its allele on the other haplotype; drawn ',
@@ -596,7 +596,7 @@ export async function chromosomeBrowser(opts) {
       const d = dupOf(g.c), sy = SYN.find((x) => x.k === t.y);
       readout.textContent = `${g.g} · ${chr}:${g.s.toLocaleString('en-US')}–${g.e.toLocaleString('en-US')} `
         + `(${g.d < 0 ? '−' : '+'}) · ${d ? d.label : '–'} · ${sy ? sy.label : 'synteny –'} · `
-        + `τ ${g.t == null ? '–' : g.t.toFixed(2)}${g.p ? ' · peaks in ' + g.p : ''}`
+        + `τ ${g.t == null ? '–' : g.t.toFixed(2)}${g.p ? ' · highest in ' + g.p : ''}`
         + `${g.l ? ' · LSG pool' : ''}${t.al ? ' · allele ' + t.al : ''}`;
     } else {
       readout.textContent = p.x > GUTTER

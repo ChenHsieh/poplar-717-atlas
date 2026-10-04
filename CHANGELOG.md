@@ -9,6 +9,26 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.17.1 - 2026-10-03 - Hedged wording, and the home page's allele count
+
+**Wording (site only).** A review of the reader-facing text for claims stretched past their
+evidence. Borrowed evidence is labelled as borrowed: chromatin marks are from the P. trichocarpa
+ortholog, peptide matches from public Populus datasets that are not the 717 clone ("Peptide
+match", not "Peptide-detected"). PS19 genes carry a sampling caveat (the searched panel lacks
+P. alba). Promoter positions are from the annotated gene start, not a mapped transcription
+start; a TATA-box motif outside the core-promoter window gets no amber line. Inferred calls
+(whole-genome duplication, ancestral karyotype) say they are inferences, the karyotype label is
+positional ("collinear with"), and the topology re-check is called proposed, not adopted. The
+glance strip calls an array-level allele an array-level link, not a 1:1 call. The synteny card
+drops an unsourced "41%". Internal project, host and path names are kept out of page text, and
+`wording:no-internal-names` now also scans for them.
+
+**Data, one field.** `manifest.annotation.n_allele` still held the previous allele map's count
+(51,862 genes, shown on the home page as 25,931 pairs) after 0.17.0 moved the allele partners;
+the gene records carry 56,386 genes with a partner (28,193 pairs). Corrected, and
+`check_aggregates.py` now recomputes it from the shards (it flagged the stale value before the
+fix); `patch_syntelog_categories.py` writes it. No other data value changed.
+
 ## 0.17.0 - 2026-10-03 - The dissertation's final tables: duplication, alleles, PAV and relationship categories
 
 Chen's decision (2026-10-03): adopt the latest tables fully, in one release. Source: ms1-dup

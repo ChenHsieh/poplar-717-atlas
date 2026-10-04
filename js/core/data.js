@@ -468,8 +468,10 @@ async function arrayIndex() {
  *  This is CJ's tandem rule (v11 `td_array_associated`, 2026-09-23): a tandem gene is not
  *  hemizygous when another member of its array has a syntelog. Returns null when the gene is
  *  in no array. Otherwise { arrayId, members: [{id, allele}], pairedArrays: [ids on the other
- *  haplotype that hold those alleles] }. Every value is read off the member records; nothing
- *  is inferred. */
+ *  haplotype that hold those alleles], counted } -- `counted` is false for a detected array
+ *  the pseudogene screen removed entirely (no member carries dup.td), so a caller can say so
+ *  instead of treating it like a counted array. Every value is read off the member records;
+ *  nothing is inferred. The partners are the 25,931-pair allele map's, not the newer map's. */
 export async function arrayAlleles(gene) {
   const { arrays, m } = await arrayIndex();
   const arrayId = m.get(gene.id);
@@ -477,7 +479,8 @@ export async function arrayAlleles(gene) {
   const recs = await Promise.all(arrays[arrayId].map((id) => (id === gene.id ? gene : getGene(id))));
   const members = recs.filter(Boolean).map((r) => ({ id: r.id, allele: r.allele ? r.allele.id : null }));
   const paired = [...new Set(members.filter((x) => x.allele).map((x) => m.get(x.allele)).filter(Boolean))].sort();
-  return { arrayId, members, pairedArrays: paired };
+  const counted = recs.some((r) => r && r.dup && r.dup.td);
+  return { arrayId, members, pairedArrays: paired, counted };
 }
 
 // Locus layer. A tile is one megabase of one chromosome: gene positions, strand,

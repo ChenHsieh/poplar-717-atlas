@@ -14,7 +14,7 @@ const PAIR_SRC = { founder: 'same gene family', synteny: 'syntenic paralog' };
 // The two whole-genome events every Populus gene can carry, oldest last. Codes match g.dup.
 const WGD_EVENT = {
   S: { name: 'sWGD', when: 'whole-genome duplication shared by Populus and Salix, about 60 million years ago; median anchor dS in this genome 0.27' },
-  A: { name: 'aWGT', when: 'whole-genome triplication shared by all core eudicots, about 120 million years ago; median anchor dS in this genome 1.90' },
+  A: { name: 'aWGT', when: 'whole-genome triplication shared by all core eudicots, about 120 million years ago; median anchor dS in this genome 1.90, a range where synonymous sites are saturated, so read it as "very old" rather than as a clock' },
 };
 
 const STRATUM = { 12: 'Pentapetalae', 16: 'Salicaceae', 17: 'Saliceae', 18: 'Populus', 19: 'hybrid' };
@@ -129,9 +129,9 @@ function arrayHistoryLine(g, memberIds) {
     });
     holder.replaceChildren(...parts,
       el('div', { class: 'muted', style: 'font-size:11.5px;margin-top:5px' },
-        'An event listed here is a property of the LOCUS. The duplication class above is a '
-        + 'property of this gene, and the two can differ: the array can have gone through a '
-        + 'whole-genome duplication while this particular copy retained no partner for it.'
+        'An event listed here means an array member retains a partner from it. The duplication '
+        + 'class above is a property of this gene alone, so the two can differ: another member can '
+        + 'retain a whole-genome duplication partner while this copy retains none.'
         + (unresolved ? ` ${unresolved} member could not be read.` : '')));
   })();
   return holder;
@@ -176,8 +176,8 @@ function wgdSection(g) {
       el('dt', {}, 'Canonical call'),
       el('dd', {}, el('strong', {}, v9Says),
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
-          'The primary call, from collinear anchor pairs with their dS conflicts resolved. This is what '
-          + 'the rest of this page, and the dissertation, use.')),
+          'The primary call, from the current duplication table with a per-gene dS conflict resolution. '
+          + 'The rest of this page, the array pages and the dissertation use this call.')),
       el('dt', {}, 'Combined Ks + topology call'),
       el('dd', {}, el('strong', {}, ccSays),
         cc.r ? el('span', { class: 'muted' }, ' · this gene sits on a split-evidence pair') : null,
@@ -191,8 +191,9 @@ function wgdSection(g) {
         el('strong', {}, 'The two calls disagree for this gene. '),
         `The primary call says ${v9Says}; the topology re-check says ${ccSays}. `
         + 'They differ on 1,355 genes genome-wide: the re-check adds sWGD to 1,160 and removes it from 5, '
-        + 'adds aWGT to 2 and removes it from 1,088. Nothing on this site uses the re-check except the '
-        + 'exploratory Browse filter; it is shown so the disagreement is visible rather than buried in a figure.'));
+        + 'adds aWGT to 2 and removes it from 1,088. Neither is overridden here. Browse offers both: its '
+        + '"WGD event" filter uses the primary call, and a separate filter under "Disputed and exploratory '
+        + 'calls" uses the re-check.'));
     }
     wrap.append(row);
   }
@@ -321,13 +322,16 @@ function karyotypeSection(g) {
     'Exploratory. AEK1 to AEK7 are the seven chromosomes of the ancestral eudicot karyotype of '
     + 'Wang et al. 2022, BMC Biology 20:216, ',
     el('a', { href: `https://doi.org/${AEK_DOI}`, target: '_blank', rel: 'noopener' }, `doi:${AEK_DOI}`),
-    '. The ancestral chromosome comes from collinearity between the 717 genome and the ancestral '
+    '. The ancestral chromosome is a positional label: the 717 genome segment this gene sits in is '
+    + 'collinear with that ancestral chromosome. It describes the region, not the gene\u2019s own '
+    + 'descent, so a gene younger than the event (for example a lineage-specific or transposed '
+    + 'gene) can still carry one. It comes from collinearity with the ancestral '
     + 'karyotype genes (for a gene outside those blocks, from its nearest anchors shared with '
     + 'P. trichocarpa). aWGT and sWGD copy names come from collinear blocks shared with '
     + 'P. trichocarpa v3.1, using Wang et al.\'s published P. trichocarpa painting. aWGT copy (1 to 3) '
     + 'and sWGD copy (1 to 2) numbers are completeness ranks from Wang et al.\'s karyotype '
-    + 'projection, not subgenomes. A copy says which ancestral copy the gene descends from, not '
-    + 'whether its duplicate survived; that is the WGD call above.'));
+    + 'projection, not subgenomes. A copy names the ancestral copy this segment is collinear with, '
+    + 'not whether the gene\u2019s duplicate survived; that is the WGD call above.'));
   return wrap;
 }
 
@@ -562,7 +566,9 @@ function wgdOverview(man) {
     if (code.includes('A')) a += n;
     if (code.includes('S') && code.includes('A')) both += n;
   }
-  const link = (v, n, label) => el('a', { href: browseHref({ wgd: v }), class: 'stat',
+  // wgd9, the canonical call these counts come from, so the number clicked is the number
+  // Browse returns. Browse's `wgd` is the route C call and counts differently.
+  const link = (v, n, label) => el('a', { href: browseHref({ wgd9: v }), class: 'stat',
     style: 'text-decoration:none;color:inherit', title: `Browse these ${fmt(n)} genes` },
     el('div', { class: 'n' }, fmt(n)), el('div', { class: 'l' }, label));
   return el('div', { class: 'card' },
@@ -587,11 +593,15 @@ async function overview(man) {
       'Within-haplotype paralog pairs with synonymous divergence, and tandem-array membership.'),
     el('div', { class: 'warn' },
       el('strong', {}, 'This paralog set is not genome-wide. '),
-      d.scope),
+      'The pairs were selected for the gene-age analysis and are concentrated at phylostrata '
+      + '16 to 18, with a rank-12 Pentapetalae comparator set. Any dS distribution here describes '
+      + 'that selection, not the genome.'),
     el('div', { class: 'stat-row' },
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(d.n_pairs)), el('div', { class: 'l' }, 'paralog pairs')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(d.n_genes)), el('div', { class: 'l' }, 'genes with a pair')),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(6804)), el('div', { class: 'l' }, 'tandem-array members (genome-wide)')),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(Object.entries((man.layers && man.layers.dup_class_dist) || {})
+        .reduce((s, [k, n]) => s + (k.includes('T') ? n : 0), 0))),
+        el('div', { class: 'l' }, 'curated tandem-array members (genome-wide)')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(d.n_ks_undefined)), el('div', { class: 'l' }, 'pairs with dS = 0')),
     ),
     el('div', { class: 'card' },
@@ -606,15 +616,15 @@ async function overview(man) {
       el('ul', { style: 'margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2);line-height:1.6' },
         el('li', {}, el('strong', {}, 'The dS panel and the duplication class are different things. '),
           'The class (sWGD / aWGT / tandem / dispersed) is genome-wide, from the '
-          + 'duplication analysis. The dS pairs below are the chapter\'s stratum-selected subset. '
+          + 'duplication analysis. The dS pairs below are a subset selected by phylostratum for the gene-age analysis. '
           + 'Do not read a dS distribution from the latter as a property of the former.'),
         el('li', {}, el('strong', {}, 'No genome-wide dS landscape. '),
-          `The ${fmt(d.n_pairs)} pairs here were chosen for the chapter's tier-2 analysis. A `
+          `The ${fmt(d.n_pairs)} pairs here were chosen for the gene-age analysis. A `
           + 'genome-wide all-by-all paralog scan is a separate computation.'),
         el('li', {}, el('strong', {}, 'Tandem calls come from the curated union set. '),
-          'An earlier automatic tandem call is superseded by a hand-curated union of 13,663 '
-          + 'genes in 4,371 arrays, carrying array identity, age bin and the curator\'s '
-          + 'verdict. Genes GENESPACE places in an array but which are absent from that set '
+          'The lab\u2019s hand-curated union of 13,663 genes in 4,371 detected arrays replaces '
+          + 'its earlier tandem tables and carries array identity, age bin and the curator\'s '
+          + 'verdict; the 13,048 that passed the pseudogene screen are the ones counted. Genes GENESPACE places in an array but which are absent from that set '
           + 'are shown without an array id rather than given a synthetic one.'))),
   );
 }

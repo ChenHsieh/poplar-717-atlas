@@ -37,7 +37,8 @@ function geneModelCard(g) {
           ? el('div', { class: 'warn', style: 'margin-top:6px' },
               el('strong', {}, 'Too shallow to conclude anything. '),
               'Below 20 reads, fewer than 27% of annotated introns are detected even for genes '
-              + 'whose models are certainly right. ',
+              + 'whose models are otherwise well supported (20 reads is a display breakpoint, not '
+              + 'a calibrated threshold). ',
               i.seen < i.n
                 ? 'The unseen introns here are expected at this depth and are not evidence '
                   + 'against the gene model.'
@@ -80,7 +81,7 @@ function geneModelCard(g) {
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:4px' },
           el('strong', {}, 'A flag, not a verdict, and not a lineage-specific problem. '),
           '1,422 of the 1,435 flagged pairs are two conserved genes; only 13 involve a '
-          + 'lineage-specific gene. At matched gap and depth, lineage-specific pairs are fused '
+          + 'lineage-specific gene. At matched gap and depth, lineage-specific pairs are flagged '
           + 'LESS often than conserved ones (0.96% compared with 3.61%). ',
           lsgArm ? 'This pair is one of the 13.' : 'This pair is a conserved-with-conserved one.')));
   } else if (gm.nev === 0 && gm.np > 0) {
@@ -103,8 +104,7 @@ function geneModelCard(g) {
       'Spliced-read evidence only, the strong readout. Read-pair spanning and gap '
       + 'occupancy alone are not used to call anything, because readthrough and unspliced '
       + 'pre-mRNA both produce them. Each haplotype was aligned to its own genome, so HAP1 and '
-      + 'HAP2 are not independent replicates. A larger-panel rerun is under review upstream and '
-      + 'has not been adopted; until it is, this card stays on the 94-library panel.'));
+      + 'HAP2 are not independent replicates.'));
 }
 
 // The single-haplotype canvas strip that lived here is gone: the "both haplotypes" card

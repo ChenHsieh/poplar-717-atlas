@@ -4,15 +4,17 @@ title: "717 Atlas: a haplotype-resolved gene atlas for Populus tremula x alba cl
 abstract: >-
   A static, browsable atlas of the 63,960 gene models in the two phased haplotypes of hybrid
   poplar clone 717, integrating GENESPACE synteny across a 12-genome panel, genEra
-  phylostratigraphy, Phytozome v5.1 functional annotation, HAP1/HAP2 syntelog Ka/Ks, and a
-  652-sample RNA-seq expression atlas drawn from 28 curated studies. Later releases add
-  tandem-array and paralog duplication context, predicted protein disorder and
-  ESMFold-derived secondary structure with mass-spectrometry peptide evidence, and 46,141
-  reciprocal one-to-one orthologs to Populus trichocarpa derived from the same synteny run.
-  Version 0.4.0 adopts an Idesia-corrected lineage-specific gene pool, replaces the peptide
-  layer with a five-dataset re-search of public Populus mass spectra against a 717-inclusive
-  database, adds Ka/Ks against Populus trichocarpa for 52,232 genes, and carries accessible-chromatin
-  and histone-mark calls from GEO GSE128434 as a property of each gene's P. trichocarpa ortholog.
+  phylostratigraphy, Phytozome v5.1 functional annotation, HAP1/HAP2 syntelog Ka/Ks over an
+  older 25,931-pair allele map, and a 652-sample RNA-seq expression atlas drawn from 28 curated
+  studies. It adds tandem-array and paralog duplication context (inferred calls), predicted
+  protein disorder and ESMFold-derived secondary structure, peptide matches from a re-search of
+  five public Populus mass-spectrometry datasets (several from other Populus species, mostly on
+  shared peptides), 46,141 reciprocal one-to-one orthologs to Populus trichocarpa from the same
+  synteny run, Ka/Ks against P. trichocarpa for 52,232 genes, and accessible-chromatin and
+  histone-mark calls from GEO GSE128434 measured in P. trichocarpa and shown on each gene's
+  ortholog, not measured on 717. The lineage-specific candidate pool (phylostratum 18 or above;
+  776 HAP1, 835 HAP2) is from the genEra rerun that added Idesia polycarpa and searched the full
+  comparison panel.
 type: dataset
 authors:
   - family-names: Hsieh
@@ -31,5 +33,5 @@ keywords:
   - lineage-specific genes
   - expression atlas
 license-url: "https://github.com/ChenHsieh/poplar-717-atlas/blob/main/LICENSE"
-version: "0.17.0"
+version: "0.17.1"
 date-released: "2026-10-03"

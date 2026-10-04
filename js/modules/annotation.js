@@ -88,7 +88,12 @@ function annotationCard(g) {
   if (a.go && a.go.length) add('GO', goList(a.go));
 
   const card = el('div', { class: 'card' },
-    el('h2', {}, 'Function', el('span', { class: 'tag' }, 'Phytozome v5.1')), kv);
+    el('h2', {}, 'Function', el('span', { class: 'tag' }, 'Phytozome v5.1, computational')), kv,
+    el('p', { class: 'muted', style: 'margin:8px 0 0;font-size:12px' },
+      'All of these are computational annotations transferred by sequence similarity, not '
+      + 'experimental results for this gene. The best Arabidopsis hit names the closest '
+      + 'Arabidopsis sequence, not this gene\u2019s function, and the GO terms carry no '
+      + 'evidence codes here, so treat them as inferred from electronic annotation.'));
 
   // The HAP2 release ships empty Pfam/PANTHER/GO columns; only ~3,200 HAP2 genes recover a
   // Pfam accession from the defline vs 26,132 on HAP1. Say so, or the asymmetry reads as biology.
@@ -161,8 +166,8 @@ function alleleCard(g, man) {
           el('p', { style: 'margin:10px 0 6px;font-size:13.5px' },
             el('strong', {}, 'Through its tandem array. '),
             `This gene has no syntelog of its own, but ${withAllele.length} of the other `
-            + `${r.members.length - 1} members of `, aLink(r.arrayId), ` do, so the locus is present on ${other}; `
-            + 'the gene is tandem-array-associated, not hemizygous.'),
+            + `${r.members.length - 1} members of `, aLink(r.arrayId), ` do, so the array region is present on ${other}. `
+            + 'This copy itself may have no counterpart: tandem arrays can differ in copy number between haplotypes.'),
           el('dl', { class: 'kv' }, ...withAllele.flatMap((x) => [
             el('dt', {}, el('a', { href: `#/gene/${x.id}`, class: 'mono' }, x.id)),
             el('dd', {}, '→ ', el('a', { href: `#/gene/${x.allele}`, class: 'mono' }, x.allele),
@@ -204,8 +209,8 @@ function alleleCard(g, man) {
     if (a.w != null) {
       kv.append(el('dt', {}, 'ω (Ka/Ks)'),
         el('dd', {}, el('span', { class: 'mono' }, a.w.toFixed(3)), ' ',
-          el('span', { class: 'muted' }, a.w < 0.1 ? 'strong purifying selection'
-            : a.w < 1 ? 'purifying selection' : 'Ka exceeds Ks')));
+          el('span', { class: 'muted' }, (a.w < 1 ? 'below 1' : 'Ka exceeds Ks')
+            + ' (single-gene point estimate; unstable at divergence this low)')));
     }
   }
   return el('div', { class: 'card', 'data-card': 'allele' },
@@ -236,11 +241,11 @@ function selectionCard(g) {
         'No reciprocal-best P. trichocarpa ortholog, so Ka/Ks is not defined for this gene.',
         (ps.rank != null && ps.rank >= 19)
           ? el('span', {}, ' That is structural rather than missing: this gene is placed in the '
-              + 'hybrid-only stratum, meaning no homolog was found in any other species, so '
-              + 'there is nothing to measure against. Only 1 of 681 genes in that stratum has '
-              + 'a pair at all.')
-          : el('span', {}, ' Genes lose their ortholog for ordinary reasons too, tandem arrays, '
-              + 'broken synteny, assembly gaps, so this is not evidence of absence.')));
+              + 'PS19 stratum (no homolog detected outside this assembly in the searched species '
+              + 'panel, which lacks P. alba), so there is nothing to measure against. Almost no '
+              + 'gene in that stratum has a pair.')
+          : el('span', {}, ' Genes lose their ortholog for ordinary reasons too, such as tandem arrays, '
+              + 'broken synteny or assembly gaps, so this is not evidence of absence.')));
   }
   const kv = el('dl', { class: 'kv' });
   kv.append(el('dt', {}, 'Ortholog'),
@@ -264,8 +269,9 @@ function selectionCard(g) {
     kv.append(el('dt', {}, '\u03c9 (Ka/Ks)'),
       el('dd', {},
         el('span', { class: 'mono' }, k.w.toFixed(3)), ' ',
-        el('span', { class: 'muted' }, k.w < 0.1 ? 'strong purifying selection'
-          : k.w < 1 ? 'purifying selection' : 'Ka exceeds Ks'),
+        el('span', { class: 'muted' }, k.w < 1
+          ? 'below 1, consistent with purifying selection (single-gene point estimate)'
+          : 'Ka exceeds Ks (single-gene point estimate)'),
         spread
           ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
               `A second estimator on the same alignment gives ${k.w2.toFixed(3)}. At this `

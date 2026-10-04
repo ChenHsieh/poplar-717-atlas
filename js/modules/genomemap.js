@@ -35,8 +35,8 @@ const METRICS = {
   lsg: { label: 'LSG-pool fraction', get: (b) => (b[0] ? b[2] / b[0] : null), fmt: pctF },
   tau: { label: 'Mean τ', get: (b) => b[3], fmt: (v) => v.toFixed(2) },
   omega: { label: 'Mean ω vs P. trichocarpa', get: (b) => b[4], fmt: (v) => v.toFixed(2) },
-  ms: { label: 'Peptide-detected fraction', get: (b) => b[5], fmt: pctF },
-  acr: { label: 'Ortholog open chromatin', get: (b) => b[6], fmt: pctF },
+  ms: { label: 'Peptide-match fraction', get: (b) => b[5], fmt: pctF },
+  acr: { label: 'P. trichocarpa ortholog open chromatin', get: (b) => b[6], fmt: pctF },
 };
 function pctF(v) { return `${(v * 100).toFixed(1)}%`; }
 
@@ -45,15 +45,19 @@ const METRIC_NOTE = {
   genes: 'Genes per 100 kb bin.',
   tandem: 'Share of genes in the bin that belong to a tandem array.',
   lsg: 'Share in the lineage-specific pool (PS ≥ 18 in the genEra rerun that added Idesia).',
-  tau: 'Mean tissue-specificity of genes in the bin that have a baseline at all.',
+  tau: 'Mean τ (Yanai tissue-specificity index) of genes in the bin that have a baseline at '
+    + 'all. It includes genes under 1 TPM everywhere, whose τ is mostly noise, and tissues '
+    + 'sampled by a single study, so read it as expression breadth, not tissue identity.',
   omega: 'Mean Ka/Ks over the genes in the bin that HAVE a reciprocal-best P. trichocarpa '
     + 'ortholog, 81.7% of genes, and the ones without are the youngest, so a bin’s '
     + 'value describes its pairable genes.',
-  ms: 'Share of genes with a peptide in any of five public Populus mass-spec datasets. '
-    + 'Indirect: most such peptides are shared with P. trichocarpa and with other 717 genes.',
+  ms: 'Share of genes with a matching peptide in any of five public Populus mass-spec datasets, '
+    + 'none from the 717 clone. Indirect: most such peptides are shared with P. trichocarpa and '
+    + 'with other 717 genes, so a match is not proof that 717 makes the protein.',
   acr: 'Share of leaf-expressed P. trichocarpa ORTHOLOGS with accessible chromatin. This is '
     + 'the ortholog’s chromatin, not this genome’s, and its denominator is only the '
-    + 'genes with a 1:1 ortholog expressed in leaf, smaller than the bin.',
+    + 'genes with a 1:1 ortholog expressed in leaf, smaller than the bin. Open chromatin is '
+    + 'consistent with an active promoter, not proof of one, and was not measured in 717.',
 };
 
 function metricRange(overview, hap, metricKey) {

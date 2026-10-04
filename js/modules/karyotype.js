@@ -384,8 +384,11 @@ export async function karyotypeView() {
   const view = el('div', {},
     el('h1', {}, 'Ancestral karyotype', el('span', { class: 'badge', style: 'margin-left:10px;font-size:12px;padding:1px 7px' }, 'exploratory')),
     el('p', { class: 'sub' },
-      'Where each gene came from, rather than where it sits now. Seven ancestral eudicot '
-      + 'chromosomes (AEK1 to AEK7), each in three aWGT copies, each in two sWGD copies. '
+      'Which ancestral chromosome each stretch of the genome is collinear with. Seven ancestral '
+      + 'eudicot chromosomes (AEK1 to AEK7), each in three aWGT copies, each in two sWGD copies. '
+      + 'This is a positional label for the region, not the descent of each gene: a gene younger '
+      + 'than these events, including most lineage-specific genes, still carries the label of the '
+      + 'segment it sits in, and some genes inherit it from their nearest anchors. '
       + 'Below: the modern chromosomes painted by ancestry, the 42-cell table, and where each '
       + 'copy landed. Every count is a link to the genes behind it.'),
 
@@ -399,7 +402,7 @@ export async function karyotypeView() {
       el('h2', {}, 'Modern chromosomes, painted by ancestry', el('span', { class: 'tag' }, 'HAP1 and HAP2 separately')),
       el('p', { style: 'margin:0 0 8px;font-size:13.5px;color:var(--ink-2)' },
         'Each bar is one modern chromosome drawn to scale; each coloured stretch is a run of '
-        + 'consecutive genes that descend from the same ancestral chromosome. Switch to a copy view '
+        + 'consecutive genes placed in segments collinear with the same ancestral chromosome. Switch to a copy view '
         + 'to see, within one ancestral chromosome, which aWGT or sWGD copy each stretch is.'),
       controls, figs, detail),
 
@@ -432,8 +435,8 @@ export async function karyotypeView() {
         el('strong', {}, 'ranks'),
         ' from Wang et al.’s karyotype projection, ranked within one ancestral chromosome. ',
         el('strong', {}, 'They are not subgenomes'),
-        ', and copy 1 of AEK3 has no relationship to copy 1 of AEK5. A copy says which '
-        + 'ancestral copy a gene descends from, not whether its duplicate survived, that '
+        ', and copy 1 of AEK3 has no relationship to copy 1 of AEK5. A copy names the ancestral '
+        + 'copy a gene\u2019s segment is collinear with, not whether its duplicate survived; that '
         + 'is the whole-genome-duplication call on each gene page.'),
       el('p', { class: 'muted', style: 'font-size:12px;margin:10px 0 0' },
         'Exploratory. Ancestral chromosomes come from collinearity between the 717 '

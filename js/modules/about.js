@@ -11,9 +11,8 @@ function overview(man) {
   return el('div', {},
     el('h1', {}, 'About & provenance'),
     el('p', { class: 'sub' },
-      `Data version ${man.data_version || '–'}, built ${(man.built || '').slice(0, 10)} from `
-      + `${Object.keys(man.sources || {}).length} source files on the UGA Sapelo2 cluster. `
-      + `Every file below is recorded with a checksum at build time.`),
+      `Data version ${man.data_version || '–'}, assembled from `
+      + `${Object.keys(man.sources || {}).length} source files, each recorded with a checksum in the build manifest.`),
 
     el('div', { class: 'card' },
       el('h2', {}, 'What this is'),
@@ -23,10 +22,12 @@ function overview(man) {
         + 'dissertation chapter on lineage-specific genes, and a general-purpose resource for '
         + 'anyone working in this clone.'),
       el('dl', { class: 'kv' },
-        el('dt', {}, 'Genes'), el('dd', {}, `${fmt(man.n_genes)}, HAP1 32,137 (PtXaTreH), HAP2 31,823 (PtXaAlbH)`),
+        el('dt', {}, 'Genes'), el('dd', {}, `${fmt(man.n_genes)}: HAP1 32,137 (PtXaTreH), HAP2 31,823 (PtXaAlbH)`),
         el('dt', {}, 'Synteny'), el('dd', {}, 'GENESPACE over a 12-genome panel (10 syntenic + O. sativa / P. patens as orthogroup-only outgroups)'),
         el('dt', {}, 'Phylostratigraphy'), el('dd', {}, 'genEra, 19 strata'),
-        el('dt', {}, 'Annotation'), el('dd', {}, `${fmt(a.n_annotated)} genes; ${fmt(a.go_terms)} GO terms; ${fmt(a.n_allele)} with a HAP1↔HAP2 allele`),
+        el('dt', {}, 'Annotation'), el('dd', {}, `${fmt(a.n_annotated)} genes; ${fmt(a.go_terms)} GO terms`),
+        el('dt', {}, 'Alleles'), el('dd', {}, `${fmt(Math.round((a.n_allele || 0) / 2))} HAP1↔HAP2 pairs `
+          + `(${fmt(a.n_allele)} genes), syntelog partners between the two haplotypes`),
         el('dt', {}, 'Expression'), el('dd', {}, `${fmt(e.n_samples)} samples, ${e.n_studies} studies, ${e.n_bioprojects} BioProjects, kallisto k21`))),
 
     // TODO 45: the structured home for genome-wide numbers. Chen's review asked whether the
@@ -52,14 +53,17 @@ function overview(man) {
           ['Expression baseline', (man.expression || {}).n_genes_with_baseline || null,
             'A gene with an all-zero baseline has no tissue profile and no \u03c4.'],
           ['Ka/Ks vs P. trichocarpa', (man.kaks || {}).n_genes,
-            'No reciprocal-best ortholog. Structural for the youngest stratum, which has none.'],
+            'No reciprocal-best ortholog. Expected for PS19, where only 1 of 681 genes has one.'],
           ['Peptide evidence', ((man.proteomics || {}).genes_with_a_hit
             ? man.proteomics.genes_with_a_hit.hap1 + man.proteomics.genes_with_a_hit.hap2 : null),
-            'Not detected, or undetectable: no tryptic peptide in the searchable mass range.'],
+            'Not detected, or undetectable: no tryptic peptide in the searchable mass range. '
+            + 'Presence rests on public mass spectra, often from other Populus species and on '
+            + 'peptides shared with other genes.'],
           ['ESMFold structure', ((man.layers || {}).coverage || {})['ESMFold structure'],
             'No model was built. Coverage, not a structural claim.'],
           ['Ortholog chromatin', (man.chromatin || {}).n_genes,
-            'No 1:1 P. trichocarpa ortholog, or the ortholog is silent in leaf.'],
+            'No reciprocal 1:1 P. trichocarpa ortholog, or the ortholog call is ambiguous. '
+            + 'Where present, the marks are the P. trichocarpa ortholog\'s (leaf), not measured on 717.'],
           ['Promoter motif scan', ((man.cre || {}) && man.n_genes),
             'Every gene is scanned; family counts can legitimately be zero.'],
         ].filter(([, n]) => n != null).map(([label, n, note]) => el('tr', {},
@@ -82,7 +86,7 @@ function overview(man) {
         el('li', {}, el('strong', {}, 'Private calls are panel-dependent. '),
           'P. alba, a parent species of this hybrid, is deliberately not in the synteny panel. '
           + '41% of genes called private have a detectable P. alba homolog, against 98.8% of core '
-          + 'genes; the call is sound but panel-conditioned.'),
+          + 'genes, so the call is conditional on the panel.'),
         el('li', {}, el('strong', {}, 'ω is undefined for 785 syntelog pairs '),
           'whose Ks is 0. The aligner reports 99.0 there; the atlas shows "identical at '
           + 'synonymous sites" instead, never a selection claim.'),
@@ -92,26 +96,32 @@ function overview(man) {
           + `${fmt((man.expression || {}).combat_eligible_genes)} genes that passed the upstream `
           + 'low-count filter; the tissue baselines and τ are always computed on raw TPM.'),
         el('li', {}, el('strong', {}, 'Curation notes are summarised, not quoted. '),
-          'Tandem-array genes carry a curation flag, hand-rejected, pseudogene-like, or '
-          + 'disagreeing with the automatic gate. The curator\'s identity and verbatim wording '
+          'Tandem-array genes carry a curation flag (hand-rejected, pseudogene-like, or '
+          + 'disagreeing with the automatic filter). The curator\'s identity and verbatim wording '
           + 'are deliberately not published.'),
         el('li', {}, el('strong', {}, 'An independent τ was audited out, not shipped. '),
-          'It is computed on the n=202 expression panel, which the source repo records as '
+          'It is computed on the n=202 expression panel, which the upstream analysis records as '
           + 'superseded on 2026-08-24.'),
         el('li', {}, el('strong', {}, 'Presence/absence is the strict, protein-level set. '),
           'A gene is Strict PAV when it has no syntelog on the other haplotype and no protein-level '
           + 'match to it there: 528 HAP1 and 605 HAP2 genes. Genes without a syntelog whose sequence '
           + 'is present on the other haplotype are Non-PAV hemizygous, and tandem arrays with no '
           + 'syntelog for any member are TD-associated PAV.'),
+        el('li', {}, el('strong', {}, 'Chromatin and protein evidence is borrowed. '),
+          'Chromatin accessibility and histone marks were measured in P. trichocarpa leaf '
+          + '(GEO GSE128434) and are shown on each gene\'s 1:1 P. trichocarpa ortholog; nothing '
+          + 'was measured on 717. Peptide matches come from five public Populus mass-spec '
+          + 'datasets, including P. tomentosa and P. × canescens; most matches rest on peptides '
+          + 'shared with other genes or species, often a single spectrum.'),
         el('li', {}, el('strong', {}, 'Three layers are derived here, not imported. '),
           'Exon/intron counts and TE distance are computed from the v5.1 GFF3 and repeatmasked '
           + 'annotation that ship with the genome, and genomic order from the atlas\'s own '
-          + 'coordinates, because the tables offering them sat in case-study, calibration and '
-          + '"structural exploration" folders with no canonical status.'),
+          + 'coordinates, because no reviewed upstream table offered them.'),
         el('li', {}, el('strong', {}, 'Duplication and relationship calls match the dissertation. '),
           'The per-gene duplication class, the allele (syntelog) partners, strict PAV and the '
           + 'relationship categories are the same tables the dissertation uses. The tandem '
-          + 'component is the curated union set.'),
+          + 'component is the curated union set. Whole-genome-duplication assignments are '
+          + 'inferences from synteny and Ks, not observations.'),
         // Read from the manifest: the hand-typed "77 leaf" was the pooled count from before the
         // 2026-09-05 leaf regrouping (manifest.corrections), and nothing checked it.
         el('li', {}, el('strong', {}, 'Thin tissue baselines. '),
@@ -128,11 +138,10 @@ function overview(man) {
         el('a', { href: 'data/meta/manifest.json' }, 'build manifest'),
         ', and each data layer ships a provenance record in the build files.'),
       el('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' },
-        'Source files live on the UGA Sapelo2 cluster and are not in this repository, so the build is not '
-        + 'reproducible from a clone alone; the committed data directory is the artifact.'),
+        'The source files are not distributed with the site; the published data files are the record.'),
       // The page claims the data is validated; this is where the claim can be checked.
       el('p', { style: 'margin:10px 0 0;font-size:13px' },
-        el('a', { href: '#/status' }, 'See every integrity gate this build ran, and its verdict →'))),
+        el('a', { href: '#/status' }, 'See the consistency checks run on this data →'))),
 
 
     el('div', { class: 'card' },

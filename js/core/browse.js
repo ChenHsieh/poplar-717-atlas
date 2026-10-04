@@ -99,7 +99,7 @@ export const FILTERS = [
     test: (r, v) => r.w >= 0 && r.w / 1000 >= +v },
   { id: 'w_max', label: 'ω ≤', kind: 'number', placeholder: '0.1', step: '0.1',
     test: (r, v) => r.w >= 0 && r.w / 1000 <= +v },
-  { id: 'ms', label: 'Peptide-detected', kind: 'select', options: ['yes', 'no'],
+  { id: 'ms', label: 'Peptide match', kind: 'select', options: ['yes', 'no'],
     test: (r, v) => (r.ms > 0 ? 'yes' : 'no') === v },
   // The threshold is in the label on purpose: "expressed" is not an absolute property, and a
   // filter that hides its cutoff invites reading it as one.
@@ -133,8 +133,8 @@ export const FILTER_GROUPS = [
 ];
 const HINTS = {
   hap: 'HAP1 is the tremula haplotype, HAP2 alba',
-  cls: 'GENESPACE class across the 12-genome panel',
-  ps_min: '18 and 19 are the lineage-specific strata',
+  cls: 'GENESPACE class across the 12-genome panel, which lacks P. alba',
+  ps_min: '18 and 19 are the lineage-specific candidate strata',
   ps: 'one stratum exactly',
   tau_min: 'tissue specificity, 0 (even) to 1 (one tissue)',
   top: 'tissue with the highest median TPM',
@@ -143,13 +143,13 @@ const HINTS = {
   rel: 'counted per gene; tandem genes take their array\u2019s category',
   at: 'a best hit in Arabidopsis',
   tandem: 'the curated union set, 13,048 genes',
-  wgd: 'exploratory re-check from dS and ancestral topology',
+  wgd: 'a proposed re-check from dS and ancestral topology, not adopted; the primary filter is above',
   wgd_disputed: 'the exploratory re-check and the primary call disagree',
   wgd9: 'retained from a whole-genome duplication',
   aek: 'ancestral eudicot chromosome and copy',
   w_min: 'Ka/Ks to the reciprocal-best ortholog',
   w_max: 'Ka/Ks to the reciprocal-best ortholog',
-  ms: 'a peptide in any of 5 public datasets',
+  ms: 'a matching peptide in any of 5 public datasets, often shared or cross-species',
 };
 // Fast value extraction for the per-option counts; a filter absent here shows no counts.
 const KEYS = {
@@ -226,11 +226,11 @@ const COLUMNS = [
   { id: 'tau', label: '\u03c4', num: true, greek: true, key: (r) => r.tau, title: 'tissue specificity' },
   { id: 'top', label: 'Peak tissue', key: (r) => r.top },
   { id: 'npres', label: 'Genomes', num: true, key: (r) => r.npres || null,
-    title: 'genomes in the orthogroup, of 12' },
+    title: 'genomes in the orthogroup, of 12 (the panel lacks P. alba)' },
   { id: 'w', label: '\u03c9', num: true, greek: true, key: (r) => (r.w >= 0 ? r.w : null),
     title: 'Ka/Ks against the best P. trichocarpa ortholog' },
   { id: 'ms', label: 'MS', num: true, key: (r) => (r.ms > 0 ? r.ms : null),
-    title: 'mass-spec datasets with a peptide, of 5' },
+    title: 'mass-spec datasets with a matching peptide, of 5; most such peptides are shared with other genes or species' },
 ];
 
 function sortMatches(state) {
@@ -789,8 +789,8 @@ export async function browseView(navigation) {
       + 'P. trichocarpa proteome and only 12% match exactly one 717 gene. Open a gene to see '
       + 'which kind of evidence it has.'),
     el('p', {}, el('strong', {}, 'ω is Nei–Gojobori against P. trichocarpa'),
-      ', blank where the gene has no reciprocal-best ortholog, a measured absence, not '
-      + 'missing data.'));
+      ', blank where no reciprocal-best ortholog was found. That can mean a real absence, '
+      + 'a gene the P. trichocarpa annotation misses, or a failed search.'));
   const side = el('details', { class: 'bz-side', open: 'open' },
     sideToggle,
     el('div', { class: 'bz-sidebody' }, el('h2', { class: 'bz-sidehead' }, 'Filters'), controls));

@@ -189,7 +189,7 @@ route(/^\/$/, async (navigation) => {
     annotation: 'What the gene is: description, Arabidopsis hit, Pfam, GO, and its allele in the other haplotype.',
     synteny: 'Whether it has orthologs, in how many of 12 genomes, and how that changed when the panel was completed.',
     phylostrat: 'How old it is, which phylostratum, and whether genEra was confident about it.',
-    duplication: 'What it duplicated from: paralog pairs with divergence, and tandem-array membership.',
+    duplication: 'Its duplicate partners with divergence, and tandem-array membership.',
     expression: `Where it is expressed, across ${fmt(e.n_samples)} samples from ${e.n_studies} curated studies.`,
     about: 'Provenance, known limitations, and how to cite this.',
   };
@@ -216,7 +216,7 @@ route(/^\/$/, async (navigation) => {
   const EXPLORE = [
     ['#/browse', 'Browse', 'Filter every gene across every layer; export or save the set.'],
     ['#/map', 'Genome map', 'Both haplotypes chromosome by chromosome, down to single genes.'],
-    ['#/karyotype', 'Ancestral karyotype', 'Where each gene came from in the eudicot ancestor.'],
+    ['#/karyotype', 'Ancestral karyotype', 'An exploratory placement of each gene on the ancestral eudicot karyotype.'],
     ['#/module/expression', 'Expression', `${fmt(e.n_samples)} samples from ${e.n_studies} curated studies.`],
     ['#/module/duplication', 'Duplication', 'Tandem arrays and whole-genome duplication partners.'],
     ['#/module/phylostrat', 'Gene age', 'Phylostrata and the lineage-specific pool.'],
@@ -230,15 +230,18 @@ route(/^\/$/, async (navigation) => {
       el('p', { class: 'lede' },
         `${fmt(man.n_genes)} gene models across the two phased haplotypes of `,
         el('em', {}, 'Populus tremula'), ' × ', el('em', {}, 'P. alba'),
-        '. Every gene carries synteny across a 12-genome panel, a phylostratum, functional '
-        + 'annotation, its allele, and an expression profile.'),
+        '. Each gene page draws on synteny across a 12-genome panel, a phylostratum, functional '
+        + 'annotation, its allele, and an expression profile. Coverage varies by layer; the ',
+        el('a', { href: '#/module/about' }, 'About page'), ' gives it for each.'),
       heroSearch,
       el('p', { class: 'hero-eg' }, 'Try ',
         ...EXAMPLES.flatMap(([t, h]) => [el('a', { href: h, class: 'mono' }, t), ' ']))),
 
     el('div', { class: 'stat-row home-stats' },
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(man.n_genes)), el('div', { class: 'l' }, 'gene models')),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(a.n_allele)), el('div', { class: 'l' }, 'HAP1↔HAP2 allele pairs')),
+      // n_allele counts GENES carrying an allele (both members of each pair), so pairs = half.
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(Math.round((a.n_allele || 0) / 2))),
+        el('div', { class: 'l' }, 'HAP1↔HAP2 allele pairs')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(e.n_samples)), el('div', { class: 'l' }, `RNA-seq samples, ${e.n_studies} studies`)),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, `${fmt(lsgH1)} / ${fmt(lsgH2)}`),
         el('div', { class: 'l' }, 'lineage-specific candidates, HAP1 / HAP2 (PS ≥ 18)')),
@@ -262,7 +265,7 @@ route(/^\/$/, async (navigation) => {
           // rerun that added Idesia (C5, Chen 2026-09-21 evening), in which this gene is PS17 and
           // out of the pool; the frozen call had it at PS18, and its page says so.
           el('dt', {}, el('a', { href: '#/gene/PtXaTreH.05G120200' }, 'PtXaTreH.05G120200')),
-          el('dd', { class: 'muted' }, 'An example gene page, and one the Idesia rerun moved: '
+          el('dd', { class: 'muted' }, 'An example gene page, and one the current genEra call moved: '
             + 'PS18 in the frozen genEra call, PS17 Saliceae in the current one.'),
           // Three examples, chosen because each shows a DIFFERENT shape of duplication rather
           // than three views of the same one. Every claim below is read off the shipped record.
@@ -284,13 +287,16 @@ route(/^\/$/, async (navigation) => {
             : el('span', {}, m.label)),
           el('dd', { class: 'muted' }, MODULE_BLURB[m.id])])),
         el('p', { class: 'muted', style: 'margin:12px 0 0;font-size:12px' },
-          'Allele-specific expression and cross-species comparison are queued.'))),
+          'Allele-specific expression is not yet included.'))),
 
     el('div', { class: 'card cite-card' },
       el('h2', {}, 'Before you cite anything'),
       el('p', { style: 'margin:0;font-size:14px;color:var(--ink-2)' },
         'Private-gene calls depend on which genomes are in the panel, HAP2 domain annotation is '
-        + 'thinner than HAP1 for release reasons, and expression is raw TPM. The ',
+        + 'thinner than HAP1 for release reasons, and expression is raw TPM. A gene with no allele '
+        + 'partner is not by itself absent from the other haplotype; its relationship category says more. '
+        + 'Chromatin marks are measured on the P. trichocarpa ortholog, not on 717, and peptide '
+        + 'evidence comes from public mass spectra, often from other Populus species. The ',
         el('a', { href: '#/module/about' }, 'provenance page'),
         ' states each limitation with its numbers.')),
   ));
@@ -394,10 +400,12 @@ function glanceCard(g, man) {
       holder.textContent = '';
       holder.className = '';
       if (!w.length) { holder.append(el('span', { class: 'muted' }, 'none of its own, and none in its tandem array')); return; }
-      holder.append('none of its own; through its array ',
+      holder.append('none of its own; array-level link via ',
         el('a', { href: `#/array/${r.arrayId}`, class: 'mono' }, r.arrayId), ': ',
         el('a', { href: `#/gene/${w[0].allele}`, class: 'mono' }, w[0].allele),
-        w.length > 1 ? el('span', { class: 'muted' }, ` and ${w.length - 1} more`) : null);
+        el('span', { class: 'muted' }, ' (not a 1:1 call)'),
+        w.length > 1 ? el('span', { class: 'muted' }, ` and ${w.length - 1} more`) : null,
+        r.counted === false ? el('span', { class: 'muted' }, ' (array removed by the pseudogene screen)') : null);
     }).catch(() => { holder.textContent = 'none of its own'; });
   }
   // A gene in a copy-search panel: the route to the other haplotype's copies, which the allele
@@ -861,7 +869,7 @@ route(/^\/family\/(.+)$/, async (id, navigation) => {
 // validate_data.py as each gate executes; nothing here is written after the fact.
 route(/^\/status$/, async (navigation) => {
   const { setView, loading } = scopedView(navigation);
-  loading('Reading the gate record\u2026');
+  loading('Loading data checks\u2026');
   setView(await statusView());
   markNav();
 });
@@ -1039,7 +1047,7 @@ route(/^\/study\/(\d+)$/, async (idStr, navigation) => {
         ' · ', el('a', { href: '#/module/about' }, 'provenance'),
         // The footer already states which build you are reading; the gates that build passed
         // belong next to it, not two clicks away inside another page.
-        ' · ', el('a', { href: '#/status' }, 'build status')));
+        ' · ', el('a', { href: '#/status' }, 'data checks')));
     }
     // A cached script against fresh data is the dangerous combination: every column this code
     // reads by name still resolves, just to the wrong thing, so the page renders a confident

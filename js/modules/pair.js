@@ -19,6 +19,11 @@ import { svgEl, genesIn, tileRecord, matchingRegion, tissueList, tissueN } from 
 import { chromosomeBrowser } from '../core/locusbrowser.js';
 
 const pct = (x) => `${(x * 100).toFixed(0)}%`;
+// Three significant figures: a dS from one gene pair does not carry four decimals of meaning.
+const sig3 = (x) => (x === 0 ? '0' : x.toPrecision(3));
+// Median dS of salicoid WGD anchor pairs in this genome (the Duplication card states the same
+// value). An "allele" pair more diverged than that is more like a paralog than an allele.
+const SALICOID_MEDIAN_DS = 0.27;
 
 /** Both records for a pair, given either member. Returns null if the gene has no allele. */
 export async function resolvePair(id) {
@@ -89,7 +94,7 @@ function comparisonTable(a, b) {
     row('Pfam domains', a, b, (g) => (((g.ann || {}).pf || []).join(', ') || null),
       { absentLabel: 'none recorded' }),
     row('ω vs P. trichocarpa', a, b, (g) => (g.ks && g.ks.w != null ? g.ks.w.toFixed(3) : null),
-      { absentLabel: 'no 1:1 ortholog' }),
+      { absentLabel: 'no reciprocal-best ortholog found' }),
   ];
   return el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
     el('thead', {}, el('tr', {},
@@ -269,13 +274,12 @@ export async function pairView(id) {
       el('div', { class: 'kicker' }, `Allele pair · ${hapLabel(g.hap)}`),
       el('h1', {}, 'No allele pair'),
       el('p', { class: 'sub' }, el('span', { class: 'mono' }, g.id),
-        ' has no allele in the other haplotype.'),
+        ' has no syntelog partner on the other haplotype.'),
       el('div', { class: 'card' },
         el('p', { style: 'margin:0;font-size:13.5px' },
-          'That is a real and interesting state, not missing data: 12,098 genes are in it. It '
-          + 'can mean a genuine presence/absence difference between the two parent genomes, or '
-          + 'that the syntelog call could not be made here. The gene page states which, where '
-          + 'the evidence exists.'),
+          'A missing partner is not by itself a presence/absence call. It can be a genuine '
+          + 'difference between the two parent genomes, a tandem array counted as one unit, or a region '
+          + 'where synteny breaks down; the gene page\u2019s relationship category says which.'),
         el('p', { style: 'margin:10px 0 0' },
           el('a', { href: `#/gene/${g.id}` }, 'Open the gene page →'), '  ',
           el('a', { href: '#/browse?allele=no', style: 'margin-left:14px' },
@@ -302,14 +306,21 @@ export async function pairView(id) {
     el('h1', {}, 'Allele pair'),
     el('p', { class: 'sub' },
       el('span', { class: 'mono' }, a.id), ' · ', el('span', { class: 'mono' }, b.id),
-      ', the same locus in the two phased haplotypes of clone INRA 717-1B4.'),
+      ', a 1:1 syntenic pair between the two phased haplotypes of clone INRA 717-1B4.'),
+    ks && ks.ks != null && ks.ks > SALICOID_MEDIAN_DS
+      ? el('div', { class: 'warn', 'data-pair-diverged': '' },
+          el('strong', {}, 'Possible paralog mis-pairing. '),
+          `dS between these two (${sig3(ks.ks)}) is above the median dS of sWGD paralog `
+          + `pairs in this genome (${SALICOID_MEDIAN_DS}). True alleles of one clone are usually far `
+          + 'less diverged, so this pair may join two paralogs rather than two alleles.')
+      : null,
 
     el('div', { class: 'stat-row' },
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.ks != null ? ks.ks.toFixed(4) : '–'),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.ks != null ? sig3(ks.ks) : '–'),
         el('div', { class: 'l' }, 'dS between alleles')),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.ka != null ? ks.ka.toFixed(4) : '–'),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.ka != null ? sig3(ks.ka) : '–'),
         el('div', { class: 'l' }, 'dN')),
-      el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.w != null ? ks.w.toFixed(3) : '–'),
+      el('div', { class: 'stat' }, el('div', { class: 'n' }, ks && ks.w != null ? sig3(ks.w) : '–'),
         el('div', { class: 'l' }, 'ω')),
     ),
     el('p', { class: 'arr-note' }, 'dS, dN and ω are for this allele pair (HAP1 vs. HAP2). '

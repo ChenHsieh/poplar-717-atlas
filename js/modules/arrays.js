@@ -152,7 +152,7 @@ function memberTable(genes, other) {
     el('td', {}, synWords(g) || na()),
     el('td', {}, v9Dup(g.dup) || na()),
     el('td', {}, g.allele ? el('span', {}, el('a', { href: `#/gene/${g.allele.id}`, class: 'mono' }, g.allele.id),
-      ' ', el('a', { href: `#/pair/${g.id}`, class: 'arr-small' }, 'pair')) : na('no allele')),
+      ' ', el('a', { href: `#/pair/${g.id}`, class: 'arr-small' }, 'pair')) : na('none called')),
     el('td', {}, (g.x && g.x.top) || na('–')),
     el('td', { class: 'arr-desc' }, ((g.ann || {}).d) || na('no description'))));
   return el('div', { class: 'scroll-x' }, el('table', { class: 'data' },

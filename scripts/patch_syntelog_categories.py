@@ -209,6 +209,9 @@ def main():
     man = json.load(open(man_path))
     man["duplication"]["source"] = (f"ms1-dup {pin['ms1_dup_commit'][:7]} "
                                     f"{pin['files']['per_gene']['path']} (dup_type_v10 and anchors)")
+    # the home page's "allele pairs" tile reads this; the stage that changes alleles owns it
+    man.setdefault("annotation", {})["n_allele"] = sum(
+        1 for sh in pending.values() for rec in sh.values() if rec.get("allele"))
     man["pav"] = {"strict_hap1": 528, "strict_hap2": 605,
                   "source": f"ms1-dup {pin['ms1_dup_commit'][:7]} per-gene table, strict protein-level set"}
     man["relationship"] = {

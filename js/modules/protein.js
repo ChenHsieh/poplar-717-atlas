@@ -256,7 +256,7 @@ function geneCard(g) {
   if (p.dis != null) {
     add('Predicted disorder',
       el('span', {}, el('span', { class: 'mono' }, p.dis.toFixed(3)), ' mean · ',
-        el('span', { class: 'mono' }, (p.disf * 100).toFixed(0) + '%'), ' of residues disordered'));
+        el('span', { class: 'mono' }, (p.disf * 100).toFixed(0) + '%'), ' of residues predicted disordered'));
   }
 
   const ss = p.ss;
@@ -281,30 +281,43 @@ function geneCard(g) {
     const names = Object.keys(MS_DATASETS);
     const hit = new Set(ms.ds || []);
     const undetectable = ms.abl === 0;
-    add('Peptide evidence',
+    // Only the two P. x canescens datasets share 717's parentage, and even they are not the
+    // 717 clone. A match only in the other three is a family-level, other-species match.
+    const SAME_CROSS = ['PXD002544', 'PXD058986'];
+    const sameCross = [...hit].some((k) => SAME_CROSS.includes(k));
+    add('Peptide matches',
       el('div', {},
         el('div', { style: 'margin-bottom:5px' },
           ms.n
-            ? el('strong', {}, `detected in ${ms.n} of ${ms.of} datasets`)
+            ? el('strong', {}, `peptide match in ${ms.n} of ${ms.of} public datasets`)
             : (undetectable
                 ? el('span', {}, el('span', { class: 'badge' }, 'undetectable'),
                     ' this protein has no fully-tryptic peptide in the searchable mass range, '
                     + 'so it could not have been found however abundant it is')
-                : el('span', { class: 'muted' }, `not detected in any of ${ms.of} datasets`))),
+                : el('span', { class: 'muted' }, `no peptide match in any of ${ms.of} datasets`))),
         el('table', { class: 'data' },
           el('tbody', {}, ...names.map((k) => el('tr', {},
             el('td', { class: 'mono', style: 'font-size:11.5px' }, k),
             el('td', { class: 'muted', style: 'font-size:11.5px' }, MS_DATASETS[k]),
             el('td', {}, hit.has(k)
-              ? el('span', { class: 'badge' }, el('i', { class: 'dot', style: 'background:var(--c-nonsyn)' }), 'detected')
-              : el('span', { class: 'muted' }, 'not detected')))))),
+              ? el('span', { class: 'badge' }, el('i', { class: 'dot', style: 'background:var(--c-nonsyn)' }), 'peptide match')
+              : el('span', { class: 'muted' }, 'no match')))))),
         ms.n
           ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:5px' },
               `${fmt(ms.pep)} distinct peptide${ms.pep === 1 ? '' : 's'}, `
               + `${fmt(ms.psm)} spectrum match${ms.psm === 1 ? '' : 'es'}`
               + (ms.hs != null ? `, best hyperscore ${ms.hs.toFixed(1)}` : '')
-              + (ms.sp ? '. At least one peptide maps only to 717 proteins.'
-                       : '. No peptide here is unique to 717, each also matches a P. trichocarpa protein.'))
+              + (ms.sp ? '. At least one peptide matches 717 proteins and no P. trichocarpa protein.'
+                       : '. No peptide here is unique to 717: each also matches a P. trichocarpa protein.'))
+          : null,
+        ms.n
+          ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:3px' },
+              sameCross
+                ? 'A peptide match, not proof that 717 makes this protein. The P. x canescens '
+                  + 'datasets share 717\u2019s parentage (P. tremula x P. alba) but are not the '
+                  + '717 clone, and the other datasets are other Populus species.'
+                : 'Every match is in a dataset from another Populus species, so it says a protein '
+                  + 'of this family is made somewhere in Populus, not that 717 makes this one.')
           : null,
         (ms.n === 1 && ms.psm === 1)
           ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:3px' },
@@ -337,7 +350,7 @@ function geneCard(g) {
             ? el('span', { class: 'badge' },
                 el('i', { class: 'dot', style: 'background:var(--c-nonsyn)' }),
                 'at least one peptide is specific to this gene')
-            : el('span', {}, el('span', { class: 'badge' }, 'shared evidence only'),
+            : el('span', {}, el('span', { class: 'badge' }, 'shared peptides only'),
                 el('span', { class: 'muted' },
                   ' every peptide below also matches another gene, another species, or both'))),
         el('div', { class: 'scroll-x' }, el('table', { class: 'data' },
@@ -373,8 +386,8 @@ function geneCard(g) {
                 : ' · also in P. trichocarpa'));
           }))),
         el('p', { class: 'muted', style: 'font-size:11.5px;margin:8px 0 0' },
-          'A shared peptide is not a failed measurement, it is real evidence that the protein '
-          + 'family is translated. It just cannot single out this gene as the source. Across the '
+          'A shared peptide is not a failed measurement. It is consistent with some member of '
+          + 'the protein family being translated, but it cannot single out this gene as the source. Across the '
           + 'whole atlas that is the common case: 94% of peptides matching a 717 gene are also '
           + 'in the P. trichocarpa proteome, and only 12% match exactly one 717 gene.')));
   }
@@ -432,8 +445,9 @@ function geneCard(g) {
       + 'makes a blank row here mean something: an earlier version of this page matched peptide '
       + 'names against tables built from another species, where a 717-specific peptide could '
       + 'never have appeared and "not detected" carried no information. Each dataset is kept '
-      + 'separate, their depths differ by sixteenfold, and the 1% error rate accumulates '
-      + 'across the five, so a single match in a single dataset is weak on its own.'));
+      + 'separate (their depths differ by sixteenfold), and the 1% error rate accumulates '
+      + 'across the five, so a single match in a single dataset is weak on its own. None of '
+      + 'the five is from the 717 clone itself.'));
   }
   return card;
 }
@@ -444,15 +458,15 @@ async function overview(man) {
   return el('div', {},
     el('h1', {}, 'Protein'),
     el('p', { class: 'sub' },
-      'What the predicted protein looks like, and whether anyone has actually observed it: '
-      + 'disorder prediction, ESMFold secondary structure, and mass-spec peptide evidence.'),
+      'What the predicted protein looks like, and whether public mass-spec data contain a '
+      + 'matching peptide: disorder prediction, ESMFold secondary structure, and peptide matches.'),
     el('div', { class: 'stat-row' },
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(c['predicted disorder'])), el('div', { class: 'l' }, 'genes with disorder prediction')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(c['ESMFold structure'])), el('div', { class: 'l' }, 'with an ESMFold model (64%)')),
       el('div', { class: 'stat' }, el('div', { class: 'n' },
         fmt(((man.proteomics || {}).genes_with_a_hit || {}).hap1
             + ((man.proteomics || {}).genes_with_a_hit || {}).hap2)),
-        el('div', { class: 'l' }, 'observed as protein')),
+        el('div', { class: 'l' }, 'with a peptide match')),
     ),
     el('div', { class: 'card' },
       el('h2', {}, 'How to read this'),
@@ -473,20 +487,22 @@ async function overview(man) {
           'One point per residue, no side chains, because the full-atom models for the genome '
           + 'are too large for this static site. Yellow and orange mean the model is guessing, '
           + 'and most of a lineage-specific gene\'s model is yellow and orange.'),
-        el('li', {}, el('strong', {}, 'Peptide detection is asymmetric evidence. '),
-          'Detection is strong evidence a predicted protein is real and translated, which '
-          + 'matters most for young, lineage-specific genes whose existence rests on gene '
-          + 'prediction. Non-detection is weak: it also reflects tissue, abundance, and '
-          + 'whether the protein yields observable tryptic peptides at all.'),
+        el('li', {}, el('strong', {}, 'Peptide matches are asymmetric evidence. '),
+          'A gene-unique peptide, seen in more than one spectrum in a P. x canescens dataset, is '
+          + 'good evidence that a predicted protein is translated, which matters most for young, '
+          + 'lineage-specific genes whose existence rests on gene prediction. A shared peptide, '
+          + 'a single spectrum, or a match only in another species is much weaker. Non-detection '
+          + 'is weak too: it also reflects tissue, abundance, and whether the protein yields '
+          + 'observable tryptic peptides at all.'),
         el('li', {}, el('strong', {}, 'The five datasets are never pooled. '),
-          'Their depths differ by sixteenfold, 3,248 to 52,056 peptides, so pooling would '
+          'Their depths differ by sixteenfold (3,248 to 52,056 peptides), so pooling would '
           + 'let the deepest dataset silently define the answer. The 1% false-discovery rate '
           + 'also accumulates across five searches, so a single match in a single dataset is '
           + 'expected to happen by chance somewhere in the genome.'),
         el('li', {}, el('strong', {}, 'Absence has a denominator, and it is on the page. '),
           'A protein with no fully-tryptic peptide in the searchable mass range cannot be '
           + 'found however abundant it is, and that is a property of its lysine and arginine '
-          + 'content and its length, composition, on which young genes differ from old ones. '
+          + 'content and its length, and young genes differ from old ones in exactly that. '
           + `Counting such a gene as "not detected" would inflate the negative. `
           + `${fmt(((man.proteomics || {}).undetectable_by_construction || {}).hap1 || 0)} HAP1 and `
           + `${fmt(((man.proteomics || {}).undetectable_by_construction || {}).hap2 || 0)} HAP2 `
@@ -507,15 +523,17 @@ async function overview(man) {
           + 'of rosid-level ones (PS13-15), 1.3% and 4.6% of Salicaceae-level ones (PS16-17), '
           + 'and 1 of 776 HAP1 and 0 of 835 HAP2 lineage-specific pool genes. Across all five '
           + 'datasets, 2 of 433 HAP1 and 5 of 497 HAP2 PS18 genes and 1 of 343 HAP1 and 0 of '
-          + '338 HAP2 PS19 genes carry a peptide. That ordering is what you would expect if the '
-          + 'measurement tracks real protein abundance and conservation rather than noise, '
-          + 'which is the reason to trust the low end of it.'),
+          + '338 HAP2 PS19 genes carry a peptide. Part of that ordering is built in: the deepest '
+          + 'dataset is P. trichocarpa, where a peptide can only match a 717 gene whose sequence '
+          + 'is conserved, and young genes are also shorter and less abundant. So the gradient '
+          + 'is expected, and it does not show that the low detection of young genes means '
+          + 'they are not translated.'),
         el('li', {}, el('strong', {}, 'Three of the five samples contain no 717 protein. '),
           'PXD025636 is P. trichocarpa, PXD020099 is P. tremula × tremuloides and PXD025418 '
           + 'is P. tomentosa. A peptide matching a 717 gene in those says the gene family is '
           + 'translated somewhere in Populus, not that this clone translates its own copy. '
-          + 'PXD002544 and PXD058986 are P. × canescens, the same P. tremula × P. alba cross '
-          + 'as 717.'))),
+          + 'PXD002544 and PXD058986 are P. × canescens, the same P. tremula × P. alba parentage '
+          + 'as 717 but not the 717 clone.'))),
   );
 }
 
@@ -525,7 +543,7 @@ export default {
   geneCard,
   overview,
   filters: [
-    { id: 'ms_detected', label: 'Peptide-detected', options: ['yes', 'no'],
+    { id: 'ms_detected', label: 'Peptide match', options: ['yes', 'no'],
       test: (g, v) => {
         const ms = g.prot && g.prot.ms;
         return ((ms && ms.n > 0) ? 'yes' : 'no') === v;

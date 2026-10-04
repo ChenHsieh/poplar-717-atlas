@@ -31,13 +31,13 @@ function tataLine(t) {
   // and was wrong, caught by checking a known-true case rather than trusting the label.
   if (t.core) {
     return el('span', {},
-      el('strong', {}, 'Canonical TATA box'), ' in the core promoter (−45 to −20 bp from the TSS).');
+      el('strong', {}, 'TATA-box motif'), ' in the core-promoter window (−45 to −20 bp from the annotated gene start). A sequence match, not a mapped transcription start.');
   }
   if (t.pos != null) {
     return el('span', {},
       'No canonical core-promoter TATA box. A TATA-like sequence occurs ',
       el('strong', {}, `${t.pos.toLocaleString()} bp upstream`),
-      ' of the TSS, outside the −45..−20 core window, so this is not a core promoter TATA box.');
+      ' of the annotated gene start, outside the −45 to −20 core window, so this is not a core-promoter TATA box.');
   }
   return el('span', {}, 'No TATA-like sequence found anywhere in the scanned promoter.');
 }
@@ -83,9 +83,9 @@ function familyStrip(cre, cm) {
 //     strand-oriented at extraction.
 const MARK_LABEL = [
   ['Accessible chromatin', 'ATAC-seq'],
-  ['H3K4me3', 'active promoter'],
-  ['H3K36me3', 'transcribed body'],
-  ['H3K27me3', 'repressed'],
+  ['H3K4me3', 'typical of active promoters'],
+  ['H3K36me3', 'typical of transcribed bodies'],
+  ['H3K27me3', 'typical of repressed genes'],
 ];
 const NB = 40, FLANK = 2000;
 
@@ -127,7 +127,8 @@ function profilePanel(prof) {
     el('span', {}, `\u2212${FLANK / 1000} kb`), el('span', {}, 'TSS'),
     el('span', {}, `+${FLANK / 1000} kb`)));
   wrap.append(el('p', { class: 'muted', style: 'font-size:11px;margin:7px 0 0' },
-    'Each track is a log ratio, so the line sits on a zero baseline and dips below it as well '
+    'Measured in P. trichocarpa leaf at the ortholog, not in 717. '
+    + 'Each track is a log ratio, so the line sits on a zero baseline and dips below it as well '
     + 'as rising above. Every mark is scaled to its own peak (shown at the right), because '
     + 'their ranges differ several-fold and one shared scale would flatten most of them. '
     + 'Upstream is on the left for every gene: the profiles were oriented by strand when they '
@@ -145,26 +146,30 @@ function chromatinCard(g) {
 
   if (!a.ex) {
     return el('div', { class: 'card', 'data-card': 'chromatin' },
-      el('h2', {}, 'Chromatin', el('span', { class: 'tag' }, 'ortholog, P. trichocarpa leaf')),
+      el('h2', {}, 'Chromatin', el('span', { class: 'tag' }, 'borrowed: ortholog, P. trichocarpa leaf; not measured in 717')),
       el('p', { class: 'muted', style: 'margin:0;font-size:13px' },
-        'This gene\u2019s P. trichocarpa ortholog ', link, ' is not expressed in the leaf '
-        + 'libraries these chromatin data come from, so its promoter marks are not '
-        + 'interpretable. A silent gene correctly carries no active-promoter mark, which says '
-        + 'nothing about whether the gene has a promoter. Nothing is shown rather than showing '
-        + 'four zeros that would read as an absence of regulation.'));
+        'These marks were not measured in 717. They come from this gene\u2019s P. trichocarpa '
+        + 'ortholog ', link, ', which is not expressed in the leaf libraries matched to the '
+        + 'chromatin data (at or below 1 read per kilobase, RPK), so its promoter marks are not '
+        + 'interpretable. A silent '
+        + 'gene correctly carries no active-promoter mark, which says nothing about whether the '
+        + 'gene has a promoter. Nothing is shown rather than four zeros that would read as an '
+        + 'absence of regulation.'));
   }
 
   const rows = [
     ['Accessible chromatin', a.acr, 'an ATAC-seq accessible region that is genic or within 2 kb'],
-    ['H3K4me3', a.k4, 'the active-promoter mark, at this gene\u2019s own start'],
-    ['Own promoter', a.own, 'both of the above, so the promoter signal is this locus\u2019s own'],
-    ['H3K36me3 over the body', a.k36, 'the elongation signature, across the gene body'],
+    ['H3K4me3', a.k4, 'a mark typical of active promoters, at the ortholog\u2019s start'],
+    ['Both at the start', a.own, 'both of the above at the ortholog\u2019s start; a neighboring gene\u2019s promoter is not excluded'],
+    ['H3K36me3 over the body', a.k36, 'a mark typical of transcribed gene bodies'],
   ];
   return el('div', { class: 'card', 'data-card': 'chromatin' },
-    el('h2', {}, 'Chromatin', el('span', { class: 'tag' }, 'ortholog, P. trichocarpa leaf')),
+    el('h2', {}, 'Chromatin', el('span', { class: 'tag' }, 'borrowed: ortholog, P. trichocarpa leaf; not measured in 717')),
     el('p', { class: 'sub', style: 'margin:0 0 10px' },
-      'Measured on the ortholog ', link, ', which is expressed in leaf at ',
-      el('span', { class: 'mono' }, a.rpk.toFixed(1)), ' RPK.'),
+      'Not measured in 717. These are marks on the P. trichocarpa ortholog ', link,
+      ' in leaf, where that ortholog is expressed at ',
+      el('span', { class: 'mono' }, a.rpk.toFixed(1)), ' RPK. They are consistent with an active '
+      + 'promoter at the ortholog, not proof of one here, and say nothing about how 717 regulates this gene.'),
     el('table', { class: 'data' },
       el('tbody', {}, ...rows.map(([label, v, note]) => el('tr', {},
         el('td', {}, label),
@@ -193,8 +198,8 @@ function chromatinCard(g) {
       + 'single row. It is the ORTHOLOG\u2019s chromatin: nothing here was measured on 717, and '
       + 'no chromatin data exists for this hybrid or for either parent species. It is LEAF '
       + 'only, so a mark absent here may be present in another tissue. And accessibility and '
-      + 'H3K4me3 establish that a locus has a promoter, never where transcription starts, '
-      + 'only a method that sequences 5\u2032 ends can do that, and none exists for any Populus.'));
+      + 'H3K4me3 are consistent with an active promoter but do not prove one, and they never '
+      + 'show where transcription starts; only a method that sequences 5\u2032 ends can do that.'));
 }
 
 // ---- where the motifs actually sit (TODO 44) ---------------------------------------------
@@ -235,7 +240,7 @@ function positionTrack(cre, cm) {
   const svg = mk('svg', { viewBox: `0 0 ${W} ${h}`, width: '100%', height: h,
                           preserveAspectRatio: 'none', role: 'img',
                           'aria-label': 'positions of transcription-factor family motif '
-                            + 'matches in the 1 kb promoter, transcription start at the right' });
+                            + 'matches in the 1 kb upstream window, annotated gene start at the right' });
   // axis: TSS at the right, ticks every 250 bp
   for (const bp of [1000, 750, 500, 250, 0]) {
     const x = xOf(bp);
@@ -254,12 +259,15 @@ function positionTrack(cre, cm) {
       // an SVG tooltip is a <title> CHILD, and Element.append() returns undefined -- the
       // earlier one-liner set .textContent on that undefined and threw on every gene page
       const ttl = mk('title', {});
-      ttl.textContent = `${famLabel} match, \u2212${d} bp from the transcription start`;
+      ttl.textContent = `${famLabel} match, \u2212${d} bp from the annotated gene start`;
       t.append(ttl);
       svg.append(t);
     }
   }
-  if (cre.tata && cre.tata.pos != null) {
+  // Only the core-window TATA gets the amber line. A TATA-like hexamer far upstream
+  // (tata.core false) is not a core-promoter TATA box, and the text above says so.
+  const tataCore = !!(cre.tata && cre.tata.core && cre.tata.pos != null);
+  if (tataCore) {
     svg.append(mk('line', { x1: xOf(cre.tata.pos), y1: TOP - 8, x2: xOf(cre.tata.pos), y2: h - 12,
                             stroke: 'var(--c-priv)', 'stroke-width': 0.5 }));
   }
@@ -279,14 +287,15 @@ function positionTrack(cre, cm) {
     el('div', { class: 'muted', style: 'display:flex;justify-content:space-between;'
       + 'font-size:10.5px;margin-top:-10px' },
       el('span', {}, '\u22121000 bp'), el('span', {}, '\u2212500'),
-      el('span', {}, 'transcription start')),
+      el('span', {}, 'annotated gene start')),
     el('p', { class: 'muted', style: 'font-size:11px;margin:7px 0 0' },
       'Each tick is one match, placed at the motif\u2019s far (5\u2032) edge; the '
       + 'transcription start is at the right and upstream runs left. Lanes are ordered by how '
       + 'many matches a family has, and the count is beside its name. Ticks share one colour '
-      + 'on purpose, the lane says which family it is.',
-      cre.tata && cre.tata.pos != null
-        ? el('span', {}, ' The single amber line is the canonical TATA box at '
+      + 'on purpose; the lane says which family it is. Positions are measured from the annotated '
+      + 'gene start, which is not a mapped transcription start.',
+      tataCore
+        ? el('span', {}, ' The single amber line is the TATA-box motif in the core window at '
             + `\u2212${cre.tata.pos} bp.`)
         : null));
 }
@@ -299,7 +308,7 @@ function geneCard(g, man) {
   const promoter = el('div', { class: 'card' },
     el('h2', {}, 'Promoter', el('span', { class: 'tag' }, 'JASPAR motif scan')),
     el('p', { class: 'sub', style: 'margin:0 0 10px' },
-      `${(cre.gc * 100).toFixed(1)}% GC over the ${cm.promoter_window_bp} bp upstream of the TSS`,
+      `${(cre.gc * 100).toFixed(1)}% GC over the ${cm.promoter_window_bp} bp upstream of the annotated gene start`,
       cre.ov > 0 ? el('span', {}, `, of which ${cre.ov} bp overlaps the neighboring gene`) : null,
       cre.nf > 0 ? el('span', {}, ` (${(cre.nf * 100).toFixed(0)}% unassembled)`) : null, '.'),
     el('p', { style: 'font-size:12.5px;margin:0 0 12px' }, tataLine(cre.tata)),
@@ -309,8 +318,9 @@ function geneCard(g, man) {
     positionTrack(cre, cm),
     el('p', { class: 'muted', style: 'font-size:11px;margin:8px 0 0' },
       'These are matches to JASPAR position-weight matrices for each family (log-odds ≥ 85% of a ',
-      "matrix's own maximum score, both strands), evidence a family's binding site COULD sit there, ",
-      'not a confirmed or gene-specific regulatory element. Families are built from very different ',
+      "matrix's own maximum score, both strands; 85% is the scan's fixed setting, not a calibrated ",
+      "threshold). A match means a family's binding site COULD sit there. It is not evidence of ",
+      'binding or regulation, and not a confirmed regulatory element. Families are built from very different ',
       'numbers of matrices, so bars are normalized per matrix; raw hit counts are not comparable ',
       'across families on their own.'));
   if (!chrom) return promoter;
@@ -324,7 +334,7 @@ export default {
   label: 'Promoter',
   geneCard,
   filters: [
-    { id: 'atac', label: 'Ortholog has accessible chromatin', options: ['yes', 'no'],
+    { id: 'atac', label: 'P. trichocarpa ortholog has accessible chromatin (leaf, not 717)', options: ['yes', 'no'],
       // only among leaf-expressed orthologs -- for a silent one the answer is not defined
       test: (g, v) => (g.atac && g.atac.ex ? (g.atac.acr ? 'yes' : 'no') : null) === v },
   ],

@@ -7,7 +7,7 @@
 > hosts.
 
 Gene atlas for hybrid poplar 717 (*Populus tremula* × *alba*), haplotype-resolved v5.1.
-Static site — no application server, framework, or browser-side build step.
+Static site: no application server, framework, or browser-side build step.
 
 > **GitHub Pages is public even when the repository is private.** Pages receives a fresh,
 > allowlisted site tree, never the repository root. A successful `checks` run on `main` is the
@@ -77,7 +77,7 @@ remain absent from the release tree.
 scripts/build_all.sh
 ```
 
-A complete build needs the Sapelo2 source trees and the OneDrive MS1 tree. Before it can erase
+A complete build needs the lab's upstream source trees (not public). Before it can erase
 shards, `build_all.sh` runs `check_stages.py`; that gate verifies stage ownership, ordering, and
 dependencies for every data writer, while classifying source generators separately. If a machine
 lacks required sources, the default command stops before writing. `--allow-partial` explicitly

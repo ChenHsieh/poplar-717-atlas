@@ -20,14 +20,14 @@
 export const QUESTIONS = [
   {
     id: 'young-and-duplicated',
-    q: 'Which recently duplicated genes are tissue-specific?',
-    sub: 'in a curated tandem array, peak expression in xylem, τ ≥ 0.8',
+    q: 'Which tandem-array genes are xylem-specific?',
+    sub: 'in a curated tandem array, peak expression in xylem, τ ≥ 0.8 (no age or Ks cut)',
     params: { tandem: 'yes', top: 'xylem', tau_min: '0.8' },
   },
   {
     id: 'lsg-with-protein',
-    q: 'Which lineage-specific candidates have actual protein evidence?',
-    sub: 'phylostratum ≥ 18, with a peptide in at least one of 5 mass-spec datasets',
+    q: 'Which lineage-specific candidates have a peptide match in public Populus mass spectra?',
+    sub: 'phylostratum ≥ 18, a peptide in at least one of 5 public datasets; mostly single, shared or cross-species (P. tomentosa, P. × canescens) peptides',
     params: { ps_min: '18', ms: 'yes' },
   },
   {
@@ -38,14 +38,14 @@ export const QUESTIONS = [
   },
   {
     id: 'three-layers',
-    q: 'Which genes carry all three duplication types at once?',
-    sub: 'a curated tandem array AND both whole-genome events',
+    q: 'Which tandem-array genes are also called for both whole-genome events?',
+    sub: 'a curated tandem array plus sWGD and aWGT anchors, under the primary call',
     params: { tandem: 'yes', wgd9: 'both' },
   },
   {
     id: 'never-expressed',
-    q: 'Which genes are never seen above 1 TPM in any tissue?',
-    sub: 'silent across all 10 tissues in the 652-sample panel',
+    q: 'Which genes have a median WT-control TPM of 1 or less in every tissue?',
+    sub: 'per-tissue medians over WT-control samples only, 10 tissues; single samples may exceed it',
     params: { xin: '' },     // handled specially below: xin is a tissue mask, not a value
     test: (r) => !r.xin || r.xin.length === 0,
   },
@@ -57,8 +57,8 @@ export const QUESTIONS = [
   },
   {
     id: 'private',
-    q: 'Which genes are in no orthogroup at all?',
-    sub: 'private to this genome across the 12-genome panel',
+    q: 'Which genes are classed private (no ortholog in the panel)?',
+    sub: 'synteny class across the 12-genome panel, which omits the parent P. alba',
     params: { cls: 'private_no_ortholog' },
   },
   {

@@ -59,25 +59,25 @@ export async function statusView() {
 
   if (!gates) {
     return el('div', {},
-      el('h1', {}, 'Build status'),
+      el('h1', {}, 'Data checks'),
       el('div', { class: 'card' }, el('p', { style: 'margin:0' },
-        'No gate record is published for this build. That means the validator ran without '
-        + 'writing one, not that it passed, treat the absence as unknown, not as clean.')));
+        'No check record is published for this release. Treat that as unknown, not as '
+        + 'passed.')));
   }
 
   const stale = gates.data_version && man.data_version && gates.data_version !== man.data_version;
   const passed = gates.n_checks - gates.n_failed;
 
   return el('div', {},
-    el('h1', {}, 'Build status'),
+    el('h1', {}, 'Data checks'),
     el('p', { class: 'sub' },
-      'Every integrity gate this build ran over the committed data, with its verdict. Recorded '
-      + 'as each gate executed, not summarised afterwards.'),
+      'Every internal consistency check run over the published data, with its result, '
+      + 'recorded as each check ran.'),
 
     stale ? el('div', { class: 'warn' },
-      el('strong', {}, 'This record is from a different build. '),
-      `The gates were recorded against data v${gates.data_version}; the site is serving `
-      + `v${man.data_version}. The verdicts below describe the earlier build.`) : null,
+      el('strong', {}, 'This record is from an earlier data release. '),
+      `The checks were recorded against data v${gates.data_version}; the site is serving `
+      + `v${man.data_version}. The results below describe the earlier release.`) : null,
 
     el('div', { class: 'stat-row' },
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(gates.n_checks)), el('div', { class: 'l' }, 'gates run')),
@@ -104,19 +104,19 @@ export async function statusView() {
     el('div', { class: 'card' },
       el('h2', {}, 'What these do and do not prove'),
       el('p', { style: 'margin:0;font-size:13.5px;color:var(--ink-2)' },
-        'Each gate checks the committed data against itself, that an ID resolves to the '
-        + 'shard holding it, that a pointer is not dangling, that a count matches the canonical '
-        + 'set it claims. They cannot tell you a measurement upstream was correct, only that '
-        + 'this build did not corrupt or contradict it.'),
+        'Each check tests the published data against itself: that a gene ID resolves to its '
+        + 'record, that a link is not dangling, that a count matches the set it claims. None of '
+        + 'them can tell you an upstream measurement or inference was correct, only that the '
+        + 'atlas did not corrupt or contradict it.'),
       el('p', { class: 'muted', style: 'font-size:12.5px;margin:10px 0 0' },
-        'A gate that passes over zero rows proves nothing, and this project has shipped exactly '
-        + 'that: after one layer was repacked, "every pointer resolves" passed while iterating '
-        + 'over an empty set. Where a gate asserts a count rather than a shape, the count is in '
-        + 'its detail line above, that is the difference worth reading.'),
+        'A check that passes over zero rows proves nothing, and this project has shipped exactly '
+        + 'that once: "every pointer resolves" passed while iterating over an empty set. Where a '
+        + 'check asserts a count, the count is in its detail line above; that is the part worth '
+        + 'reading.'),
       el('p', { class: 'muted', style: 'font-size:12.5px;margin:10px 0 0' },
         'The rendered-page checks are separate and run in a browser: ',
         el('span', { class: 'mono' }, 'scripts/check.mjs'),
-        ', 109 of them, asserting what a reader actually sees.')));
+        ', asserting what a reader actually sees.')));
 }
 
 export default { id: 'status', label: 'Status' };

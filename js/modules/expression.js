@@ -9,11 +9,42 @@ import { loadExprSamples, loadExprStudies, loadExprVector, loadCombatVector,
 const TISSUE_ORDER = ['leaf_young', 'leaf', 'leaf_old', 'xylem', 'bark', 'root', 'stem', 'bud', 'catkin', 'gall', 'callus'];
 const orderTissues = (keys) => TISSUE_ORDER.filter((t) => keys.includes(t)).concat(keys.filter((t) => !TISSUE_ORDER.includes(t)));
 
-function tauNote(tau) {
-  if (tau == null) return 'not computable (all-zero baseline)';
-  if (tau >= 0.85) return 'tissue-specific';
-  if (tau >= 0.5) return 'moderately tissue-biased';
-  return 'broadly expressed';
+// Number of distinct studies contributing WT-control samples to each tissue, counted from
+// data/expr/samples.json (genotype WT, ctrl control) on 2026-09-30. Hardcoded because the
+// data layer is frozen and the sample table is a 225 kB fetch the gene page otherwise never
+// needs. Regenerate if the expression release changes.
+const TISSUE_STUDIES = { leaf_young: 1, leaf_old: 1, bark: 7, root: 6, xylem: 10, leaf: 11,
+  bud: 3, catkin: 1, stem: 1, callus: 1 };
+// τ bins are DISPLAY cutoffs, not calibrated thresholds; the card says so where it uses them.
+const TAU_NARROW = 0.85, TAU_MID = 0.5;
+// Below this in every tissue, τ is dominated by noise (a gene at 0.3 TPM in one tissue and 0
+// elsewhere scores τ = 1), so the card reports it but does not interpret it.
+const LOW_TPM = 1;
+
+const isLow = (x) => Object.values(x.t).every((v) => v < LOW_TPM);
+
+function tauNote(x) {
+  if (x.tau == null) return 'not computable (zero in every tissue)';
+  if (isLow(x)) return 'not interpreted';
+  if (x.tau >= TAU_NARROW) return `narrow expression breadth (at or above the ${TAU_NARROW} display cutoff)`;
+  if (x.tau >= TAU_MID) return `intermediate breadth (between the ${TAU_MID} and ${TAU_NARROW} display cutoffs)`;
+  return `broad expression (below the ${TAU_MID} display cutoff)`;
+}
+
+/** "highest in stem (n=2, single study)": the peak is only as good as its tissue's sample. */
+function peakNote(x) {
+  const t = x.top;
+  if (!t) return el('span', {}, '–');
+  const n = x.n[t];
+  const ns = TISSUE_STUDIES[t];
+  const bits = [`n=${n}`];
+  if (ns === 1) bits.push('single study');
+  const thin = n < 3 || ns === 1;
+  return el('span', {}, 'Highest in ', el('strong', {}, t),
+    ` (${bits.join(', ')}), ${fmt(x.t[t])} TPM`,
+    thin ? el('span', { class: 'muted' },
+      '. That tissue rests on too few samples or a single study to call the gene specific to it')
+      : null);
 }
 
 function baselineChart(x) {
@@ -103,6 +134,10 @@ function contrastCard(g) {
     const absSorted = rows.map((r) => Math.abs(r.lfc)).sort((a, b) => a - b);
     const med = absSorted[Math.floor(absSorted.length / 2)];
     const lowN = rows.filter((r) => r.nc < 2 || r.np < 2).length;
+    // "Largest" names one contrast in bold, so it must not be a 1-vs-1 comparison when a
+    // replicated one exists; the bars above still show every contrast in |log2FC| order.
+    const lead = sorted.find((r) => r.nc >= 2 && r.np >= 2) || sorted[0];
+    const leadWeak = lead.nc < 2 || lead.np < 2;
 
     const grid = el('div', { class: 'lfc-rows' });
     for (const r of shown) {
@@ -130,10 +165,11 @@ function contrastCard(g) {
         el('span', {}, el('i', {}, `−${LFC_MAX}`), el('i', {}, '0'), el('i', {}, `+${LFC_MAX}`))),
       el('dl', { class: 'kv', style: 'margin-top:12px' },
         el('dt', {}, 'Median |log2FC|'), el('dd', { class: 'mono' }, med.toFixed(3)),
-        el('dt', {}, 'Largest'),
-        el('dd', {}, el('span', { class: 'mono' }, shown[0].lfc.toFixed(2)), ' in ',
-          el('strong', {}, shown[0].tissue), `, ${shown[0].label}`,
-          el('span', { class: 'muted' }, `, mean ${fmt(Math.round(shown[0].base))} TPM on the larger side`))),
+        el('dt', {}, leadWeak ? 'Largest' : 'Largest, replicated'),
+        el('dd', {}, el('span', { class: 'mono' }, lead.lfc.toFixed(2)), ' in ',
+          el('strong', {}, lead.tissue), `, ${lead.label} (${lead.nc} vs ${lead.np} samples)`,
+          el('span', { class: 'muted' }, `, mean ${fmt(Math.round(lead.base))} TPM on the larger side`
+            + (leadWeak ? '; single sample on one side' : '')))),
       lowN ? el('p', { class: 'warn-n-note' },
         el('strong', {}, `${lowN} of these ${rows.length} contrasts have a single sample on one side. `),
         'A fold change from one sample against one sample has no dispersion estimate and cannot '
@@ -145,7 +181,7 @@ function contrastCard(g) {
         + 'descriptive ratio, not a differential-expression test: no dispersion model, no '
         + 'multiple-testing correction, and study is not accounted for. The card’s median '
         + 'is computed over every scorable contrast here, which need not match the '
-        + '“responsiveness” figure on the Tissues view, that one uses the upstream '
+        + '“responsiveness” figure on the Tissues view, which uses a stricter '
         + 'eligibility rule.'));
     status.remove();
   })().catch((e) => { status.textContent = `Contrast response unavailable: ${e.message}`; });
@@ -165,27 +201,42 @@ function geneCard(g) {
   },
     el('h2', {}, 'Expression', el('span', { class: 'tag' }, 'kallisto k21')),
     el('p', { class: 'sub', style: 'margin:0 0 10px' },
-      `Median TPM across the WT-control subset (used for the baseline and τ below only, `,
-      `perturbation and the full 652-sample profile are separate views, see below). Peak: `,
-      el('strong', {}, x.top || '–'), ` (${fmt(x.t[x.top])} TPM). `,
-      `τ = ${x.tau ?? '–'}, ${tauNote(x.tau)}.`),
+      'Median TPM across the WT-control subset (used for the baseline and τ below only; '
+      + 'perturbation and the full 652-sample profile are separate views, see below). ',
+      isLow(x)
+        ? el('span', {}, `Below ${LOW_TPM} TPM in every tissue: no peak tissue or τ is interpreted. `)
+        : el('span', {}, peakNote(x), '. '),
+      `τ = ${x.tau ?? '–'}, ${tauNote(x)}.`),
     baselineChart(x),
     el('p', { class: 'muted', style: 'font-size:11px;margin:6px 0 0' },
-      `τ computed over ${orderTissues(Object.keys(x.t).filter((t) => t !== 'callus')).join(' / ')} `,
-      '(callus excluded, 1 sample, not part of the manuscript panel per the delivery notes). ',
-      'callus is still shown above. leaf_young/leaf_old (study 1 only) and the unsplit leaf ',
-      '(every other study) are three separate tissues here, not one, see docs/DATA_AUDIT.md.'),
+      `τ (Yanai) computed on median TPM over ${orderTissues(Object.keys(x.t).filter((t) => t !== 'callus')).join(' / ')}; `,
+      'callus (1 sample) is excluded from τ but still shown above and can still be the highest tissue. ',
+      `The ${TAU_MID} and ${TAU_NARROW} bins are display cutoffs, not calibrated thresholds. `,
+      'Each tissue draws on different studies (stem, callus and catkin on one study each; ',
+      'leaf_young and leaf_old on study 1 only, unsplit leaf on the others), so a difference ',
+      'between tissues here is partly a difference between studies. ',
+      'With 2 or 4 samples the value shown is the upper of the middle two, so for stem (n=2) it ',
+      'is the larger of its two samples.'),
+    el('p', { class: 'muted', style: 'font-size:11px;margin:4px 0 0' },
+      'These are TPM for this haplotype’s gene model. Reads were quantified against both '
+      + 'haplotypes together, so reads that fit this gene and its allele equally well are divided '
+      + 'between them by kallisto’s estimate, not assigned by phasing. This is not '
+      + 'allele-specific expression.'),
     g.resp && g.resp.v != null ? el('p', { style: 'font-size:12.5px;margin:9px 0 0' },
       el('strong', {}, 'Responsiveness: '),
       'median |log2 fold-change| across perturbation contrasts is ',
       el('span', { class: 'mono' }, g.resp.v.toFixed(3)),
-      g.resp.n ? el('span', { class: 'muted' }, ` over ${g.resp.n} eligible contrasts.`) : '.') : null,
+      g.resp.n ? el('span', { class: 'muted' }, ` over ${g.resp.n} eligible contrasts`) : null,
+      el('span', { class: 'muted' }, '. A descriptive number pooled across studies, not a '
+        + 'differential-expression test.')) : null,
     g.nb && g.nb.k5 != null ? el('p', { style: 'font-size:12.5px;margin:9px 0 0' },
       el('strong', {}, 'Neighborhood: '),
-      'co-expression with the 5 nearest genes is ',
+      'correlation with the 5 nearest genes is ',
       el('span', { class: 'mono' }, g.nb.k5.toFixed(3)),
       g.nb.k10 != null ? el('span', {}, ', with the nearest 10 ', el('span', { class: 'mono' }, g.nb.k10.toFixed(3))) : null,
-      el('span', { class: 'muted' }, '. High values suggest shared regulation with the locus rather than with a pathway.')) : null,
+      el('span', { class: 'muted' }, '. Descriptive only, and not evidence of shared regulation: '
+        + 'neighboring similar copies can share reads, and readthrough or a shared open-chromatin '
+        + 'domain can also correlate neighbors.')) : null,
   );
   const btn = el('button', {
     style: 'margin-top:10px;font-size:12px;padding:4px 9px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
@@ -417,8 +468,8 @@ async function overview(man) {
           el('th', {}, 'Paper'))),
         el('tbody', {}, ...list.map(studyRow))))),
     el('p', { class: 'muted', style: 'font-size:11.5px' },
-      'Full matrix CSVs (TPM/FPKM/counts, all 652 samples × 63,960 genes) are not bundled in ',
-      'this repo, the per-gene and per-study JSON above carry the same values. Ask the author for the raw CSVs.'),
+      'Full matrix CSVs (TPM/FPKM/counts, all 652 samples × 63,960 genes) are not on this ',
+      'site; the per-gene and per-study pages carry the same values. Ask the author for the raw CSVs.'),
   );
 }
 
@@ -430,7 +481,7 @@ export default {
   filters: [
     { id: 'expr_top_tissue', label: 'Peak tissue', options: TISSUE_ORDER,
       test: (g, v) => g.x && g.x.top === v },
-    { id: 'expr_tau', label: 'τ (tissue-specificity)',
+    { id: 'expr_tau', label: 'τ (Yanai index; high = narrow expression)',
       test: (g, v) => g.x && g.x.tau != null && g.x.tau >= parseFloat(v) },
   ],
 };

@@ -7,7 +7,7 @@ export const CLASSES = {
   core_syntenic:         { label: 'Core syntenic',    dot: 'core',        blurb: 'Syntenic placement, orthogroup spans ≥9 of 12 genomes.' },
   dispensable_syntenic:  { label: 'Dispensable',      dot: 'dispensable', blurb: 'Syntenic placement, orthogroup spans 2–8 genomes.' },
   non_syntenic_ortholog: { label: 'Non-syntenic',     dot: 'nonsyn',      blurb: 'Has orthologs but no syntenic placement.' },
-  private_no_ortholog:   { label: 'Private',          dot: 'private',     blurb: 'No ortholog outside this genome (orthogroup spans 1 genome).' },
+  private_no_ortholog:   { label: 'Private',          dot: 'private',     blurb: 'No ortholog found elsewhere in the panel (orthogroup spans 1 genome).' },
   tandem_array_member:   { label: 'Tandem array',     dot: 'tandem',      blurb: 'Array-only placement; a non-representative member of a tandem array.' },
 };
 
@@ -46,7 +46,7 @@ function geneCard(g) {
   if (s.cls === 'private_no_ortholog') {
     card.append(el('div', { class: 'warn' },
       'Private calls are panel-dependent. P. alba, a parent species of this hybrid, is not in ' +
-      'the panel; 41% of private genes have a P. alba homolog vs 98.8% of core genes.'));
+      'the panel, and private genes are far more likely than core genes to have a homolog in P. alba.'));
   }
   return card;
 }
@@ -76,7 +76,9 @@ function overview(man) {
     el('h1', {}, 'Synteny'),
     el('p', { class: 'sub' },
       'GENESPACE 1.3.1 over a 12-genome panel (10 syntenic + O. sativa / P. patens as ' +
-      'orthogroup-only outgroups). Classes follow the original five-way vocabulary.'),
+      'orthogroup-only outgroups). Classes follow the original five-way vocabulary. The panel '
+      + 'lacks P. alba, one parent of this hybrid, so "Private" means no ortholog in the panel, '
+      + 'not absent from every other genome.'),
     el('div', { class: 'stat-row' },
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(total)), el('div', { class: 'l' }, 'genes classified')),
       el('div', { class: 'stat' }, el('div', { class: 'n' }, fmt(man.summary.unstable)), el('div', { class: 'l' }, 'DIAMOND-sensitivity unstable')),

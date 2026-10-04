@@ -683,6 +683,10 @@ function legend(built, g) {
 
 function caption(built, g, suppressed, dropped) {
   const bits = [];
+  if (built.rows.some((r) => r.layer === 'T') && built.rows.some((r) => r.layer === 'S' || r.layer === 'A')) {
+    bits.push('Rows run from tandem to aWGT, but tandem copies can be of any age, including older '
+      + 'than the sWGD, so the row order is not a timeline for them.');
+  }
   if (built.memTotal) {
     bits.push(`${built.tdScored} of the ${built.tdShown} tandem link${built.tdShown === 1 ? '' : 's'} drawn `
       + 'carr' + (built.tdScored === 1 ? 'ies' : 'y') + ' a per-pair dS; the rest were never scored as a pair '
@@ -714,10 +718,9 @@ function caption(built, g, suppressed, dropped) {
       + `ARRAY MEMBERS, not of this gene, and each one starts at the member it belongs to.`);
     if (built.novelEvents.length) {
       const orNames = built.novelEvents.map((k) => LAYER[k].label).join(' or ');
-      bits.push(`This array went through ${names(built.novelEvents)}, but this gene retains no `
-        + `${orNames} partner of its own, so its duplication class above does not name `
-        + `${built.novelEvents.length > 1 ? 'them' : 'it'}. The event is a property of the `
-        + 'locus; the class is a property of the gene.');
+      bits.push(`Other members of this array retain a ${names(built.novelEvents)} partner, but this `
+        + `gene retains no ${orNames} partner of its own, so its duplication class above does not `
+        + `name ${built.novelEvents.length > 1 ? 'them' : 'it'}. The class is a property of this gene alone.`);
     }
     const mirrored = built.second.filter((x) => x.mirrored).length;
     if (mirrored) {
@@ -756,7 +759,7 @@ function caption(built, g, suppressed, dropped) {
 async function counterpartGene(g) {
   if (g.allele && g.allele.id) {
     const via = await getGene(g.allele.id);
-    if (via) return { gene: via, how: 'its allele' };
+    if (via) return { gene: via, how: 'its allele', heuristic: false };
   }
   if (!g.fam) return null;
   const fams = await loadFamilies().catch(() => null);
@@ -773,7 +776,9 @@ async function counterpartGene(g) {
     return (r.chr === g.chr ? 100 : 0) + (td ? 10 : 0) + td;
   };
   recs.sort((a, b) => score(b) - score(a));
-  return { gene: recs[0], how: `the ${members.length}-member family ${g.fam}` };
+  return { gene: recs[0], heuristic: true,
+    how: `a heuristic pick from the ${members.length}-member family ${g.fam} (same chromosome first, `
+      + 'then the largest tandem array). It is a stand-in, not an allele, and may be a paralog' };
 }
 
 function geneCard(g) {
@@ -900,8 +905,9 @@ function geneCard(g) {
               const a = countTd(g), b = countTd(other);
               if (a !== b) {
                 stage2wrap.append(el('p', { class: 'muted', style: 'font-size:11.5px;margin:6px 0 0' },
-                  `Tandem copies differ between the haplotypes: ${a} on ${hapOf(g.id)}, `
-                  + `${b} on ${hapOf(other.id)}. A count from one haplotype is not the gene's copy number.`));
+                  `Tandem copies differ between the two drawn loci: ${a} on ${hapOf(g.id)}, `
+                  + `${b} on ${hapOf(other.id)}. A count from one haplotype is not the gene's copy number.`
+                  + (cp.heuristic ? ' Because the other locus is a heuristic stand-in, this difference is indicative only.' : '')));
               }
             }
           } catch (e) {
@@ -914,7 +920,7 @@ function geneCard(g) {
         g.allele && g.allele.id
           ? `the same gene on the other haplotype is ${g.allele.id}`
             + (g.allele.ks != null ? `, dS ${g.allele.ks}` : '') + ', not a duplication'
-          : 'this gene has no 1-to-1 allele; the counterpart is taken from its family'));
+          : 'this gene has no 1-to-1 allele; the other locus shown is a heuristic stand-in from its family'));
       reset.after(modeWrap, stage2wrap);
     }
   })().catch((e) => { status.textContent = `Duplication layers unavailable: ${e.message}`; });

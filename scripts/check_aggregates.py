@@ -38,7 +38,7 @@ def main():
     man = json.load(open(os.path.join(DATA, "meta", "manifest.json")))
     n = 0
     by_chr, ps_rank, syn_cls = Counter(), Counter(), Counter()
-    changed = unstable = 0
+    changed = unstable = n_allele = 0
     for hap, gid, rec in shards():
         n += 1
         by_chr[f"{hap}/{rec['chr']}"] += 1
@@ -51,6 +51,8 @@ def main():
             changed += 1
         if syn.get("stable") is False:
             unstable += 1
+        if rec.get("allele"):
+            n_allele += 1
 
     want = {
         "n_genes": (man.get("n_genes"), n),
@@ -59,6 +61,9 @@ def main():
         "summary.synteny_class": (man.get("summary", {}).get("synteny_class"), dict(syn_cls)),
         "summary.changed": (man.get("summary", {}).get("changed"), changed),
         "summary.unstable": (man.get("summary", {}).get("unstable"), unstable),
+        # genes carrying an allele partner; the home page shows half of it as "allele pairs".
+        # Stayed at the old map's 51,862 for a release after the allele switch (2026-10-03).
+        "annotation.n_allele": (man.get("annotation", {}).get("n_allele"), n_allele),
     }
     stale = []
     for key, (shipped, recomputed) in want.items():

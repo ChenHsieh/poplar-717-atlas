@@ -32,7 +32,7 @@ function qcSummary(qc) {
   flags.push(el('div', {}, el('span', { class: 'muted' }, 'abSENSE: '), verdictLabel,
     qc.hdf === 'detection_failure_plausible'
       ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
-          'This is about the reliability of the age call, not the gene, an ancestral homolog '
+          'This is about the reliability of the age call, not the gene: an ancestral homolog '
           + 'could exist and be undetectable at this sensitivity. It does not mean the gene is old.')
       : null,
     el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
@@ -41,8 +41,9 @@ function qcSummary(qc) {
       + '59 to 61% at Salix purpurea, and every abSENSE flag on this pool is a prediction at '
       + 'Salix purpurea, because that is the boundary species a Populus-specific call is made '
       + 'against. The bias there is about +19 bitscore units, in the direction that makes an '
-      + 'absence look more surprising than it is. So this flag over-calls rather than '
-      + 'under-calls a young gene. That figure is also the optimistic bound: it is measured on '
+      + 'absence look more surprising than it is. So when abSENSE supports the young call, that '
+      + 'support is too generous; when it retracts the young call, the retraction is conservative. '
+      + 'The coverage figure is also the optimistic bound: it is measured on '
       + 'genes that do have a Salix homolog, which are by definition not the genes in this pool.')));
   // Other evidence: shown on every gene that carries it, never folded into `post`. The
   // synteny-contest routes belong to the synteny checks upstream but are not one of the two
@@ -67,14 +68,14 @@ function qcSummary(qc) {
   return el('div', {},
     el('div', {}, ...flags),
     el('div', { style: 'margin-top:6px' },
-      el('span', { class: 'muted' }, 'In the chapter\u2019s post-QC set (neither QC flag): '),
+      el('span', { class: 'muted' }, 'In the post-QC set (neither QC flag): '),
       el('strong', {}, qc.post ? 'yes' : 'no')),
     other.length
       ? el('div', { style: 'margin-top:6px' },
           el('div', { class: 'muted' }, 'Other evidence, not QC flags:'), ...other)
       : null,
     el('div', { class: 'muted', style: 'font-size:11px;margin-top:4px' },
-      'Flags, not filters, nothing here removes or renumbers a gene, and the pool size is '
+      'Flags, not filters: nothing here removes or renumbers a gene, and the pool size is '
       + 'never set by these fields; every claim about this gene should cite the flag alongside it. '
       + 'The two QC checks are abSENSE and the synteny window search.'));
 }
@@ -86,8 +87,15 @@ function geneCard(g) {
   const add = (k, ...v) => { kv.append(el('dt', {}, k), el('dd', {}, ...v)); };
 
   add('Stratum', p.name
-    ? el('span', {}, p.name, p.rank != null ? el('span', { class: 'muted' }, ` · PS${p.rank} of 19`) : null)
-    : el('span', { class: 'muted' }, 'unplaced, genEra could not assign a stratum'));
+    ? el('span', {}, p.name, p.rank != null ? el('span', { class: 'muted' }, ` · PS${p.rank} of 19`) : null,
+        p.rank === 19
+          ? el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px', 'data-ps19-caveat': '' },
+              'PS19 means no homolog was detected outside this assembly in the species searched. '
+              + 'That panel lacks P. alba, one parent of this hybrid, so a PS19 gene is most likely '
+              + 'inherited from one parent species rather than born in the hybrid. It is a detection '
+              + 'and sampling result, not proof of a new gene.')
+          : null)
+    : el('span', { class: 'muted' }, 'unplaced: genEra could not assign a stratum'));
   if (p.tr != null) {
     add('Taxonomic representativeness', `${p.tr}%`,
       el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
@@ -120,8 +128,8 @@ function geneCard(g) {
           : null,
         (p.frz.rank === 19 && p.rank === 18)
           ? el('div', { style: 'margin-top:3px' },
-              'Hybrid-only in the frozen call, Populus-wide in the current one. 179 pool genes do '
-              + 'this; none moves the other way.')
+              'PS19 (no homolog detected outside this assembly) in the frozen call, PS18 (Populus) '
+              + 'in the current one. 179 pool genes do this; none moves the other way.')
           : null,
         el('div', { class: 'muted', style: 'font-size:12px;margin-top:3px' },
           'The current call is the genEra rerun that added Idesia polycarpa, the only Salicaceae '
@@ -234,12 +242,12 @@ async function overview(man) {
     el('h1', {}, 'Phylostratigraphy'),
     el('p', { class: 'sub' },
       'genEra assigns each gene to the oldest phylostratum in which a homolog is detectable, '
-      + 'over 19 strata from cellular organisms to this hybrid. The chapter’s '
-      + 'lineage-specific gene pool is PS ≥ 18 in the genEra rerun that added Idesia polycarpa: '
+      + 'over 19 strata from cellular organisms to this hybrid. The '
+      + 'lineage-specific candidate pool is PS ≥ 18 in the genEra rerun that added Idesia polycarpa: '
       + `${fmt(pool.HAP1)} HAP1 and ${fmt(pool.HAP2)} HAP2 genes. PS17 Saliceae is flanking `
       + 'context, not pool. Two QC checks flag genes without removing them, abSENSE and the '
       + `synteny window search; ${fmt(post.HAP1)} HAP1 and ${fmt(post.HAP2)} HAP2 carry neither `
-      + 'flag, the chapter\u2019s post-QC set. The frozen 2026-04 genEra call, superseded as the '
+      + 'flag, the post-QC set. The frozen 2026-04 genEra call, superseded as the '
       + `pool, had ${fmt(frzN.hap1)} HAP1 and ${fmt(frzN.hap2)} HAP2; the ${fmt(left.hap1)} HAP1 `
       + `and ${fmt(left.hap2)} HAP2 genes that left say so on their own page.`),
     el('div', { class: 'stat-row' },
@@ -270,11 +278,17 @@ async function overview(man) {
           + 'counts rather than defaulted in either direction.'),
         el('li', {}, el('strong', {}, 'A young stratum is not proof of a young gene. '),
           'Phylostratigraphy under-detects fast-evolving homologs, so PS ≥ 18 is a candidate '
-          + 'pool, not a verdict, which is why the synteny module’s independent orthology '
+          + 'pool, not a verdict. That is why the synteny module\u2019s independent orthology '
           + 'call sits beside it on every gene page.'),
-        el('li', {}, el('strong', {}, 'PS19 is annotation-artifact-enriched. '),
-          'The hybrid-only stratum is where mis-annotation accumulates; the chapter reports the '
-          + 'PS18/PS19 split for that reason rather than pooling them silently.'))),
+        el('li', {}, el('strong', {}, 'No homolog found can also mean no genome searched. '),
+          'A homolog is only detectable in species that were searched. The panel lacks P. alba, '
+          + 'one parent of this hybrid, so most PS19 genes (no homolog outside this assembly) are '
+          + 'likely inherited from one parent species, not born in the hybrid. Adding Idesia '
+          + 'removed 66 HAP1 and 48 HAP2 genes from the pool for the same reason.'),
+        el('li', {}, el('strong', {}, 'PS18 and PS19 are reported separately. '),
+          'Short or poorly supported gene models are a known source of false young genes, and '
+          + 'the youngest stratum is where they would collect, so the split is shown rather than '
+          + 'pooled.'))),
   );
 }
 

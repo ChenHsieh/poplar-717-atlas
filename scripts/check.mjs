@@ -317,7 +317,7 @@ await check('module-phylostrat', '#/module/phylostrat',
 await check('gene-ambiguous-ps', '#/gene/PtXaTreH.06G037000',
   { expect: ['genEra flagged this gene as ambiguous'], wait: 900 });
 await check('module-duplication', '#/module/duplication',
-  { expect: ['Duplication', 'not genome-wide', 'stratum-selected', 'Duplication class',
+  { expect: ['Duplication', 'not genome-wide', 'selected by phylostratum', 'Duplication class',
              'sWGD', 'dispersed'] });
 await check('gene-paralog', '#/gene/PtXaTreH.01G330600',
   { expect: ['Duplication', 'Paralog pairs'], wait: 900  });
@@ -350,9 +350,8 @@ await check('gene-lsg-qc-clean-but-flagged', '#/gene/PtXaTreH.08G114000',
 // to say the chapter's headline result depended on the gene. Also the gene-model card's
 // forward-looking line, which named a wrong library count and presumed an unmerged PR.
 await check('gene-lsg-qc-unstable', '#/gene/PtXaTreH.12G066000',
-  { expect: ['differs between the default and --ultra-sensitive DIAMOND runs',
-             'has not been adopted'],
-    forbid: ['headline result', '827-library'], wait: 900 });
+  { expect: ['differs between the default and --ultra-sensitive DIAMOND runs'],
+    forbid: ['headline result', '827-library', 'under review upstream'], wait: 900 });
 // A gene that left the pool (C5: the pool is the rerun that added Idesia). Named as leaving by
 // a rank change, not as failing a QC check, with no QC record, and with the frozen call named
 // as superseded and neutrally (never "withdrawn", never a "12-species panel"; MS2 audit A38).
@@ -387,7 +386,7 @@ await check('module-protein-gradient', '#/module/protein',
   { expect: ['1 of 776 HAP1 and 0 of 835 HAP2 lineage-specific pool genes',
              'Strata here are those of the genEra rerun that added Idesia, which defines the pool',
              'PXD025636 is P. trichocarpa, PXD020099 is P. tremula × tremuloides',
-             'same P. tremula × P. alba cross as 717'],
+             'same P. tremula × P. alba parentage'],
     forbid: ['0.12% of the lineage-specific pool', 'PXD058986 are P. x canescens. A'] });
 await check('module-about-numbers', '#/module/about',
   { expect: ['no rank for 27 HAP1 and 18 HAP2 genes in the current call',
@@ -412,20 +411,20 @@ await check('module-about-numbers', '#/module/about',
 // pool one matters most: the site published the withdrawn pool for four days, and a check
 // that only asserts "a pool number renders" would have passed throughout.
 await check('gene-ps19-to-ps18', '#/gene/PtXaAlbH.17G073600',
-  { expect: ['yes, PS18', 'Frozen call', 'Hybrid-only in the frozen call, Populus-wide in the current one',
+  { expect: ['yes, PS18', 'Frozen call', 'PS19 (no homolog detected outside this assembly) in the frozen call, PS18 (Populus) in the current one',
              '179 pool genes do this', 'post-QC set (neither QC flag): yes'],
     forbid: ['left the pool'], wait: 900 });
 // The abSENSE calibration must travel with the flag, not sit in a doc nobody opens.
 await check('gene-absense-calibration', '#/gene/PtXaTreH.12G056600',
   { expect: ['Evidence quality', 'Salix purpurea', '59 to 61%',
-             'over-calls rather than under-calls'], wait: 900 });
+             'that support is too generous'], wait: 900 });
 await check('gene-peptide-detected', '#/gene/PtXaAlbH.17G050300',
-  { expect: ['Peptide evidence', 'detected in', 'spectrum match',
+  { expect: ['Peptide matches', 'peptide match in', 'spectrum match',
              'tryptic peptide', 'P. tomentosa'], wait: 1000 });
 // A gene that could not have been found is not the same as one that was looked for and
 // missed. If these two ever render identically the layer has lost its point.
 await check('gene-undetectable', '#/gene/PtXaAlbH.17G041200',
-  { expect: ['Peptide evidence', 'undetectable',
+  { expect: ['Peptide matches', 'undetectable',
              'could not have been found however abundant'], wait: 1000 });
 await check('gene-selection', '#/gene/PtXaTreH.05G120200',
   { expect: ['Selection', 'vs P. trichocarpa', 'Potri.', 'codons', 'purifying selection',
@@ -434,14 +433,14 @@ await check('gene-no-ortholog', '#/gene/PtXaAlbH.17G052200',
   { expect: ['Selection', 'not defined for this gene', 'structural rather than missing',
              'nothing to measure against'], wait: 900 });
 await check('browse-omega-column', '#/browse',
-  { expect: ['\u03c9', 'MS', 'Peptide-detected'], wait: 1200 });
+  { expect: ['\u03c9', 'MS', 'Peptide match'], wait: 1200 });
 
 // Chromatin (TODO 30). Two cases, and the second is the point of the layer: a gene whose
 // ortholog is SILENT in leaf must not render four absent marks, which would read as an
 // absence of regulation when it is an absence of relevant data.
 await check('gene-chromatin', '#/gene/PtXaTreH.01G000700',
   { expect: ['Chromatin', 'P. trichocarpa leaf', 'Accessible chromatin', 'H3K4me3',
-             'RPK', 'never where transcription starts'], wait: 1000 });
+             'RPK', 'never show where transcription starts'], wait: 1000 });
 await check('gene-chromatin-silent', '#/gene/PtXaTreH.01G000100',
   { expect: ['Chromatin', 'not expressed in the leaf libraries',
              'would read as an absence of regulation'], wait: 1000 });
@@ -535,7 +534,7 @@ await check('browse-expressed-in', '#/browse?xin=xylem',
   { expect: ['Expressed in (>1 TPM)', 'Clear all'], wait: 1400 });
 await check('browse-proxy-statement', '#/browse',
   { expect: ['MS is indirect', 'only 12% match exactly one 717 gene',
-             'measured absence'], wait: 1400 });
+             'no reciprocal-best ortholog was found'], wait: 1400 });
 // A stratum bar and a synteny class must be doors into Browse, not dead ends.
 await check('phylostrat-drillthrough', '#/module/phylostrat',
   { expect: ['Click a stratum to browse its genes'] });
@@ -686,7 +685,7 @@ await check('gene-tandem-pairds', '#/gene/PtXaTreH.08G070600',
 // gamma partner between them.
 await check('gene-array-history', '#/gene/PtXaTreH.04G044000',
   { expect: ['this array\u2019s history', 'this gene retains', 'no', 'partner',
-             'other array member', 'property of the locus',
+             'other array member', 'property of this gene alone',
              'of an array member',                      // the layers card's row label
              'second order',                            // the layers card's caption
              'not called'],                             // gene-level S/A call, unchanged
@@ -995,7 +994,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
     && fromHap1.includes('NOT allele-specific expression')
     && fromHap1.toLowerCase().includes('not measured') === fromHap1.toLowerCase().includes('not measured')
     // a gene with no allele gets the real explanation, not an empty table
-    && solo.includes('No allele pair') && solo.includes('12,098')
+    && solo.includes('No allele pair') && solo.includes('not by itself a presence/absence call')
     && !solo.includes('Side by side');
   if (!ok) failures++;
   console.log(`\n### pair:same-from-either-haplotype  ${ok ? 'OK' : 'FAIL'}`);
@@ -1444,7 +1443,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
 // the changelog, the citation file and build metadata. A planted positive control proves the
 // scan can see a hit before its silence is trusted.
 {
-  const INTERNAL = /(?:^|[^A-Za-z0-9])v(?:[5-9]|1[0-2])(?![0-9.])|\bmaster v?\d|\bmaster (?:duplication )?table\b|\bCJ\b|\bcj_[a-z]|\b\d{2,3}_[a-z][a-z0-9]*_[a-z0-9_]+|ms1-dup|ms2-lsg|\bMS[12]\b|\broute C\b|FACTS_/i;
+  const INTERNAL = /(?:^|[^A-Za-z0-9])v(?:[5-9]|1[0-2])(?![0-9.])|\bmaster v?\d|\bmaster (?:duplication )?table\b|\bCJ\b|\bcj_[a-z]|\b\d{2,3}_[a-z][a-z0-9]*_[a-z0-9_]+|ms1-dup|ms2-lsg|\bMS[12]\b|\broute C\b|FACTS_|Sapelo|\bChen\b|TODO \d|\/scratch\//i;
   const routes = ['/', '/browse', '/arrays', '/array/HAP1_U00120', '/pair/PtXaTreH.05G120200', '/map/hap1/Chr01',
     '/karyotype', '/status', '/module/about', '/module/duplication', '/gene/PtXaTreH.08G070200',
     '/gene/PtXaAlbH.05G122300', '/gene/PtXaTreH.10G046700', '/gene/PtXaTreH.01G006100', '/family/PtXaTreH.08G070200'];
@@ -1736,7 +1735,7 @@ await p.screenshot({ path: `${outdir}/search-text.png` });
 // "no TATA" branch -- a wrong-branch bug (found once already: an inverted tata_pos
 // distance) would otherwise hide behind whichever branch happened to render.
 await check('gene-promoter-tata-true', '#/gene/PtXaTreH.01G000900',
-  { expect: ['Promoter', 'Canonical TATA box', 'core promoter', 'bZIP', 'not comparable'] });
+  { expect: ['Promoter', 'TATA-box motif', 'core-promoter window', 'bZIP', 'not comparable'] });
 await check('gene-promoter-tata-false', '#/gene/PtXaTreH.05G120200',
   { expect: ['Promoter', 'No canonical core-promoter TATA box'] });
 
@@ -2689,7 +2688,7 @@ for (const scheme of ['light', 'dark']) {
   const neg = await read('PtXaTreH.03G012100');
   const want = [['PtXaTreH.01G020300', 'PtXaAlbH.01G020800'], ['PtXaTreH.01G020400', 'PtXaAlbH.01G021000']];
   const okPos = want.every(([m, a]) => pos.card.includes(m) && pos.card.includes(a))
-    && pos.card.includes('HAP1_U00025') && pos.card.includes('not hemizygous')
+    && pos.card.includes('HAP1_U00025') && pos.card.includes('may have no counterpart')
     && pos.glance.includes('PtXaAlbH.01G020800');
   const okNeg = neg.card.includes('HAP1_U00361') && neg.card.includes('array-level case')
     && !/PtXaAlbH\./.test(neg.card);
