@@ -2,9 +2,11 @@
 // not a valid test) and fails on any console error or missing expected content.
 import { createRequire } from 'node:module';
 const require_ = createRequire(import.meta.url);
-const { chromium } = process.env.CI_CHROME
-  ? require_('playwright-core')
-  : await import('/scratch/ch29576/tools/webcheck/node_modules/playwright-core/index.mjs');
+// playwright-core comes from node_modules (CI installs it), or from ATLAS_PLAYWRIGHT, a path
+// to a playwright-core index.mjs installed elsewhere on a machine without a local install.
+const { chromium } = process.env.ATLAS_PLAYWRIGHT
+  ? await import(process.env.ATLAS_PLAYWRIGHT)
+  : require_('playwright-core');
 import fs from 'fs';
 
 const base = process.argv[2] || 'http://127.0.0.1:8931';
@@ -33,10 +35,9 @@ fs.mkdirSync(outdir, { recursive: true });
   }
 }
 
-// Sapelo2 has no bundled browser download, so the path is pinned there; CI passes its own.
-const SAPELO_CHROME = '/scratch/ch29576/tools/webcheck/browsers/chromium-1234/chrome-linux64/chrome';
+// The browser: CI_CHROME (set by the workflows) or CHROME; otherwise playwright's own download.
 const browser = await chromium.launch({
-  executablePath: process.env.CI_CHROME || SAPELO_CHROME,
+  executablePath: process.env.CI_CHROME || process.env.CHROME || undefined,
   args: ['--no-sandbox', '--disable-dev-shm-usage'],
 });
 let failures = 0;
