@@ -72,7 +72,7 @@ def sanitise_note(raw):
     """Reduce a curation note to its MEANING, dropping the person.
 
     The raw notes carry internal lab process onto a public page: curator initials and dates
-    ("cj_20260827"), verbatim quotes ('curator wrote: "no"'), and a named exception. A visitor
+    tags, verbatim quotes, and a named exception. A visitor
     benefits from knowing a gene was hand-rejected or flagged pseudogene-like; nobody benefits
     from the curator's initials, and one note pairs a REJECT verdict with the curator writing
     "ok", which reads as a contradiction without the context that produced it.

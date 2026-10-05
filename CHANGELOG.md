@@ -2262,7 +2262,7 @@ status, sitting in a case-study, calibration or "structural explorations" folder
 
 **Privacy pass**
 - Tandem-array curation notes were shipping internal lab process to a public page: curator
-  initials and dates (`cj_20260827`), verbatim quotes (`curator wrote: "no"`), and a named
+  initials and dates, verbatim quotes, and a named
   personal exception. Notes are now reduced to their meaning — "manually rejected during
   curation", "flagged pseudogene-like", "curated verdict disagrees with the automatic gate" —
   which is what a visitor can use. Zero shards now carry a curator identity or raw quote.
