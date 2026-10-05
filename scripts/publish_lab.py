@@ -24,7 +24,8 @@ import tarfile
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PRIVATE = ("docs/", "TODO.md", "TODO_public.md", "scripts/publish_lab.py")
+PRIVATE = ("docs/", "TODO.md", "TODO_public.md", "README.md", "README_public.md", "scripts/publish_lab.py")
+PUBLIC_SWAP = {"TODO_public.md": "TODO.md", "README_public.md": "README.md"}
 SANITIZE = [
     (re.compile(r"/Users/chenhsieh/[^\s'\"`)]*?OneDrive[^/\s'\"`)]*/"), "<onedrive>/"),
     (re.compile(r"/Users/chenhsieh/"), "<home>/"),
@@ -56,17 +57,16 @@ def main():
     a = ap.parse_args()
     version = run("git", "show", f"{a.ref}:VERSION").stdout.decode().strip()
     tmp = tempfile.mkdtemp(prefix="atlas_publish_")
-    tarfile.open(fileobj=io.BytesIO(run("git", "archive", a.ref).stdout)).extractall(tmp)
+    tarfile.open(fileobj=io.BytesIO(run("git", "archive", a.ref).stdout)).extractall(tmp, filter="data")
 
     for p in PRIVATE:
         q = os.path.join(tmp, p)
-        if p == "TODO_public.md" and os.path.exists(q):
-            shutil.move(q, os.path.join(tmp, "TODO.md"))
+        if p in PUBLIC_SWAP and os.path.exists(q):
+            shutil.move(q, os.path.join(tmp, PUBLIC_SWAP[p]))     # public version over the private one
         elif os.path.isdir(q):
             shutil.rmtree(q)
-        elif os.path.exists(q) and p != "TODO.md":
+        elif os.path.exists(q) and p not in PUBLIC_SWAP.values():
             os.remove(q)
-    # TODO.md now holds the public list (moved over the private one above)
 
     forbid = list(FORBID)
     if os.path.exists(a.held):
