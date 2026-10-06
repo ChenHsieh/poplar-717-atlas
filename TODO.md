@@ -1,5 +1,7 @@
 # TODO
 
+- [ ] **Citation: replace "Hsieh et al., unpublished" with the bioRxiv preprint and DOI once posted** (About page how-to-cite in js/modules/about.js, README_public.md, CITATION.cff, the check in scripts/check.mjs). Then republish to both sites.
+
 Ordered. Each line is a shippable increment. Direction lives in `docs/ROADMAP.md`;
 this file is the task list for the current release (v0.2 — "gene page becomes a hub").
 

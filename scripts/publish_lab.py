@@ -114,7 +114,12 @@ def main():
     if not run("git", "status", "--porcelain", cwd=a.lab).stdout.strip():
         print("no changes since the last published release")
         return 0
-    run("git", "commit", "-q", "-m", f"Release {version}\n\nSee CHANGELOG.md for what changed.", cwd=a.lab)
+    title = f"Release {version}"
+    if title in run("git", "log", "--format=%s", cwd=a.lab).stdout.decode():
+        # a site-only change keeps the data version; say so instead of repeating the title
+        import datetime
+        title += f", site update {datetime.date.today().isoformat()}"
+    run("git", "commit", "-q", "-m", f"{title}\n\nSee CHANGELOG.md for what changed.", cwd=a.lab)
     print(run("git", "log", "--oneline", "-1", cwd=a.lab).stdout.decode().strip(), "(not pushed)")
     return 0
 
