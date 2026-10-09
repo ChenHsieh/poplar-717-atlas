@@ -1393,13 +1393,13 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
     '1:1': ['PtXaTreH.01G000200', '1:1'], 'N:N_TD': ['PtXaTreH.01G000300', 'TD-associated N:N'],
     'N:N_nonTD': ['PtXaTreH.01G017400', 'Non-TD N:N'], 'CNV_TD': ['PtXaTreH.01G002200', 'TD-associated CNV'],
     'CNV_nonTD': ['PtXaTreH.01G319400', 'Non-TD CNV'], 'hemizygous_strict_PAV': ['PtXaTreH.01G006100', 'Strict PAV'],
-    'hemizygous_TD_array': ['PtXaTreH.03G012100', 'TD-associated PAV'],
+    'hemizygous_TD_array': ['PtXaTreH.03G012100', 'Hemizygous TD arrays'],
     'hemizygous_nonPAV': ['PtXaTreH.01G000100', 'Non-PAV hemizygous'], none: ['PtXaTreH.01G006600', 'not classified'],
   };
   const arrays = {
     HAP1_U00000: 'N:N (same copy number)', HAP1_U00001: 'CNV, arrays in both haplotypes',
     HAP1_U00021: 'CNV, HAP1-specific expansion', HAP2_U02223: 'CNV, HAP2-specific expansion',
-    HAP1_U00361: 'PAV (whole array)',
+    HAP1_U00361: 'Hemizygous (no syntelog)',
   };
   const rp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
   const rerrs = [];
@@ -1442,9 +1442,10 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
 
 // No internal version or project names in page text (Chen, 2026-10-03): provenance belongs in
 // the changelog, the citation file and build metadata. A planted positive control proves the
-// scan can see a hit before its silence is trusted.
+// scan can see a hit before its silence is trusted. Also retired labels: a tandem array with no
+// syntelog for any member is hemizygous, never PAV (Chen, 2026-10-05).
 {
-  const INTERNAL = /(?:^|[^A-Za-z0-9])v(?:[5-9]|1[0-2])(?![0-9.])|\bmaster v?\d|\bmaster (?:duplication )?table\b|\bCJ\b|\bcj_[a-z]|\b\d{2,3}_[a-z][a-z0-9]*_[a-z0-9_]+|ms1-dup|ms2-lsg|\bMS[12]\b|\broute C\b|FACTS_|Sapelo|\bChen\b|TODO \d|\/scratch\//i;
+  const INTERNAL = /(?:^|[^A-Za-z0-9])v(?:[5-9]|1[0-2])(?![0-9.])|\bmaster v?\d|\bmaster (?:duplication )?table\b|\bCJ\b|\bcj_[a-z]|\b\d{2,3}_[a-z][a-z0-9]*_[a-z0-9_]+|ms1-dup|ms2-lsg|\bMS[12]\b|\broute C\b|FACTS_|Sapelo|\bChen\b|TODO \d|\/scratch\/|TD-associated PAV|PAV \(whole array\)/i;
   const routes = ['/', '/browse', '/arrays', '/array/HAP1_U00120', '/pair/PtXaTreH.05G120200', '/map/hap1/Chr01',
     '/karyotype', '/status', '/module/about', '/module/duplication', '/gene/PtXaTreH.08G070200',
     '/gene/PtXaAlbH.05G122300', '/gene/PtXaTreH.10G046700', '/gene/PtXaTreH.01G006100', '/family/PtXaTreH.08G070200'];

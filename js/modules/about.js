@@ -106,7 +106,8 @@ function overview(man) {
           'A gene is Strict PAV when it has no syntelog on the other haplotype and no protein-level '
           + 'match to it there: 528 HAP1 and 605 HAP2 genes. Genes without a syntelog whose sequence '
           + 'is present on the other haplotype are Non-PAV hemizygous, and tandem arrays with no '
-          + 'syntelog for any member are TD-associated PAV.'),
+          + 'syntelog for any member are Hemizygous TD arrays (not PAV: most of their members '
+          + 'still have a protein-level match on the other haplotype).'),
         el('li', {}, el('strong', {}, 'Chromatin and protein evidence is borrowed. '),
           'Chromatin accessibility and histone marks were measured in P. trichocarpa leaf '
           + '(GEO GSE128434) and are shown on each gene\'s 1:1 P. trichocarpa ortholog; nothing '
