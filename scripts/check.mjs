@@ -1477,7 +1477,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
 // page's genes, and the links it draws are classified -- the focus genes' own alleles are
 // counted separately from the alignment anchors and from every other allele pair in view.
 // HAP1_U00120: all 3 members have an allele, 2 of them in HAP2_U02345, which must be named as
-// the matching array. HAP1_U00361 (PAV, whole array): no member has an allele, so every emphasised link is an
+// the matching array. HAP1_U00361 (hemizygous, no syntelog): no member has an allele, so every emphasised link is an
 // anchor and the page must say nothing on HAP2 is this array's allele.
 {
   const cases = [
@@ -1509,7 +1509,7 @@ await check('gene-routec-disagree', '#/gene/PtXaTreH.09G077400',
     }, host);
     let extra = true;
     if (label === 'array-linked') extra = r.matching && r.matching[0] === 'HAP2_U02345';
-    if (label === 'array-anchored') extra = /PAV \(whole array\)/.test(r.linkedText || '') && /No member has its own allele/.test(r.linkedText || '');
+    if (label === 'array-anchored') extra = /Hemizygous \(no syntelog\)/.test(r.linkedText || '') && /No member has its own allele/.test(r.linkedText || '');
     const ok = !r.missing && r.colours > 5 && linksOk(r.d || {}) && extra && !lerrs.length;
     if (!ok) failures++;
     console.log(`\n### locus-browser:${label}  ${ok ? 'OK' : 'FAIL'}`);

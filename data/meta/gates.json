@@ -281,7 +281,7 @@
   {
    "name": "no embargoed LSG candidate label in any published file",
    "ok": true,
-   "detail": "1355 text files"
+   "detail": "1358 text files"
   },
   {
    "name": "ancestral karyotype counts match the placement coverage, per haplotype",
