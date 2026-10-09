@@ -7,13 +7,17 @@
 // paralogs -- synteny class, duplication class, chromosome, phylostratum, peak tissue --
 // side by side, paginated, so choosing among many hits is a comparison, not a guess.
 //
-// Reuses loadFacets()/facetRow() (browse.js's data source) for the fast columns, and
-// fetches full gene shards ONLY for the current page's rows, for the description and
-// Arabidopsis/Pfam context a facet row doesn't carry. That mirrors this codebase's rule
-// that a filter over 63,960 genes reads the small index, not the shards -- extended here
-// so a broad query (which could match thousands) never reads more shards than one page.
+// Every column comes from the small indexes Browse already uses: loadFacets()/facetRow() for
+// the classes and numbers, desc.json for the description (the same text, so Browse and this
+// page cannot disagree), and the facet `dupt` column for the duplication class. This page used
+// to fetch each row's whole gene shard for the description and the duplication letters: one
+// page of 40 rows touched ~30 shards, 4.7 MB on the wire and 23 MB of JSON to parse, against
+// ~1 MB for any other page. Those indexes are cached after the first search, so paging and the
+// next query cost nothing. A facet index cached from before `dupt` existed (a reader holding a
+// stale facets.json for a few minutes after a deploy) falls back to the per-row shard fetch.
 import { el, clear, fmt } from './dom.js';
-import { loadFacets, facetRow, loadGeneIndex, getGene, searchGenesRanked } from './data.js';
+import { loadFacets, facetRow, loadGeneIndex, loadDescIndex, getGene, searchGenesRanked } from './data.js';
+import { dupTypeLabel } from '../modules/duplication.js';
 
 const PAGE = 40;
 
@@ -23,8 +27,8 @@ function rowsTable(page, byId, ann) {
     const a = ann.get(id) || {};
     return el('tr', {},
       el('td', {}, el('a', { href: `#/gene/${id}`, class: 'mono' }, id)),
-      el('td', { style: 'font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis' },
-        (a.d || a.atd || '') || el('span', { class: 'muted' }, '–')),
+      el('td', { class: 'bz-desc', title: a.d || '' },
+        a.d ? a.d.toLowerCase() : el('span', { class: 'muted' }, '–')),
       el('td', {}, r ? r.hap.toUpperCase() : '–'),
       el('td', {}, r ? (r.cls ? r.cls.replace(/_/g, ' ') : '–') : '–'),
       el('td', {}, a.dup || '–'),
@@ -36,7 +40,7 @@ function rowsTable(page, byId, ann) {
   return el('div', { class: 'scroll-x' }, el('table', { class: 'data compare' },
     el('thead', {}, el('tr', {},
       el('th', {}, 'Gene'), el('th', {}, 'Description'), el('th', {}, 'Hap'),
-      el('th', {}, 'Synteny class'), el('th', {}, 'Dup.'), el('th', {}, 'Chr'),
+      el('th', {}, 'Synteny class'), el('th', {}, 'Duplication'), el('th', {}, 'Chr'),
       el('th', { class: 'num' }, 'PS'), el('th', {}, 'Peak tissue'), el('th', { class: 'num' }, 'τ'))),
     el('tbody', {}, ...body)));
 }
@@ -52,8 +56,9 @@ export async function searchResultsView(query) {
   const card = el('div', { class: 'card' }, tableHolder, pager);
   root.append(statRow, card);
 
-  const [{ ids: matches, total }, facets, geneIndex] = await Promise.all([
+  const [{ ids: matches, total }, facets, geneIndex, desc] = await Promise.all([
     searchGenesRanked(query), loadFacets(), loadGeneIndex(),
+    loadDescIndex().catch(() => null),        // the column falls back to the shards
   ]);
 
   const rowOf = new Map();
@@ -62,6 +67,19 @@ export async function searchResultsView(query) {
     const i = posOf.get(id);
     if (i != null) rowOf.set(id, facetRow(facets, i));
   }
+  const descOk = Array.isArray(desc) && desc.length === geneIndex.length;
+  const dc = facets.cols.indexOf('dupt');
+  const tc = facets.cols.indexOf('tandem');
+  // The same reader label the gene page shows (dupTypeLabel), rebuilt from the letters:
+  // S salicoid, A gamma, D dispersed, C none detected; tandem is the curated set (facet
+  // `tandem`, the record's dup.td). Checked equal to the record's own label on all 63,960 genes.
+  const dupOf = (i) => {
+    if (dc < 0) return undefined;
+    const t = (facets.vocab.dupt || [])[facets.rows[i][dc]];
+    if (!t) return null;
+    return dupTypeLabel({ t, s: t.includes('S'), a: t.includes('A'), d: t.includes('D'),
+                          td: !!facets.rows[i][tc] });
+  };
 
   sub.replaceChildren(`Comparing matches for `, el('span', { class: 'mono' }, `"${query}"`), '.');
   clear(statRow).append(
@@ -74,10 +92,20 @@ export async function searchResultsView(query) {
   async function render() {
     const slice = matches.slice(page * PAGE, page * PAGE + PAGE);
     const ann = new Map();
-    // Only the page shown is fetched -- see the file header. Parallel, but bounded to PAGE.
-    await Promise.all(slice.map(async (id) => {
+    const need = [];
+    for (const id of slice) {
+      const i = posOf.get(id);
+      const dup = i == null ? undefined : dupOf(i);
+      if (i == null || !descOk || dup === undefined) { need.push(id); continue; }
+      ann.set(id, { d: desc[i], dup });
+    }
+    // Fallback only (stale or missing index): the page's own shards, bounded to PAGE.
+    await Promise.all(need.map(async (id) => {
       const g = await getGene(id);
-      if (g) ann.set(id, { d: g.ann && g.ann.d, atd: g.ann && g.ann.atd, dup: g.dup && g.dup.t });
+      if (!g) return;
+      const a = g.ann || {};
+      ann.set(id, { d: a.d || (a.atd ? `similar to ${a.at || 'Arabidopsis'}: ${a.atd}` : ''),
+                    dup: dupTypeLabel(g.dup) });
     }));
     clear(tableHolder).append(matches.length
       ? rowsTable(slice, rowOf, ann)

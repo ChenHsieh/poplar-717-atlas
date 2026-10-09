@@ -915,6 +915,8 @@ def main():
                     r.get("aek") or {}),
                 # relationship category, index into vocab.rel; -1 for quality-flagged gene models
                 vi("rel", (r.get("rel") or {}).get("c")) if (r.get("rel") or {}).get("c") else -1,
+                # must track build_facets.py: duplication class letters, index into vocab.dupt
+                vi("dupt", (r.get("dup") or {}).get("t")) if (r.get("dup") or {}).get("t") else -1,
             ]
 
         # zip() truncates to the shorter list, so a column added to build_facets.py without

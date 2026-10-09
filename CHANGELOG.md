@@ -9,6 +9,17 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.17.2 - 2026-10-09 - Search results load from the index, not the gene files
+
+The search-results page (`#/search/<query>`) fetched each listed gene's whole data file to show
+its description and duplication class: one page of 40 rows touched about 30 files, 4.7 MB
+transferred and 23 MB of JSON to parse on a phone, against about 1 MB for any other page. It now
+reads the same small indexes Browse uses. Data change: the browse index (`facets.json`) gains one
+column, `dupt`, the gene's duplication class letters; no gene record changes. The Duplication
+column now shows the gene page's own words (sWGD, aWGT, tandem, dispersed, "no duplication
+detected") instead of raw class letters, and the description is Browse's, so an Arabidopsis-only
+description reads "similar to AT...: ..." on both pages.
+
 ## How to cite: Hsieh et al., unpublished
 
 Site only. The About page's citation now reads "Hsieh et al., unpublished. Poplar 717 gene atlas,

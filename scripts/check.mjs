@@ -1768,6 +1768,47 @@ await check('gene-promoter-tata-false', '#/gene/PtXaTreH.05G120200',
   await sp.close();
 }
 
+// The search-results page reads only the small indexes: zero gene-shard fetches for a full page
+// of rows, every row with a reader-worded duplication class (never raw letters like "DS"), and
+// descriptions present. Positive control: with the facet index's `dupt` column stripped (a
+// stale cached facets.json) the page must fall back to shards and still fill the column, so
+// the zero above cannot come from a page that silently stopped asking.
+{
+  const run = async (strip) => {
+    const sp = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const errs = []; let shards = 0;
+    sp.on('pageerror', (e) => errs.push(e.message));
+    sp.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+    sp.on('request', (r) => { if (/\/data\/genes\//.test(r.url())) shards++; });
+    if (strip) {
+      await sp.route('**/data/index/facets.json*', async (route) => {
+        const f = await (await route.fetch()).json();
+        const k = f.cols.indexOf('dupt');
+        if (k >= 0) { f.cols.splice(k, 1); f.rows.forEach((r) => r.splice(k, 1)); delete f.vocab.dupt; }
+        await route.fulfill({ contentType: 'application/json', body: JSON.stringify(f) });
+      });
+    }
+    await sp.goto(base + '/#/search/WRKY', { waitUntil: 'networkidle' });
+    await sp.waitForTimeout(800);
+    const cells = await sp.$$eval('table.compare tbody tr', (trs) => trs.map((tr) => ({
+      desc: tr.cells[1].textContent.trim(), dup: tr.cells[4].textContent.trim() })));
+    await sp.close();
+    return { shards, errs, cells };
+  };
+  const a = await run(false);
+  const b = await run(true);
+  const worded = (c) => c.length >= 20 && c.every((x) => x.dup && !/^[ACDST]+$/.test(x.dup))
+    && c.filter((x) => x.desc && x.desc !== '\u2013').length >= c.length * 0.9;
+  const same = JSON.stringify(a.cells.map((x) => x.dup)) === JSON.stringify(b.cells.map((x) => x.dup));
+  const ok = a.shards === 0 && worded(a.cells) && !a.errs.length
+    && b.shards > 0 && worded(b.cells) && same && !b.errs.length;
+  if (!ok) failures++;
+  console.log(`\n### search-results:index-only  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   rows ${a.cells.length}, gene-shard requests ${a.shards}; control (no dupt column): `
+    + `${b.shards} shard requests, same duplication labels: ${same}; first: ${JSON.stringify(a.cells[0])}`);
+  [...a.errs, ...b.errs].slice(0, 2).forEach((e) => console.log('   ERR ' + e.slice(0, 110)));
+}
+
 // The gene page's locus is a canvas, so a text assertion cannot see it. Check that the
 // canvas is actually PAINTED (more than one colour sampled), that the DPR backing
 // buffer matches, and that a phone viewport neither scrolls horizontally nor

@@ -43,7 +43,7 @@ def main():
                     recs[gid] = (hap, r)
     assert len(recs) == len(order), f"{len(recs)} genes vs {len(order)} in genes.json"
 
-    chrs, clss, tops = [], [], []
+    chrs, clss, tops, dupts = [], [], [], []
     # declared order (js/core/relationship.js CATEGORY_ORDER), not first-seen order
     rels = ["1:1", "N:N_TD", "N:N_nonTD", "CNV_TD", "CNV_nonTD", "hemizygous_strict_PAV",
             "hemizygous_TD_array", "hemizygous_nonPAV"]
@@ -126,12 +126,18 @@ def main():
             (kar["c"] * 100 + kar.get("g", 0) * 10 + kar.get("s", 0) if kar.get("c") else -1),
             # relationship category (index into vocab.rel), -1 for quality-flagged gene models
             idx(rels, (r.get("rel") or {}).get("c")) if (r.get("rel") or {}).get("c") else -1,
+            # the gene's duplication class letters (dup.t, e.g. "ADST"; "C" = none detected),
+            # index into vocab.dupt, -1 where the gene carries no call. The search-results page
+            # showed this per row by fetching each row's whole gene shard: ~30 shards, 4.7 MB on
+            # the wire, for one page of 40 rows. One small column here replaces all of them.
+            idx(dupts, dup.get("t")) if dup.get("t") else -1,
         ])
 
     out = {
         "cols": ["hap", "chr", "cls", "ps", "tau", "top", "allele", "at", "wgd", "wgd9", "ccd",
-                 "tandem", "npres", "amb", "xin", "w", "ms", "aek", "rel"],
-        "vocab": {"chr": chrs, "cls": clss, "top": tops, "xin": XIN_TISSUES, "rel": rels},
+                 "tandem", "npres", "amb", "xin", "w", "ms", "aek", "rel", "dupt"],
+        "vocab": {"chr": chrs, "cls": clss, "top": tops, "xin": XIN_TISSUES, "rel": rels,
+                  "dupt": dupts},
         "rows": rows,
     }
     # Short gene descriptions for the Browse table, aligned with genes.json like the rows
