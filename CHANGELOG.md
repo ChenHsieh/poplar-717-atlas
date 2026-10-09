@@ -9,6 +9,13 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## Tandem arrays with no syntelog are hemizygous, not PAV
+
+Site only. Follows the dissertation's renaming: the gene category is "Hemizygous TD arrays" and
+the array status "Hemizygous (no syntelog)". Only a small minority of those arrays' genes lack a
+protein-level match on the other haplotype, so "PAV" overstated it. Codes and counts unchanged;
+`wording:no-internal-names` now also refuses the two retired labels.
+
 ## How to cite: Hsieh et al., unpublished
 
 Site only. The About page's citation now reads "Hsieh et al., unpublished. Poplar 717 gene atlas,
