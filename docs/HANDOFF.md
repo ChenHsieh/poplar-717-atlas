@@ -78,10 +78,41 @@ legacy-bucket fallback, and an injected rollback.
 blobs. They retain a strict legacy-bucket fallback so a source can be regenerated from a checkout
 before packing, but bucket trees are not release assets.
 
+### 4. The atlas states the dissertation's calls (since 0.18.0, 2026-10-13)
+
+The site is the data supplement of the dissertation. Three things keep it that way:
+
+- `scripts/make_dissertation_layer_source.py` (run by hand on the Mac, needs `~/dev/ms1-dup`, the
+  OneDrive TPM matrix and the Chapter 3 per-gene table) relabels `sources/wgd_pairs.tsv.gz` from
+  the frozen pair call and writes `sources/dissertation_layer.tsv.gz`: the dissertation's tau and
+  peak tissue, per-tissue means of the 222-sample panel (asserted to reproduce the master's tau),
+  the master table's Arabidopsis hit, gene names, and the final LSG set with exclusion reasons.
+- `scripts/patch_dissertation_layer.py` (a `repo` stage) writes `x.p`, `ann.at/atd/sym`, `ps.fin`,
+  recomputes `manifest.layers.dup_class_dist` and `manifest.dissertation` from the shards, and
+  writes `data/index/alias.json`. After it: `build_families.py`, `build_facets.py`.
+- `scripts/check_dissertation.py` is the release gate. It compares every gene record with the
+  per-gene master table, every page-level total with the records and with the printed numbers,
+  the anchor pairs with the frozen call, the LSG flags with the strict list, the downloadable
+  tables with the gene pages, and scans for retired names. It needs the upstream tables, so it
+  runs on the Mac, not in CI. Run it before every release.
+
+Downloads: `scripts/publish_downloads.py` copies a finished release bundle (READY marker,
+MD5SUMS.txt) into `downloads/` and writes `downloads/index.json`, which the Downloads page reads.
+The raw expression matrix and the analysis code are never placed there.
+
+Release, as done for 0.18.0: commit on a branch; data gates; `check_dissertation.py`;
+`assemble_site.py` + artifact gates + `check.mjs` against the staged tree; push to `main` here;
+then `publish_lab.py --lab <fresh full clone of the lab repo> --ref HEAD`, look at the commit,
+push it. The lab repo's own `checks` run then triggers its Pages deploy. Do not run
+`publish_lab.py` in a sparse checkout.
+
+Known leftovers are listed at the end of the 0.18.0 CHANGELOG entry.
+
 ## What this is
 
 A public, static gene atlas for hybrid poplar clone INRA 717-1B4 — 63,960 gene models across
-two phased haplotypes. **https://chenhsieh.github.io/poplar-717-atlas/** (private repo, public
+two phased haplotypes. **https://tsailabbioinformatics.github.io/poplar-717-atlas/** is the cited address
+(the lab's public repo, one commit per release); https://chenhsieh.github.io/poplar-717-atlas/ still serves a second copy (private repo, public
 site, `noindex` until the chapter publishes).
 
 Two audiences pull differently: it is a companion to a dissertation chapter on lineage-specific

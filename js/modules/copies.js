@@ -18,6 +18,7 @@
 // the label column folds onto its own line above each bar.
 import { el, fmt } from '../core/dom.js';
 import { getGene, hapLabel, loadCopies } from '../core/data.js';
+import { paperHighest } from '../core/paper.js';
 import { onDispose } from '../core/lifecycle.js';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -35,10 +36,10 @@ function coveredAa(segs) {
 
 /** Peak-tissue TPM exactly as the Expression card and the summary strip state it: mean TPM in
  *  the gene's peak tissue group over the 222-sample reference panel (the dissertation's
- *  statistic). null where no tissue group reaches 5 TPM or the gene has no expression record. */
+ *  statistic); the highest group mean where none reaches the 5 TPM floor. null where the gene
+ *  has no expression record. */
 function peakTpm(rec) {
-  const p = rec && rec.x && rec.x.p;
-  return p && p.top && p.t[p.top] != null ? { tissue: p.top, v: p.t[p.top] } : null;
+  return rec ? paperHighest(rec) : null;
 }
 
 /** The sentences above the panel, generated from the rows so they cannot drift from the bars. */

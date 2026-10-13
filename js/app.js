@@ -3,7 +3,7 @@ import { studyMeta, cleanCitation } from './core/cite.js';
 import { getGene, loadManifest, hapLabel, loadExprStudies,
          loadExprSamples, searchGenesRanked, loadFacets, facetRow, arrayAlleles, loadStructure, dataVersion,
          normalizeQuery } from './core/data.js';
-import { paperExpr, lsgStatus, qcBanner, isQcFlagged, releaseLine, CONTACT, REPO_URL } from './core/paper.js';
+import { paperExpr, paperHighest, lsgStatus, qcBanner, isQcFlagged, releaseLine, CONTACT, REPO_URL } from './core/paper.js';
 import { glossaryView } from './modules/glossary.js';
 import { downloadsView } from './modules/downloads.js';
 import { MODULES, byId, GENE_SECTIONS, geneSectionModules, CARD_EVIDENCE,
@@ -395,12 +395,15 @@ function glanceCard(g, man) {
   const px = paperExpr(g);
   if (px && px.top) {
     bits.push(['Expression', el('span', {},
-      el('strong', {}, px.top.replace(/_/g, ' ')), ` ${fmt(Math.round(px.t[px.top]))} TPM`,
+      el('strong', {}, px.top), ` ${fmt(Math.round(px.t[px.top]))} TPM`,
       el('span', { class: 'muted' }, ` mean · τ ${px.tau.toFixed(2)}`
         + (px.tau >= 0.85 && px.ok ? ' (tissue-specific)' : '')))]);
   } else if (px) {
-    bits.push(['Expression', el('span', { class: 'muted' },
-      'below 5 TPM in every tissue group of the reference panel; no peak tissue or τ')]);
+    const hi = paperHighest(g);
+    bits.push(['Expression', el('span', {},
+      el('strong', {}, hi.tissue), ` ${fmt(Math.round(hi.v))} TPM`,
+      el('span', { class: 'muted' }, ' mean, its highest tissue group · under 5 TPM in every group of the '
+        + 'reference panel, so no peak tissue or τ is called'))]);
   }
   if (g.resp && g.resp.v != null) {
     bits.push(['Responsiveness', el('span', {},

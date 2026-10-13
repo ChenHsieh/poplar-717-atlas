@@ -342,7 +342,7 @@ await check('gene-lsg-qc-flagged', '#/gene/PtXaTreH.12G056600',
              'LSG candidate, excluded:', 'four exclusion criteria applied in order',
              // abSENSE cannot run on a PS19 gene, and the page must not say it "supports" or "retracts"
              'abSENSE: no prediction'],
-    forbid: ['WGD-era Ks', 'four checks', 'abSENSE retracts', 'abSENSE supports', 'post-QC set'], wait: 900 });
+    forbid: ['WGD-era Ks', 'four checks', 'abSENSE retracts', 'abSENSE supports', 'post-QC set', '59 to 61%'], wait: 900 });
 await check('gene-lsg-qc-clean', '#/gene/PtXaTreH.01G001500',
   { expect: ['Evidence quality', 'yes, in the final set (PS18)', 'lineage-specific gene (final set)',
              'Neither abSENSE nor the synteny-window search flags this gene',
@@ -426,9 +426,13 @@ await check('gene-ps19-to-ps18', '#/gene/PtXaAlbH.17G073600',
              '179 pool genes do this'],
     forbid: ['left the pool'], wait: 900 });
 // The abSENSE calibration must travel with the flag, not sit in a doc nobody opens.
-await check('gene-absense-calibration', '#/gene/PtXaTreH.12G056600',
+// Shown where abSENSE made a prediction (this PS18 gene: a plausible detection failure), and
+// not on a PS19 gene, where abSENSE cannot run (asserted on the gene above).
+await check('gene-absense-calibration', '#/gene/PtXaTreH.04G037000',
   { expect: ['Evidence quality', 'Salix purpurea', '59 to 61%',
-             'that support is too generous'], wait: 900 });
+             'that support is too generous', 'abSENSE: the absence of older homologs is a plausible detection failure',
+             'candidate, excluded from the final set'],
+    forbid: ['abSENSE: abSENSE'], wait: 900 });
 await check('gene-peptide-detected', '#/gene/PtXaAlbH.17G050300',
   { expect: ['Peptide matches', 'peptide match in', 'spectrum match',
              'tryptic peptide', 'P. tomentosa'], wait: 1000 });
@@ -1475,7 +1479,9 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
       return document.body.innerText;
     });
     // The contact address is published on purpose (About, 2026-10-13); nothing else may name a person.
-    const m = INTERNAL.exec(t.replace(/Chen\.Hsieh@uga\.edu/g, '<contact>'));
+    // Likewise the names of the downloadable tables (717_genes.csv ...), which begin with the clone's
+    // number and would otherwise read as an analysis-folder name.
+    const m = INTERNAL.exec(t.replace(/Chen\.Hsieh@uga\.edu/g, '<contact>').replace(/\b717_[A-Za-z_]+\.csv\b/g, '<table>'));
     if (m) hits.push(`${r}: "${t.slice(Math.max(0, m.index - 40), m.index + 40).replace(/\n/g, ' ')}"`);
   }
   const control = await ip.evaluate(() => { const p = document.createElement('p'); p.textContent = 'held on master v9'; document.body.append(p); return document.body.innerText; });

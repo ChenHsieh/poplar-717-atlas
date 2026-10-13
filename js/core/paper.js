@@ -34,6 +34,14 @@ export const PAPER_TAU_HOW = 'τ over mean TPM in 9 tissue groups of the 222-sam
 export const paperExpr = (g) => (g && g.x && g.x.p) || null;
 export const paperTau = (g) => { const p = paperExpr(g); return p && p.tau != null ? p.tau : null; };
 export const paperTop = (g) => { const p = paperExpr(g); return (p && p.top) || null; };
+/** The tissue group with the highest mean and that mean, also where no group reaches the 5 TPM
+ *  floor (then it is the highest group, not a called peak tissue). null without expression. */
+export function paperHighest(g) {
+  const p = paperExpr(g);
+  if (!p || !p.t) return null;
+  const tissue = p.top || Object.keys(p.t).sort().reduce((a, b) => (p.t[b] > p.t[a] ? b : a));
+  return { tissue, v: p.t[tissue], called: !!p.top };
+}
 
 /* ---------- lineage-specific genes ---------- */
 export const LSG_REASON = {

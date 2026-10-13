@@ -54,7 +54,8 @@ function qcSummary(qc) {
           'This is about the reliability of the age call, not the gene: an ancestral homolog '
           + 'could exist and be undetectable at this sensitivity. It does not mean the gene is old.')
       : null,
-    el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
+    // only where abSENSE made a prediction: on a PS19 gene there is nothing to calibrate
+    !qc.hdf || qc.hdf === 'no_prediction' ? null : el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px' },
       'How well calibrated is that? Measured for the first time in September 2026: abSENSE\u2019s '
       + 'nominal 99% prediction intervals contain 87 to 88% of true bitscores overall, but only '
       + '59 to 61% at Salix purpurea, and every abSENSE flag on this pool is a prediction at '
