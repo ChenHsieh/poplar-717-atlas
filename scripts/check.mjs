@@ -1512,7 +1512,7 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
 // reach their allele through a tandem array, the path that did it. Planted control as below.
 {
   const np = await browser.newPage({ viewport: { width: 1180, height: 900 } });
-  const LEAK = /\b(?:null|undefined|NaN)\b|\[object Object\]/;
+  const LEAK = /null\b|undefined\b|\bNaN\b|\[object Object\]/;   // no leading \b: "3 morenull"
   const hits = [];
   for (const gid of ['PtXaTreH.01G009600', 'PtXaTreH.10G046700', 'PtXaTreH.08G070200']) {
     await np.goto(`${base}/#/gene/${gid}`, { waitUntil: 'networkidle' });

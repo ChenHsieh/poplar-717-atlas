@@ -216,7 +216,7 @@ route(/^\/$/, async (navigation) => {
   }, heroInput, el('button', { type: 'submit', class: 'btn primary' }, 'Search'));
   const EXAMPLES = [['PtXaTreH.05G120200', '#/gene/PtXaTreH.05G120200'],
     ['CCoAOMT1', '#/search/CCoAOMT1'], ['Potri.010G150700', '#/search/Potri.010G150700'],
-    ['arabinogalactan', '#/search/arabinogalactan'], ['AT1G06515', '#/search/AT1G06515'],
+    ['arabinogalactan', '#/search/arabinogalactan'], ['AT1G20440', '#/search/AT1G20440'],
     ['PF00249', '#/search/PF00249']];
 
   // Where to go next, as places rather than as the module list: each tile is a page.
@@ -424,12 +424,13 @@ function glanceCard(g, man) {
       holder.textContent = '';
       holder.className = '';
       if (!w.length) { holder.append(el('span', { class: 'muted' }, 'none of its own, and none in its tandem array')); return; }
-      holder.append('none of its own; array-level link via ',
+      // Native append prints a null as the word 'null', so drop the absent parts first.
+      holder.append(...['none of its own; array-level link via ',
         el('a', { href: `#/array/${r.arrayId}`, class: 'mono' }, r.arrayId), ': ',
         el('a', { href: `#/gene/${w[0].allele}`, class: 'mono' }, w[0].allele),
         el('span', { class: 'muted' }, ' (not a 1:1 call)'),
         w.length > 1 ? el('span', { class: 'muted' }, ` and ${w.length - 1} more`) : null,
-        r.counted === false ? el('span', { class: 'muted' }, ' (array removed by the pseudogene screen)') : null);
+        r.counted === false ? el('span', { class: 'muted' }, ' (array removed by the pseudogene screen)') : null].filter(Boolean));
     }).catch(() => { holder.textContent = 'none of its own'; });
   }
   // A gene in a copy-search panel: the route to the other haplotype's copies, which the allele
