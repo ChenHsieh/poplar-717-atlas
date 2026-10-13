@@ -98,19 +98,30 @@ function arrayHistoryLine(g, memberIds) {
   const holder = el('dd', {}, el('span', { class: 'muted' }, 'checking the other members…'));
   const ownEvents = new Set((g.wgd || []).map((p) => (p.e === 'A' ? 'A' : 'S')));
   (async () => {
-    const recs = await Promise.all(memberIds.map((id) => getGene(id).catch(() => null)));
+    // td.mem is display-capped. History must use the complete curated array index.
+    const arrays = await loadArrays().catch(() => null);
+    const completeIds = arrays && g.td && arrays[g.td.aid];
+    if (!completeIds) {
+      holder.replaceChildren(el('span', { class: 'muted' },
+        'Full array membership could not be read; array-level WGD history is unavailable.'));
+      return;
+    }
+    const otherIds = completeIds.filter((id) => id !== g.id);
+    const recs = await Promise.all(otherIds.map((id) => getGene(id).catch(() => null)));
     const via = { S: [], A: [] };
     let unresolved = 0;
     recs.forEach((r, i) => {
       if (!r) { unresolved += 1; return; }
-      for (const q of (r.wgd || [])) via[q.e === 'A' ? 'A' : 'S'].push(memberIds[i]);
+      for (const q of (r.wgd || [])) via[q.e === 'A' ? 'A' : 'S'].push(otherIds[i]);
     });
     const evName = { S: 'sWGD', A: 'aWGT' };
     const present = ['S', 'A'].filter((e) => ownEvents.has(e) || via[e].length);
     if (!present.length) {
       holder.replaceChildren(el('span', { class: 'muted' },
-        'No member of this array retains a whole-genome duplication partner. That is not '
-        + 'evidence the array predates those events, only that no anchor pair was called here.'));
+        unresolved
+          ? 'No WGD partner was found among the members that could be read; full array history remains unresolved.'
+          : 'No member of this array retains a whole-genome duplication partner. That is not '
+            + 'evidence the array predates those events, only that no anchor pair was called here.'));
       return;
     }
     const parts = present.map((e) => {
