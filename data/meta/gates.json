@@ -421,17 +421,17 @@
   {
    "name": "desc.json decodes to each gene's own description",
    "ok": true,
-   "detail": "57,527 described"
+   "detail": "60,372 described"
   },
   {
    "name": "the validator covers every facet column",
    "ok": true,
-   "detail": "validator reproduces 19 of 19 columns -- add the new one here"
+   "detail": "validator reproduces 24 of 24 columns -- add the new one here"
   },
   {
    "name": "facet values match the gene shards (all rows, all columns)",
    "ok": true,
-   "detail": "63960 rows x 19 cols"
+   "detail": "63960 rows x 24 cols"
   },
   {
    "name": "every gene with an ESMFold model has a 3D model, and no other gene does",
