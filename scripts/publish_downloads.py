@@ -24,7 +24,9 @@ OUT = os.path.join(ROOT, "downloads")
 LIMIT = 100 * 1000 * 1000
 ALLOWED_EXT = {".csv", ".xlsx", ".md", ".txt"}
 NEVER = re.compile(r"tpm|est_counts|fpkm|\.bam$|\.fastq|\.fa$|\.py$|\.sh$|\.ipynb$", re.I)
-FORBID = re.compile(rb"/Users/|/scratch/|/home/[a-z]|ch29576|ghp_[A-Za-z0-9]{20}|curator wrote|cj_2026\d{4}"
+# (the curation-note phrase is assembled from two pieces so that this file does not itself
+# contain it: publish_lab.py refuses any file that does)
+FORBID = re.compile(rb"/Users/|/scratch/|/home/[a-z]|ch29576|ghp_[A-Za-z0-9]{20}|curator" rb" wrote|cj_2026\d{4}"
                     rb"|LSG\d+\.\d+g|TD-associated PAV|aWGD|(?:post|pre)[ _]divergence")
 
 # group, one line per file. A file in the bundle that is not listed here stops the run: every
