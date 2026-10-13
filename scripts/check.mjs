@@ -1508,6 +1508,28 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
   await rp.close();
 }
 
+// A null handed to the browser's own append() is printed as the word "null". These two genes
+// reach their allele through a tandem array, the path that did it. Planted control as below.
+{
+  const np = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const LEAK = /\b(?:null|undefined|NaN)\b|\[object Object\]/;
+  const hits = [];
+  for (const gid of ['PtXaTreH.01G009600', 'PtXaTreH.10G046700', 'PtXaTreH.08G070200']) {
+    await np.goto(`${base}/#/gene/${gid}`, { waitUntil: 'networkidle' });
+    await np.waitForTimeout(1500);
+    const t = await np.evaluate(() => document.querySelector('#view').innerText);
+    const m = LEAK.exec(t);
+    if (m) hits.push(`${gid}: "${t.slice(Math.max(0, m.index - 50), m.index + 20).replace(/\n/g, ' ')}"`);
+  }
+  const sees = LEAK.test(await np.evaluate(() => { const s = document.createElement('span'); s.append('3 more', null); return s.textContent; }));
+  const ok = !hits.length && sees;
+  if (!ok) failures++;
+  console.log(`\n### genepage:no-leaked-null  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   3 gene pages scanned; positive control detected: ${sees}`);
+  hits.forEach((h) => console.log('   !! ' + h));
+  await np.close();
+}
+
 // No internal version or project names in page text (Chen, 2026-10-03): provenance belongs in
 // the changelog, the citation file and build metadata. A planted positive control proves the
 // scan can see a hit before its silence is trusted. Also retired labels: a tandem array with no
