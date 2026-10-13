@@ -172,7 +172,7 @@ def main():
         sy = symbols(r.genes_of_interest)
         n_sym += bool(sy)
         row = [gid,
-               "" if pd.isna(r.tau_raw) else f"{r.tau_raw:.4f}",
+               "" if pd.isna(r.tau_raw) else f"{r.tau_raw:.8f}",
                "1" if r.tau_passes_filter else "0",
                r.peak_tissue if isinstance(r.peak_tissue, str) else "",
                "" if pd.isna(r.mean_tpm_222) else f"{r.mean_tpm_222:.2f}"]
@@ -205,6 +205,7 @@ def main():
         "tau": {"definition": "tau over mean TPM of 9 tissue groups, 222-sample reference panel; "
                               "defined where at least one tissue mean reaches 5 TPM; a gene is "
                               "counted tissue-specific at tau >= 0.85 with mean TPM >= 5",
+                "panel_n": {k: int(v) for k, v in kept.tissue_analysis.value_counts().items()},
                 "max_abs_difference_from_master": d,
                 "genes_with_tau": int(has.sum()),
                 "tissue_specific_quality_filtered": n_spec},

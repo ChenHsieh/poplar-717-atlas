@@ -5,7 +5,8 @@ Reads sources/dissertation_layer.tsv.gz (see make_dissertation_layer_source.py) 
 
 On each gene record:
   x.p      tissue specificity as in the dissertation: {tau, top, ok, m, t{9 tissue groups}}.
-           tau and top are absent where no tissue-group mean reaches 5 TPM; ok = mean TPM over
+           tau (truncated to 3 decimals) and top are absent where no tissue-group mean reaches
+           5 TPM; ok = mean TPM over
            the 222-sample reference panel >= 5. The atlas's own x.tau / x.top stay beside it and
            are labelled as a different statistic on the page.
   ann.at, ann.atd   Arabidopsis best hit from the per-gene master table (lab annotation); a hit
@@ -69,7 +70,9 @@ def main():
                         if s["mean_tpm_222"] != "":
                             pp["m"] = float(s["mean_tpm_222"])
                         if s["tau"] != "":
-                            pp["tau"] = round(float(s["tau"]), 3)
+                            # TRUNCATED to three decimals, never rounded: 0.8496 must not become
+                            # 0.850 and pass the dissertation's tau >= 0.85 cutoff on the page.
+                            pp["tau"] = int(float(s["tau"]) * 1000 + 1e-9) / 1000
                             pp["top"] = s["peak_tissue"]
                         x["p"] = pp
                     # --- annotation ----------------------------------------------------------
@@ -157,7 +160,7 @@ def main():
         "quality_flagged_gene_models": {H: qc_n[H] for _, H in HAPS},
         "wgd_anchor_pairs": {H: {"sWGD": pairs[(H, "S")] // 2, "aWGT": pairs[(H, "A")] // 2}
                              for _, H in HAPS},
-        "tau": {"definition": prov["tau"]["definition"],
+        "tau": {"definition": prov["tau"]["definition"], "panel_n": prov["tau"]["panel_n"],
                 "per_haplotype": {H: dict(tau[H]) for _, H in HAPS}},
         "lsg": {H: dict(lsg[H], excluded_by_first_criterion=dict(lsg_reason[H])) for _, H in HAPS},
         "arabidopsis_hit_kept_from_older_annotation": at_kept,

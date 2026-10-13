@@ -12,7 +12,7 @@
    "pfam_panther": "annotation_info.txt for HAP1; parsed from defline.txt for HAP2 because HAP2's annotation_info domain columns are empty in the release"
   }
  },
- "built": "2026-10-13T18:54:19-0400",
+ "built": "2026-10-13T19:08:17-0400",
  "chromatin": {
   "accessible_region_definition": "genic or within 2 kb of the start, replicates merged -- the source paper's own classification. A 500 bp window fails, because 55% of conserved gene starts have their nearest accessible region more than 2 kb away, which is that paper's headline finding about distal elements in plants.",
   "genes_whose_ortholog_is_ambiguous": 6329,
@@ -199,9 +199,9 @@
   "source": "this atlas's own GENESPACE run 47798208, syntenicHits",
   "target": "Populus trichocarpa (Potri, v4.1 ids)"
  },
- "data_version": "0.17.1",
+ "data_version": "0.18.0",
  "dissertation": {
-  "analysis_repository_commit": "ca0bb851",
+  "analysis_repository_commit": "59eec6bd",
   "arabidopsis_hit_kept_from_older_annotation": 372,
   "class_codes_quality_filtered": {
    "HAP1": {
@@ -297,6 +297,17 @@
   },
   "tau": {
    "definition": "tau over mean TPM of 9 tissue groups, 222-sample reference panel; defined where at least one tissue mean reaches 5 TPM; a gene is counted tissue-specific at tau >= 0.85 with mean TPM >= 5",
+   "panel_n": {
+    "bark": 38,
+    "bud": 17,
+    "catkin": 4,
+    "leaf": 34,
+    "leaf_old": 11,
+    "leaf_young": 11,
+    "root": 26,
+    "stem": 24,
+    "xylem": 57
+   },
    "per_haplotype": {
     "HAP1": {
      "genes_at_mean_TPM_5_or_more": 15053,
@@ -420,7 +431,7 @@
   }
  },
  "facets": {
-  "bytes": 3768563,
+  "bytes": 3768390,
   "cols": [
    "hap",
    "chr",

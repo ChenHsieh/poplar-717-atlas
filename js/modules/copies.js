@@ -33,11 +33,12 @@ function coveredAa(segs) {
   return s.size;
 }
 
-/** Peak-tissue TPM exactly as the Expression card states it: median TPM across WT controls in
- *  the gene's peak tissue. null where the gene is not in the expression index. */
+/** Peak-tissue TPM exactly as the Expression card and the summary strip state it: mean TPM in
+ *  the gene's peak tissue group over the 222-sample reference panel (the dissertation's
+ *  statistic). null where no tissue group reaches 5 TPM or the gene has no expression record. */
 function peakTpm(rec) {
-  const x = rec && rec.x;
-  return x && x.top && x.t && x.t[x.top] != null ? { tissue: x.top, v: x.t[x.top] } : null;
+  const p = rec && rec.x && rec.x.p;
+  return p && p.top && p.t[p.top] != null ? { tissue: p.top, v: p.t[p.top] } : null;
 }
 
 /** The sentences above the panel, generated from the rows so they cannot drift from the bars. */
@@ -151,7 +152,7 @@ function draw(holder, L, recs, focalId) {
       add(svg, 'text', { x: COL.pid, y: top + 12, class: 'cp-stat2', 'text-anchor': 'end' }, pidText);
       const t = add(svg, 'text', { x: COL.tpm, y: top + 12, 'text-anchor': 'end',
         class: r.gene && p ? 'cp-stat' : 'cp-stat3', 'data-tpm-for': r.gene }, tpmText);
-      if (p) add(t, 'title', {}, `median TPM in ${p.tissue}, WT controls`);
+      if (p) add(t, 'title', {}, `mean TPM in ${p.tissue}, reference panel`);
     }
   };
   const bars = (segs, top, cls) => {
@@ -284,7 +285,7 @@ function footnotes(L) {
       'wherever an alignment runs across an intron, because tblastn does not model introns: the '
       + `reference against its own gene reads ${pc(L.self_pid)}, not 100%. Coverage is the robust number.`),
     el('li', {}, el('b', {}, 'Peak TPM ', ),
-      'is the median TPM in the gene’s peak tissue across WT controls, the number its own '
+      'is the mean TPM in the gene’s peak tissue group over the 222-sample reference panel, the number its own '
       + 'Expression card shows. A piece that is not annotated has no expression value: the expression '
       + 'index holds annotated transcripts only, so its silence is unmeasured, not measured.'));
 }
