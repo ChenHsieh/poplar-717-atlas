@@ -549,7 +549,7 @@ h2.sect:first-child { margin-top: 2px; }
    rest; the readout line says the same thing in words, so nothing depends on colour or hover. */
 .dmap { margin: 14px 0 4px; --dmap-cell: 26px; }
 .dmap-title { font-size: 14px; margin: 0 0 4px; }
-.dmap-sub { font-size: 12.5px; color: var(--ink-2); margin: 0 0 8px; line-height: 1.5; }
+.dmap-sub { font-size: 12.5px; color: var(--ink-2); margin: 0 0 8px; line-height: 1.5; max-width: 68ch; }
 .dmap-key { display: inline-block; width: 14px; height: 12px; vertical-align: -1px; border-radius: 2px;
   border: 1.5px dashed var(--line-2); background: transparent; }
 .dmap-key.base { border: 1.5px solid var(--accent); background: var(--accent-soft); }
@@ -568,7 +568,7 @@ h2.sect:first-child { margin-top: 2px; }
 .dmap-grid button:focus-visible, .dmap-linked tr:focus-visible, [data-ids]:focus-visible {
   outline: 2px solid var(--accent-ink); outline-offset: 1px; }
 .dmap-foot { display: flex; gap: 10px; align-items: flex-start; margin-top: 6px; }
-.dmap-readout { font-size: 12.5px; margin: 0; color: var(--ink); line-height: 1.5; min-height: 2.9em; flex: 1; }
+.dmap-readout { font-size: 12.5px; margin: 0; color: var(--ink); line-height: 1.5; min-height: 2.9em; flex: 0 1 68ch; }
 .dmap-clear { font-size: 12px; padding: 3px 10px; min-height: 30px; border: 1px solid var(--line-2);
   border-radius: 5px; background: var(--panel-2); color: var(--ink); cursor: pointer; }
 /* Linked painting: outline what is selected, dim what is not. */
