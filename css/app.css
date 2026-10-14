@@ -637,3 +637,4 @@ h2.sect:first-child { margin-top: 2px; }
 .sd-cscroll { max-height: 440px; overflow-y: auto; }
 .dmap-study { font-size: 12.5px; white-space: nowrap; align-self: center; }
 @media (max-width: 640px) { .sd-contrasts td, .sd-contrasts th { white-space: nowrap; } }
+@media (max-width: 640px) { .dmap-foot { flex-wrap: wrap; } .dmap-readout { flex: 1 1 100%; } }

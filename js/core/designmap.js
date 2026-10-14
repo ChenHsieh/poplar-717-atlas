@@ -184,7 +184,9 @@ export function designGrid(samples, studies, hub, vecs = [], geneId = '') {
       const sc = wrap.querySelector('.dmap-scroll');
       if (hot && sc.scrollWidth > sc.clientWidth) {
         const lab = wrap.querySelector('.dmap-row').offsetWidth;
-        const x = hot[0].offsetLeft;
+        // Position inside the scrolled grid; offsetLeft is relative to the page here, because
+        // no ancestor is positioned.
+        const x = hot[0].getBoundingClientRect().left - sc.getBoundingClientRect().left + sc.scrollLeft;
         if (x < sc.scrollLeft + lab || x + hot[0].offsetWidth > sc.scrollLeft + sc.clientWidth) {
           sc.scrollLeft = Math.max(0, x - lab - 8);
         }
