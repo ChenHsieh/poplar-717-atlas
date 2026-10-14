@@ -161,7 +161,8 @@ await check('gene-expr-ps18-to-ps17', '#/gene/PtXaTreH.05G120200',
   { expect: ['Expression', 'Mean TPM', 'catkin', 'Show all 652 samples', 'leaf_young', 'leaf_old',
              '222-sample reference panel'],
     // one tissue-specificity statistic: the wild-type-control view is gone (Chen, 2026-10-13)
-    forbid: ['A second view', 'WT-control τ', 'display cutoff', 'Median TPM'], wait: 900 });
+    // (the neighborhood card further down still shows per-tissue medians, labelled as such)
+    forbid: ['A second view', 'WT-control τ', 'display cutoff'], wait: 900 });
 
 // The header's tandem-array chip is a link to the array page, in the allele chip's form, for every
 // gene of a counted array on either haplotype, genes of hemizygous TD arrays included. Followed,
