@@ -1548,6 +1548,31 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
       if (!agree(r, parse(got[(i + 1) % got.length].read))) controlDisagrees = true;
     });
   }
+  // (3) The gene page's tissue table (the dissertation's 222-sample reference panel, `ref222`):
+  // each row's n and mean must equal the readout over the samples it lights. Control: a row
+  // read against the NEXT row's readout must disagree.
+  let refRows = 0, refControl = false;
+  for (const gid of ['PtXaTreH.05G120200', 'PtXaAlbH.05G196300']) {
+    await dp.goto(`${base}/#/gene/${gid}`, { waitUntil: 'networkidle' });
+    await dp.waitForSelector('[data-dmap]', { timeout: 15000 });
+    await dp.mouse.move(0, 0);
+    const rows = await dp.evaluate(() => [...document.querySelectorAll('[data-paper-expr] tbody tr[data-ids]')].map((tr) => {
+      tr.dispatchEvent(new FocusEvent('focus'));
+      const o = { t: tr.dataset.tissue, mean: +tr.cells[1].textContent.replace(/,/g, ''), n: tr.cells[2].textContent.trim(),
+        read: document.querySelector('[data-dmap] .dmap-readout').textContent };
+      tr.dispatchEvent(new FocusEvent('blur'));
+      return o;
+    }));
+    const agree = (r, read) => { const m = /: (\d+) samples.*mean ([\d,.]+) TPM/.exec(read);
+      return !!m && `n=${m[1]}` === r.n && Math.abs(+m[2].replace(/,/g, '') - r.mean) <= Math.max(0.011, 0.002 * r.mean); };
+    rows.forEach((r, i) => {
+      refRows++;
+      if (!agree(r, r.read)) bad.push(`${gid} reference row ${r.t}: ${r.n}, mean ${r.mean}; readout "${r.read.slice(0, 120)}"`);
+      if (!agree(r, rows[(i + 1) % rows.length].read)) refControl = true;
+    });
+    if (rows.length !== 9) bad.push(`${gid}: ${rows.length} linked reference rows, expected 9`);
+  }
+  if (!refControl) bad.push('reference rows: positive control did not disagree');
   await dp.goto(`${base}/#/gene/PtXaTreH.05G120200`, { waitUntil: 'networkidle' });
   await dp.waitForSelector('[data-dmap]', { timeout: 15000 });
   await dp.click('[data-card=expression] button:has-text("Show all 652 samples")');
@@ -1563,7 +1588,7 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
   const ok = !bad.length && controlDisagrees && profileOk && !derrs.length;
   if (!ok) failures++;
   console.log(`\n### expression:design-map-agrees  ${ok ? 'OK' : 'FAIL'}`);
-  console.log(`   ${nrows} pair-page tissue rows matched against the grid readout; positive control disagrees: ${controlDisagrees}; `
+  console.log(`   ${nrows} pair-page tissue rows and ${refRows} reference-panel rows matched against the grid readout; positive control disagrees: ${controlDisagrees}; `
     + `gene-page cell lights its samples in the profile: ${profileOk}`);
   [...bad, ...derrs].forEach((e) => console.log('   !! ' + e));
   await dp.close();

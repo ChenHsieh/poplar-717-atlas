@@ -411,7 +411,7 @@ function glanceCard(g, man) {
   if (g.resp && g.resp.v != null) {
     bits.push(['Responsiveness', el('span', {},
       el('span', { class: 'mono' }, g.resp.v.toFixed(3)),
-      el('span', { class: 'muted' }, ` median |log2FC|${g.resp.n ? ` over ${g.resp.n} of the 117-contrast set` : ''}`))]);
+      el('span', { class: 'muted' }, ` median |log2FC|${g.resp.n ? ` over ${g.resp.n} of the dissertation’s curated perturbation contrasts` : ''}`))]);
   }
   if (g.allele && g.allele.id) {
     bits.push(['Allele', el('span', {},

@@ -9,6 +9,15 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## The tissue table lights its reference samples; responsiveness wording follows 0.19.0
+
+Site only. With 0.19.0's per-sample reference-panel flag, each row of the gene page's tissue
+table now lights up exactly its reference-panel samples in the sample grid, and the line under
+the grid gives this gene's mean TPM over them, equal to the row's own value.
+`expression:design-map-agrees` holds the row's n and mean equal to the readout. The
+responsiveness value is described as a median over the dissertation's curated perturbation
+contrasts, and the About page no longer lists the earlier contrast set as a limitation.
+
 ## Study pages: time courses on a time axis, the design kept in view, every sample named
 
 Site only. The three studies whose metadata gives each sample's time are drawn on a time axis:
