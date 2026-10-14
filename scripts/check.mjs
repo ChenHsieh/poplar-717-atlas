@@ -402,6 +402,8 @@ await check('module-about-numbers', '#/module/about',
              'ComBat-seq', 'the strict, protein-level set', '528 HAP1 and 605 HAP2',
              'Hsieh et al., unpublished. Poplar 717 gene atlas, version', 'https://tsailabbioinformatics.github.io/poplar-717-atlas/',
              'Contact and feedback', 'Chen.Hsieh@uga.edu', 'Data are provided for research use',
+             'A manuscript describing this resource will be submitted soon', 'once the manuscript is available, please cite the manuscript',
+             'developed with assistance from Claude (Anthropic)',
              'Two tissue-specificity statistics', 'per-gene table of the dissertation'],
     forbid: ['no rank for 50 genes', '77 leaf', 'is not in the mirror', 'v6 master', 'held on v9', 'for browsing, not quoting',
              'chenhsieh.github.io', 'Not for redistribution'] });

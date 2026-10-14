@@ -9,6 +9,22 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## 0.18.1 - 2026-10-13 - How to cite; the old address forwards
+
+No gene record or count changed; the data version moves only with its stamp.
+
+**How to cite.** About, the footer, the Downloads page, the README and CITATION.cff now say: a
+manuscript describing this resource will be submitted soon; until it is published, cite this
+website with version and access date; once the manuscript is available, cite the manuscript.
+
+**Authors.** CITATION.cff lists the author only. Software assistance is acknowledged in one
+sentence on the About page and in the README instead.
+
+**Old address.** chenhsieh.github.io/poplar-717-atlas now publishes a redirect to the lab address
+that keeps the page asked for (the part after #). The Pages workflow is shared by both
+repositories; a step that runs only in the development repository swaps the validated site for
+`redirect/index.html` just before upload, so the lab address is unaffected.
+
 ## 0.18.0 - 2026-10-13 - One set of calls and numbers: the dissertation's
 
 The atlas is the data supplement of the dissertation, so every summary, label and export now

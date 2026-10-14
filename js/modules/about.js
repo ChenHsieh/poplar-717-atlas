@@ -1,7 +1,7 @@
 // Provenance page. Renders what the build actually recorded -- every source file with its
 // sha256 and mtime -- rather than a hand-maintained prose list that drifts from the data.
 import { el, fmt, pct } from '../core/dom.js';
-import { SITE_URL, REPO_URL, CONTACT, GENOME, PAPER_TAU_HOW } from '../core/paper.js';
+import { SITE_URL, REPO_URL, CONTACT, GENOME, PAPER_TAU_HOW, CITE_NOTE, AI_ACK } from '../core/paper.js';
 
 // What each upstream table is, in a reader's words; the file names are in the build manifest.
 const SOURCE_LABEL = [
@@ -185,7 +185,8 @@ function overview(man) {
 
     el('div', { class: 'card' },
       el('h2', {}, 'Citation & licence'),
-      el('p', { style: 'margin:0 0 6px;font-size:13.5px' }, 'Cite this atlas as:'),
+      el('p', { style: 'margin:0 0 8px;font-size:13.5px', 'data-cite-note': '' }, CITE_NOTE),
+      el('p', { style: 'margin:0 0 6px;font-size:13.5px' }, 'Until then, cite this atlas as:'),
       el('p', { class: 'cite-line', 'data-cite': '', style: 'margin:0 0 10px;font-size:13.5px;padding:8px 10px;border-left:3px solid var(--accent)' },
         `Hsieh et al., unpublished. Poplar 717 gene atlas, version ${man.data_version || ''}. `,
         el('a', { href: SITE_URL }, SITE_URL),
@@ -196,7 +197,8 @@ function overview(man) {
       el('p', { class: 'muted', style: 'margin:0;font-size:12.5px' },
         'Code is MIT (', el('a', { href: `${REPO_URL}/blob/main/LICENSE`, target: '_blank', rel: 'noopener' }, 'LICENSE'),
         '). Data are provided for research use; please cite the atlas as above. A formal open data licence '
-        + 'has not been set yet; CC BY 4.0 is intended at publication.')),
+        + 'has not been set yet; CC BY 4.0 is intended at publication.'),
+      el('p', { class: 'muted', style: 'margin:8px 0 0;font-size:12.5px', 'data-ai-ack': '' }, AI_ACK)),
   );
 }
 
