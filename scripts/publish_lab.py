@@ -54,6 +54,8 @@ def main():
     ap.add_argument("--ref", default="origin/main")
     ap.add_argument("--held", default="/scratch/ch29576/atlas_v12_ks/goi_terms.txt",
                     help="file of held candidate-gene labels (kept OUTSIDE the repo); each must not appear")
+    ap.add_argument("--allow-missing-held", action="store_true",
+                    help="publish even if the held-label list is absent (not recommended)")
     a = ap.parse_args()
     version = run("git", "show", f"{a.ref}:VERSION").stdout.decode().strip()
     tmp = tempfile.mkdtemp(prefix="atlas_publish_")
@@ -74,8 +76,14 @@ def main():
         forbid.append(("held candidate label", re.compile(
             rb"(?<![A-Za-z0-9_])(?:" + b"|".join(re.escape(t.encode()) for t in terms) + rb")(?![A-Za-z0-9])")))
         print(f"checking {len(terms)} held candidate labels")
+    elif a.allow_missing_held:
+        print(f"WARNING: no held-label list at {a.held}; that check is skipped (--allow-missing-held)")
     else:
-        print(f"WARNING: no held-label list at {a.held}; that check is skipped")
+        # 0.18.0 shipped three held labels in a script docstring because this was a warning and the
+        # list lives only on Sapelo2. A publish that cannot run the check must not happen.
+        print(f"REFUSING: no held-label list at {a.held}. Run on a machine that has it, or pass "
+              f"--held PATH. --allow-missing-held exists only for a deliberate, recorded exception.")
+        return 1
     changed, bad = 0, []
     for dp, _, fs in os.walk(tmp):
         for fn in fs:
