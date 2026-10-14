@@ -1063,7 +1063,7 @@ route(/^\/study\/(\d+)$/, async (idStr, navigation) => {
     el('h2', {}, vec ? `${gene.id} across this study` : 'Design'),
     el('p', { class: 'sd-lede' }, `${fmt(d.ids.length)} samples in ${d.groups.length} group${d.groups.length === 1 ? '' : 's'}`
       + (d.varying.length ? ` that differ by ${[...d.panels, d.rows, ...d.cols].filter(Boolean).map((f) => FACTOR_LABEL[f]).join(', ')}` : '')
-      + '. A filled group is wild-type control samples, the ones the tissue baselines on gene pages use.'),
+      + '. A filled group is wild-type control samples.'),
     geneBox, geneNote,
     designDrawing(d, all, studies, hub, vec, vec ? gene.id : ''),
     cs.length ? el('h3', { class: 'sd-h3' }, `Comparisons in this study (${cs.length})`) : null,

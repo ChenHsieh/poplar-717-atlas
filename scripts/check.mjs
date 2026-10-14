@@ -1508,75 +1508,63 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
   await rp.close();
 }
 
-// Sample design map. The grid and the bars must describe the same samples: focusing a bar
-// selects that tissue's wild-type controls, and the readout's n and median (computed from the
-// 652-sample vector) must equal the bar's n and median (the shard's x.n / x.t). Positive
-// control: reading one bar against ANOTHER tissue's readout must disagree somewhere.
+// Sample design map. (1) On the allele pair page, whose bars are medians over wild-type
+// controls, focusing a tissue row selects those samples, and the readout's n and both alleles'
+// medians (computed from the 652-sample vectors) must equal the row's n and bar values (the
+// shards' x.n / x.t). Positive control: a row read against ANOTHER row's readout must disagree.
+// (2) On the gene page, pinning a grid cell lights exactly that cell's samples in the profile.
 {
   const dp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
   const derrs = [];
   dp.on('pageerror', (e) => derrs.push(e.message));
   const bad = [];
-  let nbars = 0, controlDisagrees = false, linkOk = true;
-  for (const gid of ['PtXaTreH.05G120200', 'PtXaAlbH.05G196300']) {
-    await dp.goto(`${base}/#/gene/${gid}`, { waitUntil: 'networkidle' });
+  let nrows = 0, controlDisagrees = false, profileOk = false;
+  for (const gid of ['PtXaTreH.05G194600', 'PtXaTreH.05G120200']) {
+    await dp.goto(`${base}/#/pair/${gid}`, { waitUntil: 'networkidle' });
     await dp.waitForSelector('[data-dmap]', { timeout: 15000 });
     await dp.mouse.move(0, 0);
-    const got = await dp.evaluate(async () => {
-      const rows = [...document.querySelectorAll('[data-card=expression] table.dmap-linked tbody tr[data-ids]')];
-      const out = [];
-      for (const tr of rows) {
-        tr.focus();
-        await new Promise((r) => setTimeout(r, 0));
-        out.push({ t: tr.dataset.tissue, bar: tr.querySelector('td.num').textContent,
-          n: tr.querySelector('td.muted').textContent, read: document.querySelector('.dmap-readout').textContent });
-        tr.blur();
-      }
-      return out;
-    });
+    const got = await dp.evaluate(() => [...document.querySelectorAll('g.pr-trow[data-ids]')].map((g) => {
+      g.dispatchEvent(new FocusEvent('focus'));
+      const row = { t: g.dataset.tissue, n: g.querySelectorAll('.pr-tn')[0].textContent,
+        bars: [...g.querySelectorAll('.pr-tv')].map((x) => +x.textContent),
+        read: document.querySelector('.dmap-readout').textContent };
+      g.dispatchEvent(new FocusEvent('blur'));
+      return row;
+    }));
     const parse = (read) => {
-      const n = +(/: (\d+) (?:wild-type control )?sample/.exec(read) || [])[1];
-      let m = /median ([\d,.]+) TPM/.exec(read), med;
-      if (m) med = +m[1].replace(/,/g, '');
-      else if ((m = /values? ([\d,.]+(?:, [\d,.]+)*) TPM/.exec(read))) {
-        const v = m[1].split(', ').map((x) => +x.replace(/,/g, '')).sort((a, b) => a - b); med = v[Math.floor(v.length / 2)];
-      }
-      return { n, med };
+      const n = +(/: (\d+) wild-type control sample/.exec(read) || [])[1];
+      const meds = [...read.matchAll(/: (?:median ([\d,.]+) TPM|values? ([\d,.]+(?:, [\d,.]+)*) TPM)/g)].map((m) => {
+        if (m[1]) return +m[1].replace(/,/g, '');
+        const v = m[2].split(', ').map((x) => +x.replace(/,/g, '')).sort((a, b) => a - b);
+        return v[Math.floor(v.length / 2)];
+      });
+      return { n, meds };
     };
+    const agree = (r, o) => o.n === +r.n.replace('n ', '') && r.bars.length === 2 && o.meds.length === 2
+      && r.bars.every((b, j) => Math.abs(o.meds[j] - b) <= Math.max(0.06, b * 0.006));
     got.forEach((r, i) => {
-      nbars++;
-      const bar = +r.bar.replace(/,/g, ''), nb = +r.n.replace('n=', '');
-      const { n, med } = parse(r.read);
-      const tol = Math.max(0.011, bar * 0.006);
-      if (n !== nb || med == null || Math.abs(med - bar) > tol) bad.push(`${gid} ${r.t}: bar ${bar} n=${nb}, readout "${r.read.slice(0, 120)}"`);
-      const o = parse(got[(i + 1) % got.length].read);
-      if (o.n !== nb || Math.abs((o.med ?? -1) - bar) > tol) controlDisagrees = true;
+      nrows++;
+      if (!agree(r, parse(r.read))) bad.push(`${gid} ${r.t}: n ${r.n}, bars ${r.bars.join(' / ')}, readout "${r.read.slice(0, 160)}"`);
+      if (!agree(r, parse(got[(i + 1) % got.length].read))) controlDisagrees = true;
     });
-    // Linking the other way: pinning a baseline cell lights exactly its tissue's bar.
-    const lit = await dp.evaluate(() => {
-      const c = document.querySelector('[data-card=expression] .dmap-cell.base');
-      c.click();
-      const label = document.querySelector('.dmap-readout').textContent;
-      const hot = [...document.querySelectorAll('[data-card=expression] tr[data-tissue][data-hot="part"],[data-card=expression] tr[data-tissue][data-hot="all"]')].map((r) => r.dataset.tissue);
-      return { label, hot };
-    });
-    if (lit.hot.length !== 1 || !lit.label.startsWith(lit.hot[0] + ',')) linkOk = false;
   }
-  // The allele pair page carries the same map, with both alleles in the readout.
-  await dp.goto(`${base}/#/pair/PtXaTreH.05G194600`, { waitUntil: 'networkidle' });
+  await dp.goto(`${base}/#/gene/PtXaTreH.05G120200`, { waitUntil: 'networkidle' });
   await dp.waitForSelector('[data-dmap]', { timeout: 15000 });
-  const pr = await dp.evaluate(() => {
-    document.querySelector('g.pr-trow[data-tissue="bark"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    return { read: document.querySelector('.dmap-readout').textContent,
-      hot: document.querySelector('g.pr-trow[data-tissue="bark"]').dataset.hot };
+  await dp.click('[data-card=expression] button:has-text("Show all 652 samples")');
+  await dp.waitForSelector('#expr-profile tbody tr[data-ids]');
+  await dp.click('#expr-profile button:has-text("By sample")');
+  const lit = await dp.evaluate(() => {
+    const c = [...document.querySelectorAll('[data-card=expression] .dmap-cell')].find((x) => +x.textContent > 3);
+    c.click();
+    return { want: +c.textContent, ticks: document.querySelectorAll('#expr-profile .dmap-tick[data-hot="all"]').length };
   });
-  const pairOk = pr.hot === 'all' && /^bark baseline: 38 /.test(pr.read)
-    && pr.read.includes('PtXaTreH.05G194600: median 702 TPM') && pr.read.includes('PtXaAlbH.05G196300: median 841 TPM');
-  if (!pairOk) { linkOk = false; bad.push(`pair page: "${pr.read.slice(0, 200)}" hot=${pr.hot}`); }
-  const ok = !bad.length && controlDisagrees && linkOk && !derrs.length;
+  profileOk = lit.want > 0 && lit.ticks === lit.want;
+  if (!profileOk) bad.push(`gene page: a ${lit.want}-sample cell lit ${lit.ticks} profile samples`);
+  const ok = !bad.length && controlDisagrees && profileOk && !derrs.length;
   if (!ok) failures++;
   console.log(`\n### expression:design-map-agrees  ${ok ? 'OK' : 'FAIL'}`);
-  console.log(`   ${nbars} bars matched against the grid readout; positive control disagrees: ${controlDisagrees}; cell lights its bar: ${linkOk}`);
+  console.log(`   ${nrows} pair-page tissue rows matched against the grid readout; positive control disagrees: ${controlDisagrees}; `
+    + `gene-page cell lights its samples in the profile: ${profileOk}`);
   [...bad, ...derrs].forEach((e) => console.log('   !! ' + e));
   await dp.close();
 }

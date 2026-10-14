@@ -21,7 +21,9 @@ export const TISSUE_ORDER = ['leaf_young', 'leaf', 'leaf_old', 'xylem', 'bark', 
 // Same tissue codes as the bars and the rest of the site; a plain-name pass is site-wide work.
 export const tissueName = (t) => t;
 export const tissueOf = (s) => s.tissue_analysis || s.tissue;
-/** The baseline bars use wild-type control samples only (the shard's x.t / x.n). */
+/** Wild-type control samples: the set behind the per-tissue medians on the allele pair page
+ *  (the shard's x.t / x.n). The gene page's tissue table is the dissertation's 222-sample
+ *  reference panel instead, which the sample metadata does not identify. */
 export const isBaseline = (s) => s.genotype === 'WT' && s.ctrl === 'control';
 
 export function linkHub() {
@@ -54,11 +56,11 @@ export function brush(node, hub, sel) {
   return node;
 }
 
-/** Selection: the wild-type control samples behind one baseline bar. */
+/** Selection: the wild-type control samples behind one per-tissue median. */
 export function baselineSel(samples, t) {
   const ids = new Set();
   samples.forEach((s, i) => { if (tissueOf(s) === t && isBaseline(s)) ids.add(i); });
-  return { key: `base:${t}`, label: `${tissueName(t)} baseline`, ids };
+  return { key: `base:${t}`, label: `${tissueName(t)}, wild-type controls`, ids };
 }
 
 const studyLabel = (studies, sid) => {
@@ -66,7 +68,7 @@ const studyLabel = (studies, sid) => {
   return m.firstAuthor ? `${m.firstAuthor}${m.year ? ' ' + m.year : ''}` : '';
 };
 
-/** Upper middle for even n: the same rule the baseline bars use, so the two never disagree. */
+/** Upper middle for even n: the same rule the per-tissue medians use, so the two never disagree. */
 const median = (v) => { const a = [...v].sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; };
 const tpm = (v) => (v >= 100 ? fmt(Math.round(v)) : v.toFixed(v >= 10 ? 1 : 2));
 
@@ -79,7 +81,7 @@ export function describe(sel, samples, studies, vecs) {
   const from = `from ${nst} stud${nst === 1 ? 'y' : 'ies'}`;
   const head = base === ids.length
     ? `${sel.label}: ${many(ids.length, 'wild-type control sample')} ${from}.`
-    : `${sel.label}: ${many(ids.length, 'sample')} ${from}, ${base} of them wild-type controls in the baseline.`;
+    : `${sel.label}: ${many(ids.length, 'sample')} ${from}, ${base} of them wild-type controls.`;
   const vals = vecs.filter((v) => v.vec).map(({ name, vec }) => {
     const x = ids.map((i) => vec[i]).filter((v) => v != null);
     if (!x.length) return null;
@@ -139,7 +141,7 @@ export function designGrid(samples, studies, hub, vecs = [], geneId = '') {
       const nb = ids.filter((i) => isBaseline(samples[i])).length;
       const c = brush(el('button', {
         type: 'button', class: 'dmap-cell' + (nb ? ' base' : ''),
-        'aria-label': `${tissueName(t)}, study ${sid}: ${ids.length} samples, ${nb} in the baseline`,
+        'aria-label': `${tissueName(t)}, study ${sid}: ${ids.length} samples, ${nb} wild-type controls`,
       }, String(ids.length)), hub, () => cellSel(t, sid));
       painted.push([c, ids]);
       grid.append(c);
@@ -150,13 +152,13 @@ export function designGrid(samples, studies, hub, vecs = [], geneId = '') {
   const clearBtn = el('button', { type: 'button', class: 'dmap-clear', hidden: '', onclick: () => hub.clear() }, 'Clear');
   // A selection inside one study offers that study's own design page, carrying the gene.
   const studyLink = el('a', { class: 'dmap-study', hidden: '' });
-  const idle = 'Point at, tap or tab to a bar, a cell, a tissue or a study number to light up the same '
+  const idle = 'Point at, tap or tab to a cell, a tissue or a study number to light up the same '
     + 'samples everywhere on this card.';
   const wrap = el('div', { class: 'dmap', 'data-dmap': '' },
     el('h3', { class: 'dmap-title' }, 'Where the samples come from'),
     el('p', { class: 'dmap-sub' },
       `${samples.length} samples: rows are tissues, columns are studies, each number is a count of samples. `,
-      el('span', { class: 'dmap-key base' }), ' feeds the baseline bars (wild-type controls among them); ',
+      el('span', { class: 'dmap-key base' }), ' includes wild-type control samples; ',
       el('span', { class: 'dmap-key' }), ' treatments or transgenic lines only. A selected cell is outlined; a '
       + 'dashed outline means only some of its samples are in the selection.'),
     el('div', { class: 'dmap-scroll' }, grid),
