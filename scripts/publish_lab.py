@@ -24,7 +24,9 @@ import tarfile
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PRIVATE = ("docs/", "TODO.md", "TODO_public.md", "README.md", "README_public.md", "scripts/publish_lab.py")
+PRIVATE = ("docs/", "TODO.md", "TODO_public.md", "README.md", "README_public.md", "scripts/publish_lab.py",
+           # a developer test whose fixtures ARE machine paths (it checks they appear nowhere else)
+           "scripts/test_roots.py")
 PUBLIC_SWAP = {"TODO_public.md": "TODO.md", "README_public.md": "README.md"}
 SANITIZE = [
     (re.compile(r"/Users/chenhsieh/[^\s'\"`)]*?OneDrive[^/\s'\"`)]*/"), "<onedrive>/"),
