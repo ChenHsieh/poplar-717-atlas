@@ -155,7 +155,8 @@ export function designGrid(samples, studies, hub, vecs = []) {
     el('p', { class: 'dmap-sub' },
       `${samples.length} samples: rows are tissues, columns are studies, each number is a count of samples. `,
       el('span', { class: 'dmap-key base' }), ' feeds the baseline bars (wild-type controls among them); ',
-      el('span', { class: 'dmap-key' }), ' treatments or transgenic lines only.'),
+      el('span', { class: 'dmap-key' }), ' treatments or transgenic lines only. A selected cell is outlined; a '
+      + 'dashed outline means only some of its samples are in the selection.'),
     el('div', { class: 'dmap-scroll' }, grid),
     el('div', { class: 'dmap-foot' }, readout, clearBtn));
 

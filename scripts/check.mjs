@@ -1562,6 +1562,17 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
     });
     if (lit.hot.length !== 1 || !lit.label.startsWith(lit.hot[0] + ',')) linkOk = false;
   }
+  // The allele pair page carries the same map, with both alleles in the readout.
+  await dp.goto(`${base}/#/pair/PtXaTreH.05G194600`, { waitUntil: 'networkidle' });
+  await dp.waitForSelector('[data-dmap]', { timeout: 15000 });
+  const pr = await dp.evaluate(() => {
+    document.querySelector('g.pr-trow[data-tissue="bark"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    return { read: document.querySelector('.dmap-readout').textContent,
+      hot: document.querySelector('g.pr-trow[data-tissue="bark"]').dataset.hot };
+  });
+  const pairOk = pr.hot === 'all' && /^bark baseline: 38 /.test(pr.read)
+    && pr.read.includes('PtXaTreH.05G194600: median 702 TPM') && pr.read.includes('PtXaAlbH.05G196300: median 841 TPM');
+  if (!pairOk) { linkOk = false; bad.push(`pair page: "${pr.read.slice(0, 200)}" hot=${pr.hot}`); }
   const ok = !bad.length && controlDisagrees && linkOk && !derrs.length;
   if (!ok) failures++;
   console.log(`\n### expression:design-map-agrees  ${ok ? 'OK' : 'FAIL'}`);
