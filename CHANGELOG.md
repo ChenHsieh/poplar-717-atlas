@@ -9,6 +9,19 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## Study pages: time courses on a time axis, the design kept in view, every sample named
+
+Site only. The three studies whose metadata gives each sample's time are drawn on a time axis:
+hours after bending (0 to 336 h) and after the LCO treatment (15 min to 24 h) on a log scale
+from the earliest time point, and the winter-to-spring sampling dates with each sampling
+window as a bar and the metadata's fall, winter and spring shaded. No treatment window is
+drawn, because the metadata does not say how long a treatment lasted. On a wide screen the
+design stays in view beside the comparisons and samples; on a phone a Design button opens a
+copy that follows the same selection. Pointing at a single dot or sample row names that
+sample: tissue, conditions, genotype, read depth, alignment rate and, with a gene shown, its
+TPM. `study:design-layout` checks for overlapping or clipped labels at six widths (once
+without web fonts), and that nothing stays lit after the pointer leaves.
+
 ## Each RNA-seq study's design, drawn, with any gene laid onto it
 
 Site only. Every study page now opens with its design: one box per group of samples that
