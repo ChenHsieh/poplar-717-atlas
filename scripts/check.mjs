@@ -1589,7 +1589,8 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
   const serrs = [];
   sp.on('pageerror', (e) => serrs.push(e.message));
   const bad = [];
-  const studies = await sp.evaluate(async (b) => Object.keys(await (await fetch(`${b}/data/expr/studies.json`)).json()), base);
+  await sp.goto(`${base}/#/`, { waitUntil: 'networkidle' });
+  const studies = await sp.evaluate(async () => Object.keys(await (await fetch('data/expr/studies.json')).json()));
   const drawnOnce = () => {
     const ids = [...document.querySelectorAll('[data-study-design] [data-i]')].map((n) => +n.dataset.i);
     const n = +((document.querySelector('[data-card=study-design] .sd-lede') || {}).textContent || '').match(/^([\d,]+) samples/)[1].replace(/,/g, '');
