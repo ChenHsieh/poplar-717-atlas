@@ -8,6 +8,7 @@ import { browseHref } from '../core/browse.js';
 import { loadExprSamples, loadExprStudies, loadExprVector, loadCombatVector,
   loadContrasts } from '../core/data.js';
 import { linkHub, brush, designGrid, paintLinked, tissueOf } from '../core/designmap.js';
+import { contrastRows } from '../core/contrastscore.js';
 
 const TISSUE_ORDER = ['leaf_young', 'leaf', 'leaf_old', 'xylem', 'bark', 'root', 'stem', 'bud', 'catkin', 'gall', 'callus'];
 const orderTissues = (keys) => TISSUE_ORDER.filter((t) => keys.includes(t)).concat(keys.filter((t) => !TISSUE_ORDER.includes(t)));
@@ -39,28 +40,6 @@ const TISSUE_STUDIES = { leaf_young: 1, leaf_old: 1, bark: 7, root: 6, xylem: 10
  *  in its natural habitat.
  * ------------------------------------------------------------------------------------- */
 const LFC_MAX = 6.5;          // axis half-range; values beyond are clamped and marked
-
-function contrastRows(vec, contrasts) {
-  const rows = [];
-  for (const c of contrasts) {
-    const ctrl = (c.ctrl || []).filter((i) => i < vec.length).map((i) => vec[i]);
-    const pert = (c.pert || []).filter((i) => i < vec.length).map((i) => vec[i]);
-    if (!ctrl.length || !pert.length) continue;
-    const mean = (a) => a.reduce((s, v) => s + v, 0) / a.length;
-    const mc = mean(ctrl), mp = mean(pert);
-    // +1 TPM before the ratio: without it a control at 0 gives an infinite fold change, and
-    // the largest "responses" in the panel would all be genes that were simply off.
-    rows.push({
-      lfc: Math.log2((mp + 1) / (mc + 1)),
-      nc: ctrl.length, np: pert.length,
-      base: Math.max(mc, mp),
-      tissue: c.tissue, kind: c.kind,
-      label: `${c.pert_label} vs ${c.control_label}`,
-      rec: !!c.recommended,
-    });
-  }
-  return rows;
-}
 
 function contrastCard(g) {
   if (!g.x) return null;
@@ -239,8 +218,8 @@ function geneCard(g, man) {
         }, label);
         return b;
       };
-      const byCond = mk('By condition', () => conditionTable(activeVec, samples, studies, hub));
-      const bySamp = mk('By sample', () => fullProfile(activeVec, samples, studies, hub));
+      const byCond = mk('By condition', () => conditionTable(activeVec, samples, studies, hub, g.id));
+      const bySamp = mk('By sample', () => fullProfile(activeVec, samples, studies, hub, g.id));
       tabs.append(byCond, bySamp);
       holder.append(tabs, body);
       hub.on((sel) => paintLinked(body, sel));
@@ -294,7 +273,7 @@ function geneCard(g, man) {
   // metadata does not record which samples are in it.
   Promise.all([loadExprSamples(), loadExprStudies(), loadExprVector(g)]).then(([samples, studies, vec]) => {
     if (!samples) return;
-    dmapHolder.append(designGrid(samples, studies, hub, [{ name: 'This gene', vec }]));
+    dmapHolder.append(designGrid(samples, studies, hub, [{ name: 'This gene', vec }], g.id));
   }).catch(() => {});
 
   // Two views of one question: where this gene is ON, and what MOVES it. app.js merges
@@ -310,7 +289,7 @@ function geneCard(g, man) {
  *  Conditions come from the METADATA fields, not by stripping "_repN" off the label --
  *  study 27 encodes replicates as DR1/DR2/DR3 with no _rep, which would split every one of
  *  its 72 samples into its own group. */
-function conditionTable(vec, samples, studies, hub) {
+function conditionTable(vec, samples, studies, hub, geneId) {
   const groups = new Map();
   samples.forEach((s, i) => {
     const key = [s.study, s.tissue_analysis || s.tissue, s.treatment, s.growth, s.additional, s.genotype].join('\u0001');
@@ -338,7 +317,7 @@ function conditionTable(vec, samples, studies, hub) {
           el('th', {}, 'Genotype'), el('th', { class: 'num' }, 'n'),
           el('th', { class: 'num' }, 'Mean TPM'), el('th', {}, ''))),
         el('tbody', {}, ...rows.map((r) => brush(el('tr', { 'data-ids': r.ids.join(','), tabindex: '0' },
-          el('td', {}, el('a', { href: `#/study/${r.s.study}`, class: 'mono' }, r.s.study)),
+          el('td', {}, el('a', { href: `#/study/${r.s.study}?gene=${geneId}`, class: 'mono' }, r.s.study)),
           el('td', { style: 'font-size:12px' }, r.s.tissue_analysis || r.s.tissue || '–'),
           el('td', { style: 'font-size:12px' }, cond(r.s)),
           el('td', { style: 'font-size:12px' }, r.s.genotype || '–'),
@@ -352,7 +331,7 @@ function conditionTable(vec, samples, studies, hub) {
   );
 }
 
-function fullProfile(vec, samples, studies, hub) {
+function fullProfile(vec, samples, studies, hub, geneId) {
   const bySt = new Map();
   samples.forEach((s, i) => {
     if (!bySt.has(s.study)) bySt.set(s.study, []);
@@ -379,7 +358,7 @@ function fullProfile(vec, samples, studies, hub) {
       hub, { key: `s:${r.i}`, label: r.label, ids: new Set([r.i]) }));
     });
     wrap.append(el('div', { style: 'display:flex;align-items:center;gap:10px;padding:4px 0;border-top:1px solid var(--line)' },
-      el('a', { href: `#/study/${sid}`, class: 'mono', style: 'font-size:11px;width:28px;flex:none' }, sid),
+      el('a', { href: `#/study/${sid}?gene=${geneId}`, class: 'mono', style: 'font-size:11px;width:28px;flex:none' }, sid),
       el('span', { class: 'muted', style: 'font-size:11px;width:220px;flex:none' }, study.tissues.join('/')),
       strip));
   }

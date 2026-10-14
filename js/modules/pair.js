@@ -329,7 +329,7 @@ export async function pairView(id) {
           });
         });
         dmapHolder.append(designGrid(samples, studies, hub,
-          [{ name: `${hapLabel('hap1')} ${a.id}`, vec: va }, { name: `${hapLabel('hap2')} ${b.id}`, vec: vb }]));
+          [{ name: `${hapLabel('hap1')} ${a.id}`, vec: va }, { name: `${hapLabel('hap2')} ${b.id}`, vec: vb }], a.id));
       }).catch(() => {});
   }
   const models = el('div', {}, el('p', { class: 'muted' }, 'Drawing both gene models…'));

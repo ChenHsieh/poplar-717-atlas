@@ -9,6 +9,17 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## Each RNA-seq study's design, drawn, with any gene laid onto it
+
+Site only. Every study page now opens with its design: one box per group of samples that
+share every condition, laid out by tissue, treatment, time, genotype or season, with one dot
+per replicate and the wild-type controls filled. The study's comparisons are listed under it,
+and pointing at one marks the two groups it compares (the control group dashed). Enter a gene
+(or follow a study link from a gene page, which carries the gene) and the same drawing becomes
+that gene's chart: each dot is one sample's TPM on one log axis for the whole study, with the
+group median, and each comparison shows its log2 fold change. Sample-table rows join the same
+selection. `study:design-drawings` checks all 28 studies.
+
 ## Where the samples come from: a sample design map on the Expression card and the pair page
 
 Site only. Under the Expression card's tissue table, a grid of the 652 samples by tissue and

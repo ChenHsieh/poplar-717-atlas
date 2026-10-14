@@ -1581,6 +1581,74 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
   await dp.close();
 }
 
+// Study design drawings. (1) Every study draws each of its samples exactly once; a planted
+// duplicate dot must be caught. (2) Every comparison lights exactly its own groups, whole.
+// (3) With a gene, each group's values agree with the gene page's own per-condition table.
+{
+  const sp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const serrs = [];
+  sp.on('pageerror', (e) => serrs.push(e.message));
+  const bad = [];
+  const studies = await sp.evaluate(async (b) => Object.keys(await (await fetch(`${b}/data/expr/studies.json`)).json()), base);
+  const drawnOnce = () => {
+    const ids = [...document.querySelectorAll('[data-study-design] [data-i]')].map((n) => +n.dataset.i);
+    const n = +((document.querySelector('[data-card=study-design] .sd-lede') || {}).textContent || '').match(/^([\d,]+) samples/)[1].replace(/,/g, '');
+    const rows = document.querySelectorAll('tbody tr[data-i]').length;
+    return { ok: ids.length === n && new Set(ids).size === n && rows === n, ids: ids.length, n, rows };
+  };
+  let nContrasts = 0;
+  for (const sid of studies) {
+    await sp.goto(`${base}/#/study/${sid}`, { waitUntil: 'networkidle' });
+    await sp.waitForSelector('[data-study-design]', { timeout: 15000 });
+    const r = await sp.evaluate(drawnOnce);
+    if (!r.ok) bad.push(`study ${sid}: ${r.ids} dots, ${r.rows} sample rows, ${r.n} samples`);
+    const cbad = await sp.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('.sd-contrasts tbody tr').forEach((tr, j) => {
+        tr.focus();
+        const want = new Set(tr.dataset.ids.split(',').map(Number));
+        const got = [...document.querySelectorAll('.sd-cell[data-hot="all"]')].flatMap((c) => c.dataset.ids.split(',').map(Number));
+        const part = document.querySelectorAll('.sd-cell[data-hot="part"]').length;
+        const ctrl = document.querySelectorAll('.sd-cell[data-role="ctrl"]').length;
+        if (part || got.length !== want.size || !got.every((i) => want.has(i)) || !ctrl) out.push(`row ${j + 1}`);
+        tr.blur();
+      });
+      return { out, n: document.querySelectorAll('.sd-contrasts tbody tr').length };
+    });
+    nContrasts += cbad.n;
+    if (cbad.out.length) bad.push(`study ${sid} comparisons not drawn as two whole groups: ${cbad.out.join(', ')}`);
+  }
+  // Positive control for (1): duplicate one dot and the same test must fail.
+  const control = await sp.evaluate((fn) => {
+    const dot = document.querySelector('[data-study-design] [data-i]');
+    dot.parentNode.append(dot.cloneNode());
+    return (0, eval)(`(${fn})`)().ok;
+  }, drawnOnce.toString());
+  // (3) gene values: study 12 against the gene page's By condition rows for study 12.
+  const gid = 'PtXaTreH.05G194600';
+  await sp.goto(`${base}/#/study/12?gene=${gid}`, { waitUntil: 'networkidle' });
+  await sp.waitForSelector('.sd-gene');
+  const onStudy = await sp.evaluate(() => [...document.querySelectorAll('.sd-cell')].map((c) => {
+    const v = [...c.querySelectorAll('circle title')].map((t) => +t.textContent.split(': ')[1].replace(' TPM', ''));
+    return `${v.length}:${(v.reduce((a, b) => a + b, 0) / v.length).toFixed(2)}`;
+  }).sort());
+  await sp.goto(`${base}/#/gene/${gid}`, { waitUntil: 'networkidle' });
+  await sp.click('[data-card=expression] button:has-text("Show all 652 samples")');
+  await sp.waitForSelector('#expr-profile tbody tr');
+  const onGene = await sp.evaluate(() => [...document.querySelectorAll('#expr-profile tbody tr')]
+    .filter((tr) => tr.cells[0].textContent.trim() === '12')
+    .map((tr) => `${tr.cells[4].textContent.trim()}:${tr.cells[5].textContent.trim()}`).sort());
+  const valuesAgree = onStudy.length > 0 && JSON.stringify(onStudy) === JSON.stringify(onGene);
+  if (!valuesAgree) bad.push(`study 12 with ${gid}: study page ${onStudy.join(' ')} | gene page ${onGene.join(' ')}`);
+  const ok = !bad.length && control === false && !serrs.length;
+  if (!ok) failures++;
+  console.log(`\n### study:design-drawings  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${studies.length} studies drawn, ${nContrasts} comparisons checked; planted duplicate caught: ${control === false}; `
+    + `gene values agree with the gene page: ${valuesAgree} (${onStudy.length} groups)`);
+  [...bad, ...serrs].forEach((e) => console.log('   !! ' + e));
+  await sp.close();
+}
+
 // A null handed to the browser's own append() is printed as the word "null". These two genes
 // reach their allele through a tandem array, the path that did it. Planted control as below.
 {

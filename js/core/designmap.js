@@ -71,7 +71,7 @@ const median = (v) => { const a = [...v].sort((x, y) => x - y); return a[Math.fl
 const tpm = (v) => (v >= 100 ? fmt(Math.round(v)) : v.toFixed(v >= 10 ? 1 : 2));
 
 /** One-line description of a selection, with this gene's values (each vector named). */
-function describe(sel, samples, studies, vecs) {
+export function describe(sel, samples, studies, vecs) {
   const ids = [...sel.ids];
   const base = ids.filter((i) => isBaseline(samples[i])).length;
   const nst = new Set(ids.map((i) => samples[i].study)).size;
@@ -94,7 +94,7 @@ function describe(sel, samples, studies, vecs) {
  * The grid. `vecs` = [{ name, vec }] (one per haplotype on the pair page), used for the readout
  * only. Returns the element; it subscribes itself to `hub`.
  */
-export function designGrid(samples, studies, hub, vecs = []) {
+export function designGrid(samples, studies, hub, vecs = [], geneId = '') {
   const present = new Set(samples.map(tissueOf));
   const tissues = TISSUE_ORDER.filter((t) => present.has(t))
     .concat([...present].filter((t) => !TISSUE_ORDER.includes(t)).sort());
@@ -148,6 +148,8 @@ export function designGrid(samples, studies, hub, vecs = []) {
 
   const readout = el('p', { class: 'dmap-readout', 'aria-live': 'polite' });
   const clearBtn = el('button', { type: 'button', class: 'dmap-clear', hidden: '', onclick: () => hub.clear() }, 'Clear');
+  // A selection inside one study offers that study's own design page, carrying the gene.
+  const studyLink = el('a', { class: 'dmap-study', hidden: '' });
   const idle = 'Point at, tap or tab to a bar, a cell, a tissue or a study number to light up the same '
     + 'samples everywhere on this card.';
   const wrap = el('div', { class: 'dmap', 'data-dmap': '' },
@@ -158,7 +160,7 @@ export function designGrid(samples, studies, hub, vecs = []) {
       el('span', { class: 'dmap-key' }), ' treatments or transgenic lines only. A selected cell is outlined; a '
       + 'dashed outline means only some of its samples are in the selection.'),
     el('div', { class: 'dmap-scroll' }, grid),
-    el('div', { class: 'dmap-foot' }, readout, clearBtn));
+    el('div', { class: 'dmap-foot' }, readout, studyLink, clearBtn));
 
   hub.on((sel, pinned) => {
     wrap.toggleAttribute('data-sel', !!sel);
@@ -168,6 +170,13 @@ export function designGrid(samples, studies, hub, vecs = []) {
     }
     readout.textContent = sel ? describe(sel, samples, studies, vecs) : idle;
     clearBtn.hidden = !pinned;
+    const sids = sel ? new Set([...sel.ids].map((i) => samples[i].study)) : new Set();
+    if (sids.size === 1) {
+      const sid = [...sids][0];
+      studyLink.href = `#/study/${sid}${geneId ? '?gene=' + geneId : ''}`;
+      studyLink.textContent = `Study ${sid} design${geneId ? ' with this gene' : ''}`;
+      studyLink.hidden = false;
+    } else studyLink.hidden = true;
     // On a phone the grid scrolls sideways; a tap must not light a cell the reader cannot see.
     // Only for a pinned selection: following the mouse would make the grid jump under it.
     if (sel && pinned && sel.key === pinned.key) {
