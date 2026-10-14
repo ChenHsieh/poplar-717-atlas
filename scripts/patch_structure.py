@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """TODO 34b: gate the per-residue ESMFold records, then pack them into data/struct/.
 
 Input: /scratch/ch29576/atlas_structure_ca/ca_NN.jsonl.gz, written by
@@ -44,10 +45,10 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
 OUT = os.path.join(DATA, "struct")
-SRC = "/scratch/ch29576/atlas_structure_ca"
-PDB_ROOT = "/scratch/ch29576/foldseek/results"
+SRC = roots.path('scratch', 'atlas_structure_ca')
+PDB_ROOT = roots.path('scratch', 'foldseek/results')
 # the exact file build_layers.py reads for prot.ss (md5-identical to sequence_features' copy)
-SS_TABLE = "/scratch/ch29576/ms2-lsg/analyses/esmfold_secondary_structure/results/secondary_structure_summary.tsv"
+SS_TABLE = roots.path('ms2_lsg', 'analyses/esmfold_secondary_structure/results/secondary_structure_summary.tsv')
 N_SHARDS = 24
 STRUCT_SPAN = 2500
 EXPECTED_SKIPPED = {"PtXaTreH.08G115400"}    # a 0-byte PDB; absent from the SS table too

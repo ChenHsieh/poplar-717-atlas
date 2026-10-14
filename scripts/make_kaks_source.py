@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Build sources/kaks_ptri.tsv.gz -- per-gene Ka/Ks against Populus trichocarpa.
 
 WHAT IS SHIPPED AND WHAT IS NOT.
@@ -31,9 +32,9 @@ import statistics as st
 from collections import defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-K = "/scratch/ch29576/ms2lsg_wt_proteomics/analyses/kaks_populus/results/kaks_all_pairs.tsv.gz"
-POOL = "/scratch/ch29576/ms2lsg_wt_proteomics/pipeline/out/lsg_pool_idesia.tsv.gz"
-PUB = "/scratch/ch29576/kaks_populus/out/kaks_summary_by_class.tsv"
+K = roots.path('scratch', 'ms2lsg_wt_proteomics/analyses/kaks_populus/results/kaks_all_pairs.tsv.gz')
+POOL = roots.path('scratch', 'ms2lsg_wt_proteomics/pipeline/out/lsg_pool_idesia.tsv.gz')
+PUB = roots.path('scratch', 'kaks_populus/out/kaks_summary_by_class.tsv')
 OUT = os.path.join(ROOT, "sources", "kaks_ptri.tsv.gz")
 ARMS = ("HAP1_Ptri", "HAP2_Ptri")
 

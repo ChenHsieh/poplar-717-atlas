@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Build the two RNA-seq gene-model sources: intron support, and the split-model flag.
 
 Source: ms2 analyses/piggyback_rnaseq_junctions, out_idesia/ -- the CORRECTED pool run
@@ -24,7 +25,7 @@ fused, not more.
 import csv, gzip, io, json, os, sys
 from collections import Counter, defaultdict
 
-SRC = "/scratch/ch29576/pb_rnaseq_wt/analyses/piggyback_rnaseq_junctions/out_idesia"
+SRC = roots.path('scratch', 'pb_rnaseq_wt/analyses/piggyback_rnaseq_junctions/out_idesia')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_I = os.path.join(ROOT, "sources", "intron_support.tsv.gz")
 OUT_S = os.path.join(ROOT, "sources", "gene_model_pairs.tsv.gz")

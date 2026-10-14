@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Regenerate the committed sources that tie the atlas to the dissertation's tables.
 
 Three sources, written together because they must describe ONE state of the upstream tables:
@@ -31,8 +32,8 @@ import numpy as np
 import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MS1_DUP = os.environ.get("MS1_DUP", os.path.expanduser("~/dev/ms1-dup"))
-ONEDRIVE = os.path.expanduser("~/Library/CloudStorage/OneDrive-UniversityofGeorgia/01_work")
+MS1_DUP = os.environ.get("MS1_DUP", os.path.expanduser(roots.root('ms1_dup')))
+ONEDRIVE = os.path.expanduser(roots.root('onedrive_work'))
 MS1_EXPR = os.environ.get("MS1_EXPR", os.path.join(
     ONEDRIVE, "MS1_2026/data/04_gene_atlas/expression_2026_0813_rerun"))
 CH3_TABLE = os.environ.get("CH3_TABLE", os.path.join(

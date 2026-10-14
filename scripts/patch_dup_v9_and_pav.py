@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """TODO 21: move the duplication call from v8 to v9, and add the PAV layer that never
 shipped (both files are already in the ms1-dup mirror, under names the atlas never
 searched for -- see docs/DATA_AUDIT.md for the earlier "not in the mirror" claim this
@@ -28,7 +29,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
-MS1 = "/Users/chenhsieh/Library/CloudStorage/OneDrive-UniversityofGeorgia/01_work/MS1_2026"
+MS1 = roots.root('onedrive_ms1')
 V9_CSV = f"{MS1}/data/55_master_v9_20260902/master_duplication_table_v9.csv"
 PAV_CSV = f"{MS1}/data/02_synteny_section/hemizygous_pav_diamond.csv"
 

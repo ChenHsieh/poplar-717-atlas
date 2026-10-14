@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Reduce MS1's curated 191-contrast panel to a small index file for the expression
 scrubber (locus-map plan section 2.3).
 
@@ -22,7 +23,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
-MS1 = "/Users/chenhsieh/Library/CloudStorage/OneDrive-UniversityofGeorgia/01_work/MS1_2026"
+MS1 = roots.root('onedrive_ms1')
 CONTRASTS_CSV = f"{MS1}/data/50_v4_panel_20260814/v4_contrasts_20260814.csv"
 
 

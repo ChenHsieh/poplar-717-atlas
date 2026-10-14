@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """
 Adds the genEra context that build_data.py does not carry: ambiguous-stratum flags, founder
 events, and the per-stratum ladder used by the module overview.
@@ -14,8 +15,8 @@ exactly the wrong place to look confident.
 import json, os, re, sys
 from collections import defaultdict
 
-GENERA = "/scratch/ch29576/genera/output"
-ATLAS = "/scratch/ch29576/poplar-717-atlas"
+GENERA = roots.path('scratch', 'genera/output')
+ATLAS = roots.root('atlas')
 STRIP = re.compile(r"\.\d+\.p$")
 
 def hap_dir(h):

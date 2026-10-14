@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Copy ms1-dup's per-PAIR tandem dS into sources/, so a tandem link can carry a number.
 
 Why this exists. `td.ks` on a gene record is the ARRAY MEDIAN -- `patch_duplicate_partners.py`
@@ -28,8 +29,7 @@ import csv, gzip, json, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
-SRC = ("/scratch/ch29576/ms1-dup/data/09_td_pairs/td_union_20260831/"
-       "union_pairs_final.csv")
+SRC = (roots.path('ms1_dup', 'data/09_td_pairs/td_union_20260831/union_pairs_final.csv'))
 OUT = os.path.join(ROOT, "sources", "td_pair_ks.tsv.gz")
 PROV = os.path.join(ROOT, "sources", "td_pair_ks.provenance.json")
 COLS = ["hap", "gene_a", "gene_b", "dS", "dN", "omega", "cov_frac", "ks_source", "age_bin"]

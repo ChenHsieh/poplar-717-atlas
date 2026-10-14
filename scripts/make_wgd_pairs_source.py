@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Copy ms1-dup's WGD anchor pairs into sources/, with an expression correlation per pair.
 
 The gene page showed a curated duplication class (S = salicoid WGD, A = gamma) but never named
@@ -25,7 +26,7 @@ from expr_range_reader import load_combat_vectors
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
-SRC = "/scratch/ch29576/ms1-dup/data/54_v8_freeze_20260825/wgd_anchor_pairs_v8_reordered_20260902.csv"
+SRC = roots.path('ms1_dup', 'data/54_v8_freeze_20260825/wgd_anchor_pairs_v8_reordered_20260902.csv')
 OUT = os.path.join(ROOT, "sources", "wgd_pairs.tsv.gz")
 
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """
 Adds three layers to the gene shards, and builds the search index.
 
@@ -24,9 +25,9 @@ haplotypes is never mistaken for biology. See manifest.annotation.sources.
 import argparse, csv, json, os, re, sys, time
 from collections import defaultdict
 
-ANN = "/scratch/ch29576/genome_resources/pangenome/input/717Official/annotation"
-KS = "/scratch/ch29576/synt_ks/syntelog_ks.csv"
-MS2 = "/scratch/ch29576/ms2_genespace"
+ANN = roots.path('scratch', 'genome_resources/pangenome/input/717Official/annotation')
+KS = roots.path('scratch', 'synt_ks/syntelog_ks.csv')
+MS2 = roots.path('scratch', 'ms2_genespace')
 HAPFILE = {"hap1": "PtremulaxPopulusalbaHAP1_717_v5.1", "hap2": "PtremulaxPopulusalbaHAP2_716_v5.1"}
 
 # "(1 of 24) PF04564//PF04826 - U-box domain (U-box) // Armadillo-like (Arm_2)"
@@ -111,7 +112,7 @@ def shard_paths(root):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="/scratch/ch29576/poplar-717-atlas/data")
+    ap.add_argument("--out", default=roots.path('atlas', 'data'))
     a = ap.parse_args()
 
     # ---- allele: HAP1 <-> HAP2 syntelogs ----------------------------------------------

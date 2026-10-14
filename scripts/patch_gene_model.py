@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """TODO: RNA-seq gene-model evidence -- intron support, and the split-model flag.
 
 Two layers from one source (ms2 piggyback_rnaseq_junctions, out_idesia, 94-library frozen
@@ -33,7 +34,7 @@ from collections import Counter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
-SRC = "/scratch/ch29576/pb_rnaseq_wt/analyses/piggyback_rnaseq_junctions/out_idesia"
+SRC = roots.path('scratch', 'pb_rnaseq_wt/analyses/piggyback_rnaseq_junctions/out_idesia')
 I_TSV = os.path.join(ROOT, "sources", "intron_support.tsv.gz")
 P_TSV = os.path.join(ROOT, "sources", "gene_model_pairs.tsv.gz")
 

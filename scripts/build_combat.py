@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """ComBat-seq batch-corrected TPM, as a per-gene OPT-IN second view (TODO 18).
 
 Not a rebuild. The v7 ComBat-seq matrix already covers the current 652-sample, current
@@ -30,7 +31,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
-MS1 = "/Users/chenhsieh/Library/CloudStorage/OneDrive-UniversityofGeorgia/01_work/MS1_2026"
+MS1 = roots.root('onedrive_ms1')
 COMBAT_CSV = f"{MS1}/latest draft from CJ_tmp/expression/combined_tpm_k21_ComBatSeq_v7.csv"
 META_CSV = f"{MS1}/data/04_gene_atlas/expression_2026_0813_rerun/COLUMN_LEVEL_sample_metadata.csv"
 

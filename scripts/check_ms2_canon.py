@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Check the atlas against ms2-lsg's canonical tables, gene by gene. The second check that
 looks outward (check_facts.py is the first, for ms1-dup).
 
@@ -39,11 +40,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
 PIN = os.path.join(ROOT, "sources", "ms2_canon.pin.json")
 
-MS2_CANDIDATES = [os.environ.get("MS2_LSG_ROOT", ""),
-                  os.path.expanduser("~/dev/ms2-lsg"),
-                  os.path.expanduser("~/dev/ms2-scratch/ms2-lsg"),
-                  f"/scratch/{os.environ.get('USER', '')}/ms2lsg_wt_proteomics",
-                  f"/scratch/{os.environ.get('USER', '')}/ms2-lsg"]
+MS2_CANDIDATES = [roots.root("ms2_lsg")]
 
 fails = []
 

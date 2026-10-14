@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """
 Ingests the genome-wide computed layers from the MS1 and MS2 analysis repos.
 
@@ -49,9 +50,9 @@ PATCHER -- runs after build_data.py, before build_facets.py.
 import csv, json, os, re, sys
 from collections import defaultdict
 
-MS1 = "/scratch/ch29576/ms1-dup"
-MS2 = "/scratch/ch29576/ms2-lsg"
-ATLAS = "/scratch/ch29576/poplar-717-atlas"
+MS1 = roots.root('ms1_dup')
+MS2 = roots.root('ms2_lsg')
+ATLAS = roots.root('atlas')
 STRIP = re.compile(r"\.\d+\.p$")
 PXD = ("023826", "025636", "064017")
 
@@ -149,7 +150,7 @@ def main():
     # The previous source lived in data/32_te_proximity_threshold/, which ms1-dup CLAUDE.md
     # files under "structural explorations". Rather than serve an exploratory table, the
     # distance is recomputed here from the v5.1 repeatmasked GFF3 that ships with the genome.
-    ANN = "/work/cjtlab/717Official/annotation"
+    ANN = roots.path('work', '717Official/annotation')
     RM = {"hap1": f"{ANN}/PtremulaxPopulusalbaHAP1_717_v5.1.repeatmasked_assembly_v5.0.gff3",
           "hap2": f"{ANN}/PtremulaxPopulusalbaHAP2_716_v5.1.repeatmasked_assembly_v5.0.gff3"}
     GFF = {"hap1": f"{ANN}/PtremulaxPopulusalbaHAP1_717_v5.1.gene_exons.gff3",

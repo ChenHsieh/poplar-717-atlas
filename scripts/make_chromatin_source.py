@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Build sources/chromatin_ptri.tsv.gz -- accessible chromatin and histone marks at the
 Populus trichocarpa ortholog's promoter, from GEO GSE128434 (Schmitz lab, Nature Plants 2019).
 
@@ -24,7 +25,7 @@ versus matched-conserved effect table. Nothing is written if any of them moves.
 import csv, gzip, io, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = "/scratch/ch29576/ms2_hybrid_rationale/results/tss/l6_promoter_by_gene.tsv"
+SRC = roots.path('scratch', 'ms2_hybrid_rationale/results/tss/l6_promoter_by_gene.tsv')
 OUT = os.path.join(ROOT, "sources", "chromatin_ptri.tsv.gz")
 
 # published in that analysis's docs/FINDINGS.md section 14

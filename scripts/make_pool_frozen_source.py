@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Write sources/lsg_pool_frozen.tsv.gz: the frozen genEra call for every gene, label-free.
 
 WHY THIS EXISTS (2026-09-21). Chen ruled that the LSG pool is the frozen genEra call, 842 HAP1 +
@@ -42,8 +43,7 @@ SRC = "pipeline/out/lsg_pool.tsv"
 RERUN = "pipeline/out/lsg_pool_idesia.tsv.gz"
 KEEP = ["gene_id", "hap", "phylostratum", "rank", "tax_rep", "is_lsg"]
 DROP = {"canonical_label", "group"}
-CANDIDATES = [os.environ.get("MS2_LSG_ROOT", ""), os.path.expanduser("~/dev/ms2-lsg"),
-              os.path.expanduser("~/dev/ms2-scratch/ms2-lsg")]
+CANDIDATES = [roots.root("ms2_lsg")]
 
 
 def git_blob(root, commit, path, want_blob):

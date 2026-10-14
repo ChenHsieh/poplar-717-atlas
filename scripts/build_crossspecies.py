@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """
 Adds the P. trichocarpa syntenic ortholog for each 717 gene.
 
@@ -19,8 +20,8 @@ PATCHER -- runs after build_data.py, before build_facets.py.
 import csv, gzip, json, os, sys
 from collections import defaultdict
 
-GS = "/scratch/ch29576/ms2_genespace/workdir_local_47798208/syntenicHits"
-ATLAS = "/scratch/ch29576/poplar-717-atlas"
+GS = roots.path('scratch', 'ms2_genespace/workdir_local_47798208/syntenicHits')
+ATLAS = roots.root('atlas')
 
 def shard_paths(root):
     out = []

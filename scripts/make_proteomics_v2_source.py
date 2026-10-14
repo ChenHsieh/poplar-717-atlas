@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Roll the Tier-2 / aspen Sage searches up to one per-gene table for the atlas.
 
 The DETECTION RULE IS NOT INVENTED HERE. It is copied verbatim from the analysis that owns
@@ -15,9 +16,9 @@ table honest: it is not "trust me", it is "it reproduces the number the owner pu
 import csv, gzip, io, json, os, sys
 from collections import defaultdict, Counter
 
-WORK = "/scratch/ch29576/proteomics_aspen"
-POOL = "/scratch/ch29576/ms2lsg_wt_proteomics/pipeline/out/lsg_pool_idesia.tsv.gz"
-PUB  = "/scratch/ch29576/ms2lsg_wt_proteomics/analyses/proteomics_translation_evidence/results/aspen_detection_by_class.tsv"
+WORK = roots.path('scratch', 'proteomics_aspen')
+POOL = roots.path('scratch', 'ms2lsg_wt_proteomics/pipeline/out/lsg_pool_idesia.tsv.gz')
+PUB  = roots.path('scratch', 'ms2lsg_wt_proteomics/analyses/proteomics_translation_evidence/results/aspen_detection_by_class.tsv')
 DET  = f"{WORK}/out/detectability.tsv"
 FDR  = 0.01
 OUT  = "sources/proteomics_ms_v2.tsv.gz"

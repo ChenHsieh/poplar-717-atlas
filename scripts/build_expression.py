@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """
 Build the expression module's data: samples.json, studies.json, per-bucket TPM shards,
 and the tissue-baseline summary written into each gene's shard.
@@ -27,8 +28,8 @@ join -- see the assert immediately after `read_samples()` below.
 import argparse, csv, gzip, hashlib, json, math, os, shutil, sys, time
 from collections import defaultdict
 
-EXPR = "/scratch/ch29576/ms2_genespace/expression"
-ATLAS = "/scratch/ch29576/poplar-717-atlas"
+EXPR = roots.path('scratch', 'ms2_genespace/expression')
+ATLAS = roots.root('atlas')
 BUCKET_SIZE = 250
 
 SRC = {}
@@ -180,7 +181,7 @@ def main():
 
         gene_order = []  # genomic order, from the BED files -- fixes bucket assignment
         for hap, fname in (("hap1", "Ptrxalhap1"), ("hap2", "Ptrxalhap2")):
-            with open(f"/scratch/ch29576/ms2_genespace/workdir/bed/{fname}.bed") as bf:
+            with open(f"{roots.path('scratch', 'ms2_genespace/workdir/bed')}/{fname}.bed") as bf:
                 for line in bf:
                     gene_order.append(line.rstrip("\n").split("\t")[3])
         gene_pos = {g: i for i, g in enumerate(gene_order)}

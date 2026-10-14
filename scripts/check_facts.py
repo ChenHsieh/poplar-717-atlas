@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Check the atlas against ms1-dup's numbers of record. The FIRST check that looks outward.
 
 WHY. Every other check in this repo compares the atlas against itself. `check_aggregates.py`
@@ -43,9 +44,7 @@ PIN = os.path.join(ROOT, "sources", "facts_v10.pin.json")
 
 # Where ms1-dup lives on this machine. Same order as ms1-dup's own atlas_contract roots:
 # an explicit env var, then the two conventional layouts.
-MS1_CANDIDATES = [os.environ.get("MS1_DUP_ROOT", ""),
-                  os.path.expanduser("~/dev/ms1-dup"),
-                  f"/scratch/{os.environ.get('USER', '')}/ms1-dup"]
+MS1_CANDIDATES = [roots.root("ms1_dup")]
 
 HAPS = {"hap1": "HAP1", "hap2": "HAP2"}
 HEMI = {"hemizygous_HAP1", "hemizygous_HAP2"}

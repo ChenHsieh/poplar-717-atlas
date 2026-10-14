@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Duplication classes, allele partners, strict PAV and the syntelog relationship categories,
 all from ms1-dup's current per-gene master table and its tandem-array status table.
 
@@ -46,7 +47,7 @@ KS_ADDED = os.path.join(ROOT, "sources", "allele_ks_added.tsv.gz")
 
 def ms1_repo():
     for p in (os.environ.get("MS1_DUP_REPO"), os.path.join(os.path.dirname(ROOT), "ms1-dup"),
-              "/scratch/ch29576/ms1-dup", os.path.expanduser("~/ms1-dup")):
+              roots.root('ms1_dup'), os.path.expanduser(roots.root('ms1_dup'))):
         if p and os.path.isdir(os.path.join(p, ".git")):
             return p
     raise SystemExit("REFUSING: no ms1-dup git clone found (set MS1_DUP_REPO)")

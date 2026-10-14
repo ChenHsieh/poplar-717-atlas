@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """
 Build static JSON shards for the poplar 717 gene atlas.
 
@@ -26,8 +27,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # silently dropped the version chip instead of failing.
 VERSION = open(os.path.join(ROOT, "VERSION")).read().strip()
 
-MS2  = "/scratch/ch29576/ms2_genespace"
-GENERA = "/scratch/ch29576/genera"
+MS2  = roots.path('scratch', 'ms2_genespace')
+GENERA = roots.path('scratch', 'genera')
 HAPS = {"Ptrxalhap1": ("hap1", "PtXaTreH"), "Ptrxalhap2": ("hap2", "PtXaAlbH")}
 
 # Every currently shipped computational layer is public.  LSG membership remains public
@@ -151,7 +152,7 @@ def read_ps():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", choices=["full", "public"], default="full")
-    ap.add_argument("--out", default="/scratch/ch29576/poplar-717-atlas/data")
+    ap.add_argument("--out", default=roots.path('atlas', 'data'))
     a = ap.parse_args()
 
     genes = read_bed()

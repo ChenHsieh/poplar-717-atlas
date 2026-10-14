@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """
 Adds the duplication layer: within-haplotype paralog pairs with dS/dN.
 
@@ -20,8 +21,8 @@ PATCHER -- runs after build_data.py. See README "Build order".
 import csv, json, os, sys
 from collections import defaultdict
 
-DS = "/scratch/ch29576/tier2_ds_input/tier2_ds_pairs.tsv"
-ATLAS = "/scratch/ch29576/poplar-717-atlas"
+DS = roots.path('scratch', 'tier2_ds_input/tier2_ds_pairs.tsv')
+ATLAS = roots.root('atlas')
 
 def num(x):
     try:

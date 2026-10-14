@@ -80,8 +80,9 @@ for f in sorted(glob.glob(os.path.join(HERE, "*.sh"))):
     code = [l for l in open(f) if not l.lstrip().startswith("#")]
     bad = [l.strip() for l in code if re.search(r"/scratch/ch29576|/work/cjtlab|/Users/chenhsieh", l)]
     check(f"no machine path in {os.path.basename(f)}", not bad, str(bad[:2]))
-    check(f"{os.path.basename(f)} no longer parses patch_dup_v9_and_pav.py for the OneDrive root",
-          "patch_dup_v9_and_pav.py\").read()" not in open(f).read() and "roots.py --get onedrive_ms1" in open(f).read())
+    if os.path.basename(f) == "build_all.sh":
+        check("build_all.sh no longer parses patch_dup_v9_and_pav.py for the OneDrive root",
+              "patch_dup_v9_and_pav.py\").read()" not in open(f).read() and "roots.py --get onedrive_ms1" in open(f).read())
 
 # 3. resolution order, run in a clean subprocess per case
 def resolve(name, env):

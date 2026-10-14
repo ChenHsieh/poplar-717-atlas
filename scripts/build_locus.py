@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Build the locus layer: per-megabase structure tiles, per-chromosome position
 indexes, and a whole-genome overview for the zoomed-out map.
 
@@ -29,9 +30,7 @@ import argparse, collections, gzip, hashlib, json, os, re, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
-GFF_DEFAULT = ("/Users/chenhsieh/Library/CloudStorage/OneDrive-UniversityofGeorgia/01_work/"
-               "03_resources/bioPoplar Genome Files/"
-               "PtremulaxPopulusalbaALL_v5.1.gene.named.gff3")
+GFF_DEFAULT = (roots.path('onedrive_work', '03_resources/bioPoplar Genome Files/PtremulaxPopulusalbaALL_v5.1.gene.named.gff3'))
 MB = 1_000_000
 BIN = 100_000          # overview bin size
 NAME_RE = re.compile(r"Name=([^;]+)")

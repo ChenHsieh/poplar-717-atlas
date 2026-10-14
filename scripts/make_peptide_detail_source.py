@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Build sources/peptide_detail.tsv.gz -- per gene, per dataset, HOW a peptide assignment
 was made, not just that one was.
 
@@ -26,8 +27,8 @@ aspen_dataset_meta.json, or nothing is written.
 import csv, gzip, io, json, os, sys
 from collections import defaultdict
 
-WORK = "/scratch/ch29576/proteomics_aspen"
-META = "/scratch/ch29576/ms2lsg_wt_proteomics/analyses/proteomics_translation_evidence/results/aspen_dataset_meta.json"
+WORK = roots.path('scratch', 'proteomics_aspen')
+META = roots.path('scratch', 'ms2lsg_wt_proteomics/analyses/proteomics_translation_evidence/results/aspen_dataset_meta.json')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "sources", "peptide_detail.tsv.gz")
 FDR = 0.01

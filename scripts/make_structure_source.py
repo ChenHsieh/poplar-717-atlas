@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """TODO 34a: per-residue Calpha trace, pLDDT, sequence and DSSP for every ESMFold model.
 
 Sapelo2-only -- reads the 40,686 PDBs under /scratch/ch29576/foldseek/results, which are
@@ -32,7 +33,7 @@ import sys
 import numpy as np
 import pydssp
 
-PDB_ROOT = "/scratch/ch29576/foldseek/results"
+PDB_ROOT = roots.path('scratch', 'foldseek/results')
 BB = ("N", "CA", "C", "O")
 SUFFIX = ".1.p.pdb"
 AA3 = {

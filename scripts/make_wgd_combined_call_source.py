@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """The route C combined Ks + topology WGD call, per gene.
 
 WHAT THIS IS. The atlas's salicoid/gamma letters come from `master_duplication_table_v9`,
@@ -27,8 +28,7 @@ import csv, gzip, io, json, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
-SRC = ("/scratch/ch29576/ms1-dup/.claude/worktrees/talk-td-act/data/57_gamma_branch/"
-       "painting_v3/results/ks_topology_pairs_{hap}.tsv.gz")
+SRC = (roots.path('ms1_dup', '.claude/worktrees/talk-td-act/data/57_gamma_branch/painting_v3/results/ks_topology_pairs_{hap}.tsv.gz'))
 OUT = os.path.join(ROOT, "sources", "wgd_combined_call.tsv.gz")
 PROV = os.path.join(ROOT, "sources", "wgd_combined_call.provenance.json")
 

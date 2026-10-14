@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import roots
 """Write sources/founder_families_rerun.tsv.gz: each gene's founder family, from the pool's run.
 
 WHY THIS EXISTS (2026-09-26). The gene card's family origin (`ps.fnd`) came from the frozen
@@ -42,9 +43,7 @@ PROV = os.path.join(ROOT, "sources", "founder_families_rerun.provenance.json")
 SRC = "data/founder_families_rerun_20260926/founder_family_per_gene.tsv.gz"
 POOL = "pipeline/out/lsg_pool_idesia.tsv.gz"
 KEEP = ["gene_id", "hap", "family_phylostratum", "family_rank", "family_size", "gene_rank"]
-CANDIDATES = [os.environ.get("MS2_LSG_ROOT", ""), os.path.expanduser("~/dev/ms2-lsg"),
-              os.path.expanduser("~/dev/ms2-scratch/ms2-lsg"),
-              f"/scratch/{os.environ.get('USER', '')}/ms2-lsg"]
+CANDIDATES = [roots.root("ms2_lsg")]
 
 
 def git_blob(root, commit, path, want_blob):
