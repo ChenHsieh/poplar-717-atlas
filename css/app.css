@@ -543,3 +543,46 @@ h2.sect:first-child { margin-top: 2px; }
   border-top: 1px solid var(--line); line-height: 1.5;
 }
 .cp-foot li { margin: 3px 0; }
+
+/* Sample design map (js/core/designmap.js): a tissue-by-study grid linked to the expression
+   bars and the 652-sample profile. A selection outlines its cells and samples and dims the
+   rest; the readout line says the same thing in words, so nothing depends on colour or hover. */
+.dmap { margin: 14px 0 4px; --dmap-cell: 26px; }
+.dmap-title { font-size: 14px; margin: 0 0 4px; }
+.dmap-sub { font-size: 12.5px; color: var(--ink-2); margin: 0 0 8px; line-height: 1.5; }
+.dmap-key { display: inline-block; width: 14px; height: 12px; vertical-align: -1px; border-radius: 2px;
+  border: 1.5px dashed var(--line-2); background: transparent; }
+.dmap-key.base { border: 1.5px solid var(--accent); background: var(--accent-soft); }
+.dmap-scroll { overflow-x: auto; padding: 2px 2px 6px; }
+.dmap-grid { display: grid; gap: 2px; align-items: center; width: max-content; }
+.dmap-corner { font-size: 11px; color: var(--ink-3); padding-right: 6px; }
+.dmap-grid button { font: inherit; font-family: var(--mono); font-size: 11.5px; color: var(--ink);
+  height: var(--dmap-cell); padding: 0; cursor: pointer; border-radius: 3px; background: transparent; }
+.dmap-col { width: var(--dmap-cell); border: 0; color: var(--ink-2) !important; }
+.dmap-row { font-family: var(--sans) !important; font-size: 12.5px !important; text-align: right; width: 100%;
+  padding: 0 8px 0 0 !important; border: 0; white-space: nowrap; position: sticky; left: 0;
+  background: var(--panel) !important; z-index: 1; box-shadow: 6px 0 6px -4px var(--panel); }
+.dmap-cell { width: var(--dmap-cell); border: 1.5px dashed var(--line-2); }
+.dmap-cell.base { border: 1.5px solid var(--accent); background: var(--accent-soft); }
+.dmap-empty { width: var(--dmap-cell); height: var(--dmap-cell); }
+.dmap-grid button:focus-visible, .dmap-linked tr:focus-visible, [data-ids]:focus-visible {
+  outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+.dmap-foot { display: flex; gap: 10px; align-items: flex-start; margin-top: 6px; }
+.dmap-readout { font-size: 12.5px; margin: 0; color: var(--ink); line-height: 1.5; min-height: 2.9em; flex: 1; }
+.dmap-clear { font-size: 12px; padding: 3px 10px; min-height: 30px; border: 1px solid var(--line-2);
+  border-radius: 5px; background: var(--panel-2); color: var(--ink); cursor: pointer; }
+/* Linked painting: outline what is selected, dim what is not. */
+.dmap[data-sel] .dmap-cell[data-hot=""] { opacity: 0.35; }
+/* Labels dim by colour, not opacity: the tissue column is sticky and must stay opaque. */
+.dmap[data-sel] .dmap-row[data-hot=""], .dmap[data-sel] .dmap-col[data-hot=""] { color: var(--ink-3) !important; }
+.dmap .dmap-cell[data-hot="all"], .dmap .dmap-cell[data-hot="part"] { outline: 2px solid var(--ink); outline-offset: 1px; }
+.dmap .dmap-cell[data-hot="part"] { outline-style: dashed; }
+.dmap .dmap-row[data-hot="all"], .dmap .dmap-row[data-hot="part"],
+.dmap .dmap-col[data-hot="all"], .dmap .dmap-col[data-hot="part"] { font-weight: 600; color: var(--ink) !important; }
+.dmap-linked tbody tr[data-ids] { cursor: pointer; }
+[data-sel] tr[data-hot="all"], [data-sel] tr[data-hot="part"] { background: var(--accent-soft); }
+[data-sel] tr[data-ids][data-hot=""] { opacity: 0.55; }
+[data-sel] .dmap-tick[data-hot=""] { opacity: 0.25; }
+[data-sel] .dmap-tick[data-hot="all"] { outline: 1.5px solid var(--ink); }
+@media (max-width: 640px) { .dmap { --dmap-cell: 22px; } .dmap-grid button { font-size: 11px; } }
+@media (forced-colors: active) { .dmap-cell.base { border-color: CanvasText; } .dmap-key.base { border-color: CanvasText; } }

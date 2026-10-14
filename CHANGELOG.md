@@ -9,6 +9,17 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
+## Where the samples come from: a sample design map on the Expression card and the pair page
+
+Site only. Under the Expression card's tissue table, a grid of the 652 samples by tissue and
+study, with wild-type control cells filled. Pointing at, tapping or tabbing to a cell, a tissue
+or a study lights up those samples in the 652-sample profile (conditions and single samples)
+once it is open, and a line in words gives this gene's values for them. The grid is not linked
+to the dissertation's tissue table above it, because the sample metadata does not record which
+samples make up the 222-sample reference panel. On the allele pair page, whose bars are medians
+over wild-type controls, each tissue row is linked to its samples in the grid, and the line
+gives both alleles' values. `expression:design-map-agrees` checks the pair page.
+
 ## 0.18.1 - 2026-10-13 - One tau, array links, how to cite; the old address forwards
 
 No count changed. On the gene records, tau and peak tissue now hold one value.

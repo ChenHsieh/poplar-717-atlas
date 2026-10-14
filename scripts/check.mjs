@@ -1508,6 +1508,68 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
   await rp.close();
 }
 
+// Sample design map. The grid and the bars must describe the same samples: focusing a bar
+// selects that tissue's wild-type controls, and the readout's n and median (computed from the
+// 652-sample vector) must equal the bar's n and median (the shard's x.n / x.t). Positive
+// control: reading one bar against ANOTHER tissue's readout must disagree somewhere.
+{
+  const dp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const derrs = [];
+  dp.on('pageerror', (e) => derrs.push(e.message));
+  const bad = [];
+  let nbars = 0, controlDisagrees = false, linkOk = true;
+  for (const gid of ['PtXaTreH.05G120200', 'PtXaAlbH.05G196300']) {
+    await dp.goto(`${base}/#/gene/${gid}`, { waitUntil: 'networkidle' });
+    await dp.waitForSelector('[data-dmap]', { timeout: 15000 });
+    await dp.mouse.move(0, 0);
+    const got = await dp.evaluate(async () => {
+      const rows = [...document.querySelectorAll('[data-card=expression] table.dmap-linked tbody tr[data-ids]')];
+      const out = [];
+      for (const tr of rows) {
+        tr.focus();
+        await new Promise((r) => setTimeout(r, 0));
+        out.push({ t: tr.dataset.tissue, bar: tr.querySelector('td.num').textContent,
+          n: tr.querySelector('td.muted').textContent, read: document.querySelector('.dmap-readout').textContent });
+        tr.blur();
+      }
+      return out;
+    });
+    const parse = (read) => {
+      const n = +(/: (\d+) (?:wild-type control )?sample/.exec(read) || [])[1];
+      let m = /median ([\d,.]+) TPM/.exec(read), med;
+      if (m) med = +m[1].replace(/,/g, '');
+      else if ((m = /values? ([\d,.]+(?:, [\d,.]+)*) TPM/.exec(read))) {
+        const v = m[1].split(', ').map((x) => +x.replace(/,/g, '')).sort((a, b) => a - b); med = v[Math.floor(v.length / 2)];
+      }
+      return { n, med };
+    };
+    got.forEach((r, i) => {
+      nbars++;
+      const bar = +r.bar.replace(/,/g, ''), nb = +r.n.replace('n=', '');
+      const { n, med } = parse(r.read);
+      const tol = Math.max(0.011, bar * 0.006);
+      if (n !== nb || med == null || Math.abs(med - bar) > tol) bad.push(`${gid} ${r.t}: bar ${bar} n=${nb}, readout "${r.read.slice(0, 120)}"`);
+      const o = parse(got[(i + 1) % got.length].read);
+      if (o.n !== nb || Math.abs((o.med ?? -1) - bar) > tol) controlDisagrees = true;
+    });
+    // Linking the other way: pinning a baseline cell lights exactly its tissue's bar.
+    const lit = await dp.evaluate(() => {
+      const c = document.querySelector('[data-card=expression] .dmap-cell.base');
+      c.click();
+      const label = document.querySelector('.dmap-readout').textContent;
+      const hot = [...document.querySelectorAll('[data-card=expression] tr[data-tissue][data-hot="part"],[data-card=expression] tr[data-tissue][data-hot="all"]')].map((r) => r.dataset.tissue);
+      return { label, hot };
+    });
+    if (lit.hot.length !== 1 || !lit.label.startsWith(lit.hot[0] + ',')) linkOk = false;
+  }
+  const ok = !bad.length && controlDisagrees && linkOk && !derrs.length;
+  if (!ok) failures++;
+  console.log(`\n### expression:design-map-agrees  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${nbars} bars matched against the grid readout; positive control disagrees: ${controlDisagrees}; cell lights its bar: ${linkOk}`);
+  [...bad, ...derrs].forEach((e) => console.log('   !! ' + e));
+  await dp.close();
+}
+
 // A null handed to the browser's own append() is printed as the word "null". These two genes
 // reach their allele through a tandem array, the path that did it. Planted control as below.
 {

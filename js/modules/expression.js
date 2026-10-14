@@ -7,6 +7,7 @@ import { paperExpr, PAPER_TAU_HOW, TAU_SPECIFIC } from '../core/paper.js';
 import { browseHref } from '../core/browse.js';
 import { loadExprSamples, loadExprStudies, loadExprVector, loadCombatVector,
   loadContrasts } from '../core/data.js';
+import { linkHub, brush, designGrid, paintLinked, tissueOf } from '../core/designmap.js';
 
 const TISSUE_ORDER = ['leaf_young', 'leaf', 'leaf_old', 'xylem', 'bark', 'root', 'stem', 'bud', 'catkin', 'gall', 'callus'];
 const orderTissues = (keys) => TISSUE_ORDER.filter((t) => keys.includes(t)).concat(keys.filter((t) => !TISSUE_ORDER.includes(t)));
@@ -177,6 +178,8 @@ function paperBlock(g, man) {
 function geneCard(g, man) {
   if (!g.x) return null;
   const x = g.x;
+  const hub = linkHub();
+  const dmapHolder = el('div', { 'data-dmap-holder': '' });
   const card = el('div', {
     class: 'card',
     'data-view-group': 'expression',
@@ -186,6 +189,7 @@ function geneCard(g, man) {
   },
     el('h2', {}, 'Expression', el('span', { class: 'tag' }, 'kallisto k21')),
     paperBlock(g, man),
+    dmapHolder,
     el('p', { class: 'muted', style: 'font-size:11px;margin:4px 0 0' },
       'These are TPM for this haplotype’s gene model. Reads were quantified against both '
       + 'haplotypes together, so reads that fit this gene and its allele equally well are divided '
@@ -228,17 +232,18 @@ function geneCard(g, man) {
           onclick: () => {
             [...tabs.children].forEach((c) => { c.dataset.on = 'false'; c.style.background = 'var(--panel-2)'; c.style.color = 'var(--ink)'; });
             b.dataset.on = 'true'; b.style.background = 'var(--accent)'; b.style.color = '#fff';
-            renderCurrent = () => clear(body).append(render());
+            renderCurrent = () => { clear(body).append(render()); hub.repaint(); };
             renderCurrent();
           },
           style: 'font-size:12px;padding:4px 10px;border:1px solid var(--line-2);border-radius:5px;background:var(--panel-2);color:var(--ink);cursor:pointer',
         }, label);
         return b;
       };
-      const byCond = mk('By condition', () => conditionTable(activeVec, samples, studies));
-      const bySamp = mk('By sample', () => fullProfile(activeVec, samples, studies));
+      const byCond = mk('By condition', () => conditionTable(activeVec, samples, studies, hub));
+      const bySamp = mk('By sample', () => fullProfile(activeVec, samples, studies, hub));
       tabs.append(byCond, bySamp);
       holder.append(tabs, body);
+      hub.on((sel) => paintLinked(body, sel));
 
       // ComBat-corrected is a SEPARATE toggle, not a third tab -- it swaps which vector feeds
       // the same two views rather than tripling the tab count. Only offered when this gene
@@ -283,6 +288,15 @@ function geneCard(g, man) {
   }, `Show all 652 samples →`);
   card.append(btn);
 
+  // The design map loads with the card: 15 KB of sample metadata plus the vector the
+  // Contrasts view fetches anyway (the range read is cached). It is not linked to the tissue
+  // table above: that table is the dissertation's 222-sample reference panel, and the sample
+  // metadata does not record which samples are in it.
+  Promise.all([loadExprSamples(), loadExprStudies(), loadExprVector(g)]).then(([samples, studies, vec]) => {
+    if (!samples) return;
+    dmapHolder.append(designGrid(samples, studies, hub, [{ name: 'This gene', vec }]));
+  }).catch(() => {});
+
   // Two views of one question: where this gene is ON, and what MOVES it. app.js merges
   // cards sharing a data-view-group into one card with a switch.
   const cc = contrastCard(g);
@@ -296,15 +310,16 @@ function geneCard(g, man) {
  *  Conditions come from the METADATA fields, not by stripping "_repN" off the label --
  *  study 27 encodes replicates as DR1/DR2/DR3 with no _rep, which would split every one of
  *  its 72 samples into its own group. */
-function conditionTable(vec, samples, studies) {
+function conditionTable(vec, samples, studies, hub) {
   const groups = new Map();
   samples.forEach((s, i) => {
     const key = [s.study, s.tissue_analysis || s.tissue, s.treatment, s.growth, s.additional, s.genotype].join('\u0001');
-    if (!groups.has(key)) groups.set(key, { s, vals: [] });
+    if (!groups.has(key)) groups.set(key, { s, vals: [], ids: [] });
     groups.get(key).vals.push(vec[i]);
+    groups.get(key).ids.push(i);
   });
-  const rows = [...groups.values()].map(({ s, vals }) => ({
-    s, n: vals.length,
+  const rows = [...groups.values()].map(({ s, vals, ids }) => ({
+    s, n: vals.length, ids,
     mean: vals.reduce((a, b) => a + b, 0) / vals.length,
   })).sort((a, b) => a.s.study - b.s.study
     || (a.s.tissue_analysis || a.s.tissue || '').localeCompare(b.s.tissue_analysis || b.s.tissue || '')
@@ -322,7 +337,7 @@ function conditionTable(vec, samples, studies) {
           el('th', {}, 'Study'), el('th', {}, 'Tissue'), el('th', {}, 'Condition'),
           el('th', {}, 'Genotype'), el('th', { class: 'num' }, 'n'),
           el('th', { class: 'num' }, 'Mean TPM'), el('th', {}, ''))),
-        el('tbody', {}, ...rows.map((r) => el('tr', {},
+        el('tbody', {}, ...rows.map((r) => brush(el('tr', { 'data-ids': r.ids.join(','), tabindex: '0' },
           el('td', {}, el('a', { href: `#/study/${r.s.study}`, class: 'mono' }, r.s.study)),
           el('td', { style: 'font-size:12px' }, r.s.tissue_analysis || r.s.tissue || '–'),
           el('td', { style: 'font-size:12px' }, cond(r.s)),
@@ -331,15 +346,17 @@ function conditionTable(vec, samples, studies) {
           el('td', { class: 'num' }, r.mean.toFixed(2)),
           el('td', { style: 'width:30%' },
             el('div', { class: 'bar', style: `width:${Math.max((r.mean / max) * 100, r.mean > 0 ? 1.5 : 0)}%;`
-              + `background:${r.s.ctrl === 'perturbation' ? 'var(--c-disp)' : 'var(--c-core)'}` })))))))
+              + `background:${r.s.ctrl === 'perturbation' ? 'var(--c-disp)' : 'var(--c-core)'}` }))),
+          hub, { key: `cond:${r.ids[0]}`, ids: new Set(r.ids),
+            label: `study ${r.s.study}, ${tissueOf(r.s)}, ${cond(r.s)}${r.s.genotype && r.s.genotype !== 'WT' ? ', ' + r.s.genotype : ''}` })))))
   );
 }
 
-function fullProfile(vec, samples, studies) {
+function fullProfile(vec, samples, studies, hub) {
   const bySt = new Map();
   samples.forEach((s, i) => {
     if (!bySt.has(s.study)) bySt.set(s.study, []);
-    bySt.get(s.study).push({ ...s, tpm: vec[i] });
+    bySt.get(s.study).push({ ...s, tpm: vec[i], i });
   });
   const max = Math.max(...vec, 0.01);
   const wrap = el('div', {});
@@ -353,10 +370,13 @@ function fullProfile(vec, samples, studies) {
     const strip = el('div', { style: 'display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px' });
     rows.sort((a, b) => a.label.localeCompare(b.label)).forEach((r) => {
       const h = Math.max(3, (r.tpm / max) * 30);
-      strip.append(el('div', {
+      strip.append(brush(el('div', {
+        'data-i': r.i,
+        class: 'dmap-tick',
         title: `${r.label}\n${r.tpm} TPM\n${r.tissue_analysis || r.tissue}${r.treatment ? ' · ' + r.treatment : ''}${r.genotype ? ' · ' + r.genotype : ''}`,
         style: `width:7px;height:30px;display:flex;align-items:flex-end`,
-      }, el('div', { style: `width:100%;height:${h}px;background:${r.ctrl === 'perturbation' ? 'var(--c-disp)' : 'var(--c-core)'};border-radius:1px` })));
+      }, el('div', { style: `width:100%;height:${h}px;background:${r.ctrl === 'perturbation' ? 'var(--c-disp)' : 'var(--c-core)'};border-radius:1px` })),
+      hub, { key: `s:${r.i}`, label: r.label, ids: new Set([r.i]) }));
     });
     wrap.append(el('div', { style: 'display:flex;align-items:center;gap:10px;padding:4px 0;border-top:1px solid var(--line)' },
       el('a', { href: `#/study/${sid}`, class: 'mono', style: 'font-size:11px;width:28px;flex:none' }, sid),
