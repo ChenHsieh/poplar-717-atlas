@@ -663,7 +663,7 @@ h2.sect:first-child { margin-top: 2px; }
    and samples scroll beside it; on a narrow one a button opens a copy in a sheet. */
 @media (min-width: 1200px) {
   .sd-layout { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(380px, 1fr); gap: 0 18px; align-items: start; }
-  .sd-railcol { position: sticky; top: 10px; max-height: calc(100vh - 20px); overflow: auto; }
+  .sd-railcol { position: sticky; top: calc(var(--top-h, 60px) + 10px); max-height: calc(100vh - var(--top-h, 60px) - 20px); overflow: auto; }
   .sd-railcol > .card { margin-bottom: 0; }
 }
 .sd-sheet-btn { position: fixed; right: 16px; bottom: 16px; z-index: 20; min-height: 44px; padding: 0 16px;

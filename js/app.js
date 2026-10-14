@@ -1104,13 +1104,24 @@ route(/^\/study\/(\d+)$/, async (idStr, navigation) => {
       s.doi.length ? el('p', {}, ...s.doi.map((d) => el('a', { href: d, target: '_blank', rel: 'noopener' }, d))) : null))),
     sheetBtn, sheet,
   ));
-  // The sheet button shows only on a narrow screen and only once the design is out of view.
-  if ('IntersectionObserver' in window) {
+  // The sheet button shows only on a narrow screen, and only while less than 120 px of the
+  // design is on screen (an edge touching the viewport still counts as visible to an observer).
+  {
     const wide = window.matchMedia('(min-width: 1200px)');
-    let visible = true;
-    const sync = () => { sheetBtn.hidden = wide.matches || visible; if (wide.matches && sheet.open) sheet.close(); };
-    new IntersectionObserver(([e]) => { visible = e.isIntersecting; sync(); }).observe(designCard);
-    wide.addEventListener('change', sync);
+    let queued = false;
+    const sync = () => {
+      queued = false;
+      if (!designCard.isConnected) { window.removeEventListener('scroll', ask); return; }
+      const r = designCard.getBoundingClientRect();
+      const shown = Math.min(r.bottom, innerHeight) - Math.max(r.top, 0);
+      sheetBtn.hidden = wide.matches || shown >= 120;
+      if (wide.matches && sheet.open) sheet.close();
+    };
+    const ask = () => { if (!queued) { queued = true; requestAnimationFrame(sync); } };
+    window.addEventListener('scroll', ask, { passive: true });
+    window.addEventListener('resize', ask);
+    wide.addEventListener('change', ask);
+    ask();
   }
   // Sample rows join the same selection as the drawing.
   sampleCard.querySelectorAll('tbody tr[data-i]').forEach((tr) => {

@@ -1664,15 +1664,20 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
     if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`page is ${document.documentElement.scrollWidth}px wide at ${innerWidth}px`);
     return out;
   };
-  const lp = await browser.newPage();
   const lerrs = [];
-  lp.on('pageerror', (e) => lerrs.push(e.message));
+  const fresh = async (w) => {   // a new tab per width: one tab through 56 loads can run out of memory
+    const t = await browser.newPage({ viewport: { width: w, height: 900 } });
+    t.on('pageerror', (e) => lerrs.push(e.message));
+    return t;
+  };
+  let lp = null;
   const bad = [];
   let pages = 0;
   const routes = ['/study/1', '/study/12', '/study/16', '/study/17', '/study/27', '/study/31',
     '/study/12?gene=PtXaTreH.05G194600', '/study/17?gene=PtXaTreH.05G194600'];
   for (const [w, fonts] of [[320, true], [390, true], [768, true], [1024, true], [1280, true], [1600, true], [390, false]]) {
-    await lp.setViewportSize({ width: w, height: 900 });
+    if (lp) await lp.close();
+    lp = await fresh(w);
     if (!fonts) await lp.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
     for (const r of routes) {
       await lp.goto(`${base}/#${r}`, { waitUntil: 'networkidle' });
@@ -1690,7 +1695,8 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
     return (0, eval)(`(${fn})`)().length;
   }, scan.toString())) > 0;
   // (2) highlight hygiene, with a real mouse.
-  await lp.setViewportSize({ width: 1280, height: 900 });
+  await lp.close();
+  lp = await fresh(1280);
   await lp.goto(`${base}/#/study/12?gene=PtXaTreH.05G194600`, { waitUntil: 'networkidle' });
   await lp.waitForSelector('[data-card=study-design] .sd-dot');
   const lit = () => lp.evaluate(() => ({
