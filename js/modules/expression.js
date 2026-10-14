@@ -17,6 +17,132 @@ const orderTissues = (keys) => TISSUE_ORDER.filter((t) => keys.includes(t)).conc
 // needs. Regenerate if the expression release changes.
 const TISSUE_STUDIES = { leaf_young: 1, leaf_old: 1, bark: 7, root: 6, xylem: 10, leaf: 11,
   bud: 3, catkin: 1, stem: 1, callus: 1 };
+/* ---------------------------------------------------------------------------------------
+ *  Response by contrast.
+ *
+ *  The Expression card states one number for this -- `resp.v`, the median |log2FC| across
+ *  eligible contrasts -- and until now there was no way to see WHICH comparison moved the
+ *  gene. That number is the summary of a distribution the reader could not reach.
+ *
+ *  Nothing new is built or shipped for this. data/expr/contrasts.json already names each
+ *  comparison's control and perturbation SAMPLE INDICES, and loadExprVector already returns
+ *  this gene's 652 values; the fold change is those two facts multiplied out in the browser.
+ *  The reverse question -- "which genes respond to drought" -- is NOT answerable this way,
+ *  because it needs every gene's vector, and it is deliberately not attempted here.
+ *
+ *  WHY EVERY BAR CARRIES ITS SAMPLE COUNTS. The median contrast in this panel is n=3 per
+ *  side and some are n=1. A fold change from single samples has no dispersion estimate and
+ *  cannot be told from noise, so ranking by |log2FC| alone puts those beside a real result.
+ *  They are drawn (hiding them would misrepresent what the panel contains) and dimmed, and
+ *  the counts are printed rather than implied. This is the |effect|-is-biased-at-low-n trap
+ *  in its natural habitat.
+ * ------------------------------------------------------------------------------------- */
+const LFC_MAX = 6.5;          // axis half-range; values beyond are clamped and marked
+
+function contrastRows(vec, contrasts) {
+  const rows = [];
+  for (const c of contrasts) {
+    const ctrl = (c.ctrl || []).filter((i) => i < vec.length).map((i) => vec[i]);
+    const pert = (c.pert || []).filter((i) => i < vec.length).map((i) => vec[i]);
+    if (!ctrl.length || !pert.length) continue;
+    const mean = (a) => a.reduce((s, v) => s + v, 0) / a.length;
+    const mc = mean(ctrl), mp = mean(pert);
+    // +1 TPM before the ratio: without it a control at 0 gives an infinite fold change, and
+    // the largest "responses" in the panel would all be genes that were simply off.
+    rows.push({
+      lfc: Math.log2((mp + 1) / (mc + 1)),
+      nc: ctrl.length, np: pert.length,
+      base: Math.max(mc, mp),
+      tissue: c.tissue, kind: c.kind,
+      label: `${c.pert_label} vs ${c.control_label}`,
+      rec: !!c.recommended,
+    });
+  }
+  return rows;
+}
+
+function contrastCard(g) {
+  if (!g.x) return null;
+  const card = el('div', {
+    class: 'card',
+    'data-view-group': 'expression',
+    'data-view-key': 'contrasts',
+    // Deliberately NOT 'Response by contrast': the scrubber card has a button labelled
+    // 'By contrast', and any substring selector for one then matches the other.
+    'data-view-label': 'Contrasts',
+    'data-view-tag': 'computed in the browser',
+  }, el('h2', {}, 'Response by contrast'));
+  const body = el('div', {});
+  const status = el('p', { class: 'muted', style: 'font-size:11.5px;margin:6px 0 0' },
+    'Scoring this gene against every shipped contrast…');
+  card.append(body, status);
+
+  (async () => {
+    const [vec, contrasts] = await Promise.all([loadExprVector(g), loadContrasts()]);
+    if (!vec || !contrasts) { status.textContent = 'No expression vector for this gene.'; return; }
+    const rows = contrastRows(vec, contrasts);
+    if (!rows.length) { status.textContent = 'No contrast could be scored for this gene.'; return; }
+
+    const sorted = [...rows].sort((a, b) => Math.abs(b.lfc) - Math.abs(a.lfc));
+    const shown = sorted.slice(0, 10);
+    const absSorted = rows.map((r) => Math.abs(r.lfc)).sort((a, b) => a - b);
+    const med = absSorted[Math.floor(absSorted.length / 2)];
+    const lowN = rows.filter((r) => r.nc < 2 || r.np < 2).length;
+    // "Largest" names one contrast in bold, so it must not be a 1-vs-1 comparison when a
+    // replicated one exists; the bars above still show every contrast in |log2FC| order.
+    const lead = sorted.find((r) => r.nc >= 2 && r.np >= 2) || sorted[0];
+    const leadWeak = lead.nc < 2 || lead.np < 2;
+
+    const grid = el('div', { class: 'lfc-rows' });
+    for (const r of shown) {
+      const mag = Math.min(Math.abs(r.lfc), LFC_MAX) / LFC_MAX * 50;   // % of full track
+      const weak = r.nc < 2 || r.np < 2;
+      const bar = el('b', {
+        class: 'lfc-fill ' + (r.lfc >= 0 ? 'up' : 'down') + (weak ? ' weak' : ''),
+        style: (r.lfc >= 0 ? 'left:50%;' : `right:50%;`) + `width:${mag}%`,
+      });
+      grid.append(
+        el('span', { class: 'lfc-lab', title: `${r.label} · ${r.tissue} · ${r.kind}` },
+          r.label, el('span', { class: 'muted' }, ` · ${r.tissue}`)),
+        el('span', { class: 'lfc-track' }, el('i', { class: 'lfc-zero' }), bar),
+        el('span', { class: 'lfc-val mono' }, (r.lfc >= 0 ? '+' : '−') + Math.abs(r.lfc).toFixed(2)),
+        el('span', { class: 'lfc-n mono' + (weak ? ' warn-n' : '') }, `${r.nc}v${r.np}`),
+      );
+    }
+
+    body.append(
+      el('p', { class: 'sub', style: 'margin:0 0 9px' },
+        `All ${rows.length} shipped contrasts scored for this gene; the ${shown.length} largest `
+        + 'shown. Every bar carries its sample counts.'),
+      grid,
+      el('div', { class: 'lfc-axis' },
+        el('span', {}, el('i', {}, `−${LFC_MAX}`), el('i', {}, '0'), el('i', {}, `+${LFC_MAX}`))),
+      el('dl', { class: 'kv', style: 'margin-top:12px' },
+        el('dt', {}, 'Median |log2FC|'), el('dd', { class: 'mono' }, med.toFixed(3)),
+        el('dt', {}, leadWeak ? 'Largest' : 'Largest, replicated'),
+        el('dd', {}, el('span', { class: 'mono' }, lead.lfc.toFixed(2)), ' in ',
+          el('strong', {}, lead.tissue), `, ${lead.label} (${lead.nc} vs ${lead.np} samples)`,
+          el('span', { class: 'muted' }, `, mean ${fmt(Math.round(lead.base))} TPM on the larger side`
+            + (leadWeak ? '; single sample on one side' : '')))),
+      lowN ? el('p', { class: 'warn-n-note' },
+        el('strong', {}, `${lowN} of these ${rows.length} contrasts have a single sample on one side. `),
+        'A fold change from one sample against one sample has no dispersion estimate and cannot '
+        + 'be distinguished from noise; those bars are dimmed. Ranking by |log2FC| alone would '
+        + 'put them beside a real result.') : null,
+      el('p', { class: 'muted', style: 'font-size:11px;margin:9px 0 0' },
+        'Fold change is mean(perturbation)+1 over mean(control)+1 on the raw TPM vector, using '
+        + 'the control and perturbation sample indices shipped in contrasts.json. It is a '
+        + 'descriptive ratio, not a differential-expression test: no dispersion model, no '
+        + 'multiple-testing correction, and study is not accounted for. The card’s median '
+        + 'is computed over every scorable contrast here, which need not match the '
+        + '“responsiveness” figure on the Tissues view, which uses a stricter '
+        + 'eligibility rule.'));
+    status.remove();
+  })().catch((e) => { status.textContent = `Contrast response unavailable: ${e.message}`; });
+
+  return card;
+}
+
 const PAPER_TISSUES = ['leaf_young', 'leaf', 'leaf_old', 'xylem', 'bark', 'root', 'stem', 'bud', 'catkin'];
 
 /** Tissue specificity exactly as the dissertation computes it. This is the value to quote. */
