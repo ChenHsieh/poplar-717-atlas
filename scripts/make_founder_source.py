@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Write sources/founder_families_rerun.tsv.gz: each gene's founder family, from the pool's run.
 
 WHY THIS EXISTS (2026-09-26). The gene card's family origin (`ps.fnd`) came from the frozen
@@ -26,6 +25,7 @@ GATES, all of which must pass or nothing is written:
 NOT A BUILD STAGE. Regenerates a committed source by hand; the stage that applies it is
 patch_founder_rerun.py. Needs a clone of ms2-lsg (private).
 """
+import roots
 import collections
 import csv
 import gzip

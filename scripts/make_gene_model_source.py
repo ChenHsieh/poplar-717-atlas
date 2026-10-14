@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Build the two RNA-seq gene-model sources: intron support, and the split-model flag.
 
 Source: ms2 analyses/piggyback_rnaseq_junctions, out_idesia/ -- the CORRECTED pool run
@@ -22,6 +21,7 @@ LSG-with-conserved. The owning analysis's Result 2 says the same thing from the 
 arm A is 0.96% against a gap- and depth-matched conserved 3.61%, i.e. LSG pairs are LESS often
 fused, not more.
 """
+import roots
 import csv, gzip, io, json, os, sys
 from collections import Counter, defaultdict
 

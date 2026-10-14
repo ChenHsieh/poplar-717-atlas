@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """TODO 21: move the duplication call from v8 to v9, and add the PAV layer that never
 shipped (both files are already in the ms1-dup mirror, under names the atlas never
 searched for -- see docs/DATA_AUDIT.md for the earlier "not in the mirror" claim this
@@ -22,6 +21,7 @@ Two independent patches to every shipped shard, both local joins, no Sapelo2 nee
    hemizygous genes, not genome-wide -- genes outside that candidate set get no `pav` key
    at all, matching this site's existing convention for coverage-limited layers.
 """
+import roots
 import csv
 import json
 import os

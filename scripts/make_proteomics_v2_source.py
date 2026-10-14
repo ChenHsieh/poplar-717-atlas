@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Roll the Tier-2 / aspen Sage searches up to one per-gene table for the atlas.
 
 The DETECTION RULE IS NOT INVENTED HERE. It is copied verbatim from the analysis that owns
@@ -13,6 +12,7 @@ against that analysis's own published `aspen_detection_by_class.tsv`. If a singl
 disagrees, the roll-up is wrong and nothing is written. That is what makes a locally derived
 table honest: it is not "trust me", it is "it reproduces the number the owner published".
 """
+import roots
 import csv, gzip, io, json, os, sys
 from collections import defaultdict, Counter
 

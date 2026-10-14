@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """TODO: RNA-seq gene-model evidence -- intron support, and the split-model flag.
 
 Two layers from one source (ms2 piggyback_rnaseq_junctions, out_idesia, 94-library frozen
@@ -25,6 +24,7 @@ THREE GATES:
   2. exactly 2,629 genes carry a split flag.
   3. every flagged gene's partner is a real atlas gene.
 """
+import roots
 import csv
 import gzip
 import io

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """The route C combined Ks + topology WGD call, per gene.
 
 WHAT THIS IS. The atlas's salicoid/gamma letters come from `master_duplication_table_v9`,
@@ -24,6 +23,7 @@ DERIVATION, copied from the figure script that published the numbers
 or gamma if it is an endpoint of ANY pair whose `combined_call` says so; `review` pairs are
 recorded separately rather than counted into either event.
 """
+import roots
 import csv, gzip, io, json, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

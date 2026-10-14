@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Release gate: the atlas states the dissertation's calls and numbers, everywhere.
 
 Read-only. Two kinds of assertion, tagged in the output:
@@ -19,6 +18,7 @@ case the committed source (sources/dissertation_layer.tsv.gz) stands in where it
 Every "none found" check is paired with a positive control: the scanner is first shown a string
 it must catch, so a pattern that could never match cannot pass silently.
 """
+import roots
 import argparse, csv, gzip, json, os, re, sys
 from collections import Counter
 

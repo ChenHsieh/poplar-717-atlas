@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Build sources/copy_search.json: every copy of a tandem array on BOTH haplotypes, found in
 the genome sequence rather than in the annotation.
 
@@ -51,6 +50,7 @@ like make_kaks_source.py: it regenerates a committed source, and patch_copies.py
 source into data/. Run it by hand when a locus is added:
     python3 scripts/make_copy_search_source.py        (~5 min on 32 cores)
 """
+import roots
 import glob
 import hashlib
 import json

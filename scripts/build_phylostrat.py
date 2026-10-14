@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """
 Adds the genEra context that build_data.py does not carry: ambiguous-stratum flags, founder
 events, and the per-stratum ladder used by the module overview.
@@ -12,6 +11,7 @@ rank in gene_ages.tsv, so without this flag a reader sees a confident stratum fo
 method itself flagged as uncertain. For a chapter whose thesis rests on PS >= 18, that is
 exactly the wrong place to look confident.
 """
+import roots
 import json, os, re, sys
 from collections import defaultdict
 

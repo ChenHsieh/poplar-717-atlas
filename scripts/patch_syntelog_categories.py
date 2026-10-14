@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Duplication classes, allele partners, strict PAV and the syntelog relationship categories,
 all from ms1-dup's current per-gene master table and its tandem-array status table.
 
@@ -29,6 +28,7 @@ row; per-haplotype category counts equal the owning analysis's own count table; 
 528 / 605 genes; array status counts equal its status_by_hap table; every partner pair has a
 divergence row or is declared missing; tandem membership unchanged from the shipped shards.
 """
+import roots
 import csv
 import gzip
 import hashlib

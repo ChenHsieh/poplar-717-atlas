@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """
 Build the expression module's data: samples.json, studies.json, per-bucket TPM shards,
 and the tissue-baseline summary written into each gene's shard.
@@ -25,6 +24,7 @@ MS1_2026's own curated v4 sample panel (see that file's sidecar for provenance).
 covers all 652 samples exactly; anything short of that is a hard stop, not a silent partial
 join -- see the assert immediately after `read_samples()` below.
 """
+import roots
 import argparse, csv, gzip, hashlib, json, math, os, shutil, sys, time
 from collections import defaultdict
 

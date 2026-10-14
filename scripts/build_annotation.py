@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """
 Adds three layers to the gene shards, and builds the search index.
 
@@ -22,6 +21,7 @@ truncated -- the release simply did not populate them for HAP2. Recovered as fol
 Every annotation field records which source it came from, so an asymmetry between the
 haplotypes is never mistaken for biology. See manifest.annotation.sources.
 """
+import roots
 import argparse, csv, json, os, re, sys, time
 from collections import defaultdict
 

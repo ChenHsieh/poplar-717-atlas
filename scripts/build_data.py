@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """
 Build static JSON shards for the poplar 717 gene atlas.
 
@@ -16,6 +15,7 @@ Tiers: --tier full  (everything, private repo / local)
 So what is publishable is a build flag, not a rewrite. GitHub Pages is PUBLIC even from a
 private repo, so the public tier is the only thing that may ever be deployed.
 """
+import roots
 import argparse, csv, gzip, hashlib, json, os, re, shutil, sys, time
 from collections import defaultdict
 

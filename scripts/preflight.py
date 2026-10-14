@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """
 Checks that every source the data build reads is present, BEFORE anything is written.
 
@@ -10,6 +9,7 @@ plausible-looking data/ directory missing eleven layers. A loud stop is much saf
 
 Exit 0 = every source present, safe to build.  Exit 1 = do not build here.
 """
+import roots
 import os, sys
 
 SOURCES = {

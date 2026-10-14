@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Build sources/chromatin_ptri.tsv.gz -- accessible chromatin and histone marks at the
 Populus trichocarpa ortholog's promoter, from GEO GSE128434 (Schmitz lab, Nature Plants 2019).
 
@@ -22,6 +21,7 @@ GATE. Reproduces the analysis's published numbers before writing: the conserved 
 H3K4me3 rate (81.5%) that its own gate turns on, and all eight cells of its Populus-specific
 versus matched-conserved effect table. Nothing is written if any of them moves.
 """
+import roots
 import csv, gzip, io, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

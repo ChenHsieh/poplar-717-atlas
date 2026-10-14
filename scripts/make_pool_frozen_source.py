@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Write sources/lsg_pool_frozen.tsv.gz: the frozen genEra call for every gene, label-free.
 
 WHY THIS EXISTS (2026-09-21). Chen ruled that the LSG pool is the frozen genEra call, 842 HAP1 +
@@ -25,6 +24,7 @@ GATES, all of which must pass or nothing is written:
 NOT A BUILD STAGE. Like the other make_*_source.py scripts it regenerates a committed source by
 hand; the stage that applies it is patch_lsg_pool.py. Needs a clone of ms2-lsg (private).
 """
+import roots
 import csv
 import gzip
 import hashlib

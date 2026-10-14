@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Check the atlas against ms2-lsg's canonical tables, gene by gene. The second check that
 looks outward (check_facts.py is the first, for ms1-dup).
 
@@ -26,6 +25,7 @@ all exit 1 with the reason. "Could not run" is not "passed".
 
 Needs a clone of ChenHsieh/ms2-lsg (private), so it runs on a maintainer's machine, not in CI.
 """
+import roots
 import collections
 import glob
 import gzip

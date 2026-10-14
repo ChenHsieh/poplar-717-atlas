@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Reduce MS1's curated 191-contrast panel to a small index file for the expression
 scrubber (locus-map plan section 2.3).
 
@@ -16,6 +15,7 @@ different naming scheme (`control_500CO2_non-recovered`, underscores) versus the
 191-contrast panel's own scheme (`control,,_WT,_recovered`, commas). Predates the current
 v4 panel by three months (file mtime May vs the panel's own August build). Not used here.
 """
+import roots
 import csv
 import json
 import os

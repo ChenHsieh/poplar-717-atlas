@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Build sources/peptide_detail.tsv.gz -- per gene, per dataset, HOW a peptide assignment
 was made, not just that one was.
 
@@ -24,6 +23,7 @@ is identical to make_proteomics_v2_source.py's, so the two cannot disagree.
 GATE: per-dataset detected-gene counts must equal the owning analysis's own
 aspen_dataset_meta.json, or nothing is written.
 """
+import roots
 import csv, gzip, io, json, os, sys
 from collections import defaultdict
 

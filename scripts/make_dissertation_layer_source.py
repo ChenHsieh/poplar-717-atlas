@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Regenerate the committed sources that tie the atlas to the dissertation's tables.
 
 Three sources, written together because they must describe ONE state of the upstream tables:
@@ -26,6 +25,7 @@ Inputs are found through environment variables so no machine path is needed in t
   MS1_EXPR  folder holding the TPM matrix                   (default: the OneDrive MS1_2026 tree)
   CH3_TABLE Table_3.S1_S3_per_gene.tsv of the final LSG set
 """
+import roots
 import csv, gzip, hashlib, io, json, os, re, subprocess, sys, time
 
 import numpy as np

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """
 Adds the duplication layer: within-haplotype paralog pairs with dS/dN.
 
@@ -18,6 +17,7 @@ inferring a WGD peak from a phylostratum-selected subset would be invalid.
 
 PATCHER -- runs after build_data.py. See README "Build order".
 """
+import roots
 import csv, json, os, sys
 from collections import defaultdict
 

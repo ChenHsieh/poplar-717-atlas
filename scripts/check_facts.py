@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Check the atlas against ms1-dup's numbers of record. The FIRST check that looks outward.
 
 WHY. Every other check in this repo compares the atlas against itself. `check_aggregates.py`
@@ -31,6 +30,7 @@ Instead DECLARED_BASIS names v9 and every duplication fact is checked against it
 v9 fails just as loudly as a drift off v10. A divergence is only acceptable when it is DECLARED
 here with a reason; anything else fails.
 """
+import roots
 import glob
 import hashlib
 import json

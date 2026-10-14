@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Copy ms1-dup's WGD anchor pairs into sources/, with an expression correlation per pair.
 
 The gene page showed a curated duplication class (S = salicoid WGD, A = gamma) but never named
@@ -19,6 +18,7 @@ are rather than reconciling one to the other.
 Correlation: same basis as duplicate_coexpr.tsv.gz -- Pearson r on log2(ComBat TPM + 1) over
 652 samples. Blank r = a partner is outside the ComBat matrix or flat, NOT uncorrelated.
 """
+import roots
 import csv, gzip, io, json, os
 import numpy as np
 

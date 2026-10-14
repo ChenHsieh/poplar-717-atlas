@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """TODO 34a: per-residue Calpha trace, pLDDT, sequence and DSSP for every ESMFold model.
 
 Sapelo2-only -- reads the 40,686 PDBs under /scratch/ch29576/foldseek/results, which are
@@ -24,6 +23,7 @@ Record per gene (keys kept short; ~40k of them):
   seq  one-letter sequence of the kept residues
   ss   pydssp c3 string, one of '-', 'H', 'E' per residue
 """
+import roots
 import glob
 import gzip
 import json

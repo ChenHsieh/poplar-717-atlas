@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """
 Adds the P. trichocarpa syntenic ortholog for each 717 gene.
 
@@ -17,6 +16,7 @@ picking the top hit -- an arbitrary pick would read as a confident ortholog call
 
 PATCHER -- runs after build_data.py, before build_facets.py.
 """
+import roots
 import csv, gzip, json, os, sys
 from collections import defaultdict
 

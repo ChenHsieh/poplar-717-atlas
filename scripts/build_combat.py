@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """ComBat-seq batch-corrected TPM, as a per-gene OPT-IN second view (TODO 18).
 
 Not a rebuild. The v7 ComBat-seq matrix already covers the current 652-sample, current
@@ -23,6 +22,7 @@ Output, sized like the raw buckets: `data/expr/combat_buckets/{hap}/{n}.json`, s
 keys as the existing raw buckets (`x.b`), so a ComBat sub-bucket is a subset of its raw
 counterpart's genes, not a new bucketing scheme to keep in sync.
 """
+import roots
 import csv
 import hashlib
 import json

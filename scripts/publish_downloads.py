@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Copy the dissertation's release tables into downloads/ and write the list the Downloads page shows.
 
     python3 scripts/publish_downloads.py [--bundle <folder>]
@@ -16,6 +15,7 @@ name. It writes:
 
 Never placed here: the raw expression matrix and the analysis code.
 """
+import roots
 import argparse, hashlib, json, os, re, shutil, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

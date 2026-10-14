@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """
 Ingests the genome-wide computed layers from the MS1 and MS2 analysis repos.
 
@@ -47,6 +46,7 @@ Two known data quirks, both asserted rather than assumed:
 
 PATCHER -- runs after build_data.py, before build_facets.py.
 """
+import roots
 import csv, json, os, re, sys
 from collections import defaultdict
 

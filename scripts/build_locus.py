@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Build the locus layer: per-megabase structure tiles, per-chromosome position
 indexes, and a whole-genome overview for the zoomed-out map.
 
@@ -26,6 +25,7 @@ Structure segments are [offset_from_gene_start, length, kind] with kind 1 = CDS,
 0 = UTR, so the client draws thick CDS boxes and thin UTR boxes the way a
 manuscript locus figure does.
 """
+import roots
 import argparse, collections, gzip, hashlib, json, os, re, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

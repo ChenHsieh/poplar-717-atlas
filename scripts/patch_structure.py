@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """TODO 34b: gate the per-residue ESMFold records, then pack them into data/struct/.
 
 Input: /scratch/ch29576/atlas_structure_ca/ca_NN.jsonl.gz, written by
@@ -29,6 +28,7 @@ FILE FORMAT (gzip, mtime 0 so rebuilds are byte-identical):
                uint8 [n]      sequence, ASCII
                uint8 [n]      DSSP c3, ASCII '-', 'H', 'E'
 """
+import roots
 import csv
 import glob
 import gzip

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Build sources/kaks_ptri.tsv.gz -- per-gene Ka/Ks against Populus trichocarpa.
 
 WHAT IS SHIPPED AND WHAT IS NOT.
@@ -27,6 +26,7 @@ trichocarpa cell -- n_pairs, median NG86 omega and median YN00 omega, 11 cells -
 nothing. The HAP1_HAP2 cells of that table are deliberately not gated on: it counts each
 pair once per partner gene, so its n is exactly twice a per-gene-keyed count.
 """
+import roots
 import csv, gzip, io, json, os, sys
 import statistics as st
 from collections import defaultdict

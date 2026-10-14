@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import roots
 """Copy ms1-dup's per-PAIR tandem dS into sources/, so a tandem link can carry a number.
 
 Why this exists. `td.ks` on a gene record is the ARRAY MEDIAN -- `patch_duplicate_partners.py`
@@ -25,6 +24,7 @@ COVERAGE IS PARTIAL AND MUST RENDER AS SUCH. 15,710 usable pairs cover 30,918 of
 OTHER member of a gene's array (all-vs-all), while this table holds the DETECTED EDGES. A member
 with no dS here is "this pair was never scored", never "these two are identical".
 """
+import roots
 import csv, gzip, json, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
