@@ -230,7 +230,10 @@ def main():
     man = {"built": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "tier": a.tier,
            "data_version": VERSION,
            "n_genes": len(genes), "shards": counts, "summary": summ,
-           "modules": ["core", "synteny", "phylostrat"], "sources": SRC}
+           "modules": ["core", "synteny", "phylostrat"], "sources": SRC,
+           # recorded corrections travel with every build (they used to live only in the old manifest)
+           "corrections": json.load(open(os.path.join(roots.root('atlas'), "sources",
+                                                      "manifest_corrections.json")))["corrections"]}
     os.makedirs(os.path.join(a.out, "meta"), exist_ok=True)
     with open(os.path.join(a.out, "meta", "manifest.json"), "w") as fh:
         json.dump(man, fh, indent=1, sort_keys=True)

@@ -213,6 +213,10 @@ def main():
     # the home page's "allele pairs" tile reads this; the stage that changes alleles owns it
     man.setdefault("annotation", {})["n_allele"] = sum(
         1 for sh in pending.values() for rec in sh.values() if rec.get("allele"))
+    # build_layers.py still loads the DIAMOND candidate PAV layer that this stage supersedes; drop its manifest
+    # coverage so the manifest describes the records actually shipped (no gene carries the DIAMOND record).
+    (man.get("layers") or {}).get("coverage", {}).pop("PAV / hemizygosity (DIAMOND tier1_floor, candidate set only)", None)
+    (man.get("layers") or {}).get("applied", {}).pop("pav", None)
     man["pav"] = {"strict_hap1": 528, "strict_hap2": 605,
                   "source": f"ms1-dup {pin['ms1_dup_commit'][:7]} per-gene table, strict protein-level set"}
     man["relationship"] = {
