@@ -69,6 +69,17 @@ def tau(values):
         return None
     return sum(1 - (v / mx) for v in values) / (n - 1)
 
+def read_reference_panel():
+    """sample_label -> True for the 222-sample reference panel (ms1-dup v4 panel, `kept`), the control panel
+    behind the dissertation's tau. Canonical per ms1-dup CLAUDE.md CANONICAL DATA."""
+    path = roots.path('ms1_dup', 'data/50_v4_panel_20260814/v4_panel_20260814.csv')
+    with open(path) as fh:
+        rows = list(csv.DictReader(fh))
+    kept = {r["sample_label"]: r["tissue_analysis"] for r in rows if r["kept"] == "True"}
+    assert len(kept) == 222, f"reference panel has {len(kept)} samples, expected 222"
+    return kept
+
+
 def read_samples():
     with open(note(f"{EXPR}/COLUMN_LEVEL_sample_metadata.csv")) as fh:
         rows = list(csv.DictReader(fh))
@@ -135,6 +146,11 @@ def main():
         f"regenerate sources/sample_tissue_analysis.tsv from the current MS1_2026 v4 panel.")
     for r in samples:
         r["tissue_analysis"] = tissue_analysis_by_label[r["sample_label"]]
+    ref = read_reference_panel()
+    labels = {r["sample_label"] for r in samples}
+    assert set(ref) <= labels, f"{len(set(ref) - labels)} reference-panel samples are not in the matrix"
+    bad = [l for l, t in ref.items() if tissue_analysis_by_label[l] != t]
+    assert not bad, f"{len(bad)} reference-panel samples disagree on tissue group, e.g. {bad[:3]}"
 
     # Order is the TPM matrix column order (== metadata order per validated README claim, but
     # assert it rather than trust it -- this order becomes the fixed vector index).
@@ -157,7 +173,9 @@ def main():
         "reads": int(r["total_read_count"]) if r["total_read_count"] else None,
         "pct_aligned": float(r["pct_pseudoaligned"]) if r["pct_pseudoaligned"] else None,
         "field": bool(r["field?"].strip()), "notes": r["processing_notes"] or None,
+        "ref222": r["sample_label"] in ref,
     } for i, r in enumerate(samples)]
+    assert sum(x["ref222"] for x in samples_out) == 222
     with open(os.path.join(a.out, "expr", "samples.json"), "w") as fh:
         json.dump(samples_out, fh, separators=(",", ":"))
     print(f"wrote samples.json ({len(samples_out)} rows, this IS the vector index order)")

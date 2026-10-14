@@ -34,7 +34,7 @@ SOURCES = {
     "tandem arrays (curated union)": [
         roots.path('ms1_dup', 'data/09_td_pairs/td_union_20260831/union_genes_final.csv')],
     "perturbation responsiveness": [
-        roots.path('ms1_dup', 'data/54_v8_freeze_20260825/perturbation_per_gene_v8.csv')],
+        roots.path('ms1_dup', 'data/139_perturbation_per_gene_149_20261014/perturbation_per_gene_149.csv')],
     "protein layers (ms2-lsg)": [
         roots.path('ms2_lsg', 'analyses/strict_control_audit/results/predicted_disorder_genomewide.tsv'),
         roots.path('ms2_lsg', 'analyses/esmfold_secondary_structure/results/secondary_structure_summary.tsv'),
