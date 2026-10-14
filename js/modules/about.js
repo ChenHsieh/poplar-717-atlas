@@ -72,7 +72,7 @@ function overview(man) {
             `genEra returned no rank for ${fmt(unplaced.hap1)} HAP1 and ${fmt(unplaced.hap2)} HAP2 `
             + 'genes in the current call; they are excluded from the pool, not defaulted.'],
           ['Expression baseline', (man.expression || {}).n_genes_with_baseline || null,
-            'A gene with an all-zero baseline has no tissue profile and no \u03c4.'],
+            'A gene with an all-zero baseline has no tissue profile. \u03c4 needs a tissue-group mean of at least 5 TPM.'],
           ['Ka/Ks vs P. trichocarpa', (man.kaks || {}).n_genes,
             'No reciprocal-best ortholog. Expected for PS19, where only 1 of 681 genes has one.'],
           ['Peptide evidence', ((man.proteomics || {}).genes_with_a_hit
@@ -115,16 +115,14 @@ function overview(man) {
           'Use it for tissue specificity and per-gene magnitude. A ComBat-seq batch-corrected '
           + `profile is a separate, opt-in view on the gene page, for the `
           + `${fmt((man.expression || {}).combat_eligible_genes)} genes that passed the upstream `
-          + 'low-count filter; the tissue baselines and τ are always computed on raw TPM.'),
+          + 'low-count filter; tissue values and τ are always computed on raw TPM.'),
         el('li', {}, el('strong', {}, 'Curation notes are summarised, not quoted. '),
           'Tandem-array genes carry a curation flag (hand-rejected, pseudogene-like, or '
           + 'disagreeing with the automatic filter). The curator\'s identity and verbatim wording '
           + 'are deliberately not published.'),
-        el('li', { 'data-two-tau': '' }, el('strong', {}, 'Two tissue-specificity statistics, and which one to quote. '),
-          `The τ and peak tissue shown first on every page, in Browse and in every export are the dissertation’s: ${PAPER_TAU_HOW}. `
-          + 'The gene page also shows a second view, the median TPM over wild-type control samples only '
-          + '(213 samples, 10 tissue groups, with single-sample callus and two-sample stem groups), with its own τ. '
-          + 'The two differ for many genes; the second is labelled as a different statistic wherever it appears and is not used in the dissertation.'),
+        el('li', { 'data-one-tau': '' }, el('strong', {}, 'Tissue specificity is the dissertation\u2019s. '),
+          `The τ and peak tissue on every page, in Browse, on the genome map and in every export: ${PAPER_TAU_HOW}. `
+          + 'No other tissue-specificity value is shown.'),
         el('li', {}, el('strong', {}, 'The lineage-specific gene set is the final one. '),
           'Gene pages, Browse and the counts use the dissertation’s final set, 583 HAP1 and 621 HAP2 genes. '
           + 'The 776 HAP1 and 835 HAP2 candidates at PS18 or PS19 stay visible, and an excluded candidate says why it was excluded.'),
@@ -156,11 +154,11 @@ function overview(man) {
           + 'inferences from synteny and Ks, not observations.'),
         // Read from the manifest: the hand-typed "77 leaf" was the pooled count from before the
         // 2026-09-05 leaf regrouping (manifest.corrections), and nothing checked it.
-        el('li', {}, el('strong', {}, 'Thin tissue baselines. '),
-          `Median TPM per tissue rests on ${fmt(tw.leaf)} leaf (plus ${fmt(tw.leaf_young)} `
+        el('li', {}, el('strong', {}, 'Thin per-tissue medians. '),
+          `The per-tissue tables on the array and allele-pair pages show median TPM over WT-control samples, which rests on ${fmt(tw.leaf)} leaf (plus ${fmt(tw.leaf_young)} `
           + `young-leaf and ${fmt(tw.leaf_old)} old-leaf) and ${fmt(tw.xylem)} xylem WT-control `
           + `samples but only ${fmt(tw.bud)} bud, ${fmt(tw.catkin)} catkin, ${fmt(tw.stem)} stem `
-          + `and ${fmt(tw.callus)} callus. Every bar carries its n.`))),
+          + `and ${fmt(tw.callus)} callus. Every column carries its n. τ and peak tissue do not use these medians.`))),
 
     el('div', { class: 'card' },
       el('h2', {}, 'Sources', el('span', { class: 'tag' }, 'checksummed at build')),

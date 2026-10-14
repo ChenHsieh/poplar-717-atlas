@@ -87,9 +87,11 @@ The site is the data supplement of the dissertation. Three things keep it that w
   the frozen pair call and writes `sources/dissertation_layer.tsv.gz`: the dissertation's tau and
   peak tissue, per-tissue means of the 222-sample panel (asserted to reproduce the master's tau),
   the master table's Arabidopsis hit, gene names, and the final LSG set with exclusion reasons.
-- `scripts/patch_dissertation_layer.py` (a `repo` stage) writes `x.p`, `ann.at/atd/sym`, `ps.fin`,
+- `scripts/patch_dissertation_layer.py` (a `repo` stage) writes `x.p`, REPLACES `x.tau` / `x.top` with
+  the dissertation's values (so it must run before `build_locus.py`), writes `ann.at/atd/sym`, `ps.fin`,
   recomputes `manifest.layers.dup_class_dist` and `manifest.dissertation` from the shards, and
-  writes `data/index/alias.json`. After it: `build_families.py`, `build_facets.py`.
+  writes `data/index/alias.json`. After it: `build_locus.py`, `patch_map_overlays.py`,
+  `build_families.py`, `build_facets.py`.
 - `scripts/check_dissertation.py` is the release gate. It compares every gene record with the
   per-gene master table, every page-level total with the records and with the printed numbers,
   the anchor pairs with the frozen call, the LSG flags with the strict list, the downloadable
@@ -103,7 +105,9 @@ The raw expression matrix and the analysis code are never placed there.
 Release, as done for 0.18.0: commit on a branch; data gates; `check_dissertation.py`;
 `assemble_site.py` + artifact gates + `check.mjs` against the staged tree; push to `main` here;
 then `publish_lab.py --lab <fresh full clone of the lab repo> --ref HEAD`, look at the commit,
-push it. The lab repo's own `checks` run then triggers its Pages deploy. Do not run
+push it. The lab repo's own `checks` run then triggers its Pages deploy. In THIS repository the
+same Pages workflow publishes `redirect/index.html` instead of the site (a step conditional on the
+repository name), so chenhsieh.github.io/poplar-717-atlas forwards to the lab address. Do not run
 `publish_lab.py` in a sparse checkout.
 
 Known leftovers are listed at the end of the 0.18.0 CHANGELOG entry.
