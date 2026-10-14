@@ -1,0 +1,152 @@
+{
+ "scripts/build_annotation.py": [
+  "/scratch/ch29576/genome_resources/pangenome/input/717Official/annotation",
+  "/scratch/ch29576/synt_ks/syntelog_ks.csv",
+  "/scratch/ch29576/ms2_genespace",
+  "/scratch/ch29576/poplar-717-atlas/data"
+ ],
+ "scripts/build_combat.py": [
+  "/Users/chenhsieh/Library/CloudStorage/OneDrive-UniversityofGeorgia/01_work/MS1_2026"
+ ],
+ "scripts/build_contrasts.py": [
+  "/Users/chenhsieh/Library/CloudStorage/OneDrive-UniversityofGeorgia/01_work/MS1_2026"
+ ],
+ "scripts/build_crossspecies.py": [
+  "/scratch/ch29576/ms2_genespace/workdir_local_47798208/syntenicHits",
+  "/scratch/ch29576/poplar-717-atlas"
+ ],
+ "scripts/build_data.py": [
+  "/scratch/ch29576/ms2_genespace",
+  "/scratch/ch29576/genera",
+  "/scratch/ch29576/poplar-717-atlas/data"
+ ],
+ "scripts/build_duplication.py": [
+  "/scratch/ch29576/tier2_ds_input/tier2_ds_pairs.tsv",
+  "/scratch/ch29576/poplar-717-atlas"
+ ],
+ "scripts/build_expression.py": [
+  "/scratch/ch29576/ms2_genespace/expression",
+  "/scratch/ch29576/poplar-717-atlas",
+  "/scratch/ch29576/ms2_genespace/workdir/bed/"
+ ],
+ "scripts/build_layers.py": [
+  "/scratch/ch29576/ms1-dup",
+  "/scratch/ch29576/ms2-lsg",
+  "/scratch/ch29576/poplar-717-atlas",
+  "/work/cjtlab/717Official/annotation"
+ ],
+ "scripts/build_locus.py": [
+  "/Users/chenhsieh/Library/CloudStorage/OneDrive-UniversityofGeorgia/01_work/03_resources/bioPoplar Genome Files/PtremulaxPopulusalbaALL_v5.1.gene.named.gff3"
+ ],
+ "scripts/build_phylostrat.py": [
+  "/scratch/ch29576/genera/output",
+  "/scratch/ch29576/poplar-717-atlas"
+ ],
+ "scripts/check_dissertation.py": [
+  "~/dev/ms1-dup",
+  "~/Library/CloudStorage/OneDrive-UniversityofGeorgia/01_work/fin/dissertation_work/ch3_strict567_20261005/tables/Table_3.S1_S3_per_gene.tsv"
+ ],
+ "scripts/check_facts.py": [
+  "~/dev/ms1-dup",
+  "/scratch/"
+ ],
+ "scripts/check_ms2_canon.py": [
+  "~/dev/ms2-lsg",
+  "~/dev/ms2-scratch/ms2-lsg",
+  "/scratch/",
+  "/scratch/"
+ ],
+ "scripts/make_chromatin_source.py": [
+  "/scratch/ch29576/ms2_hybrid_rationale/results/tss/l6_promoter_by_gene.tsv"
+ ],
+ "scripts/make_copy_search_source.py": [
+  "/scratch/ch29576/genome_resources/pangenome/input/717Official/annotation",
+  "/work/cjtlab/717Official/PtremulaxPopulusalbaHAP1_717_v5.0.fa",
+  "/work/cjtlab/717Official/PtremulaxPopulusalbaHAP2_716_v5.0.fa",
+  "/scratch/"
+ ],
+ "scripts/make_dissertation_layer_source.py": [
+  "~/Library/CloudStorage/OneDrive-UniversityofGeorgia/01_work",
+  "~/dev/ms1-dup"
+ ],
+ "scripts/make_founder_source.py": [
+  "~/dev/ms2-lsg",
+  "~/dev/ms2-scratch/ms2-lsg",
+  "/scratch/"
+ ],
+ "scripts/make_gene_model_source.py": [
+  "/scratch/ch29576/pb_rnaseq_wt/analyses/piggyback_rnaseq_junctions/out_idesia"
+ ],
+ "scripts/make_kaks_source.py": [
+  "/scratch/ch29576/ms2lsg_wt_proteomics/analyses/kaks_populus/results/kaks_all_pairs.tsv.gz",
+  "/scratch/ch29576/ms2lsg_wt_proteomics/pipeline/out/lsg_pool_idesia.tsv.gz",
+  "/scratch/ch29576/kaks_populus/out/kaks_summary_by_class.tsv"
+ ],
+ "scripts/make_peptide_detail_source.py": [
+  "/scratch/ch29576/proteomics_aspen",
+  "/scratch/ch29576/ms2lsg_wt_proteomics/analyses/proteomics_translation_evidence/results/aspen_dataset_meta.json"
+ ],
+ "scripts/make_pool_frozen_source.py": [
+  "~/dev/ms2-lsg",
+  "~/dev/ms2-scratch/ms2-lsg"
+ ],
+ "scripts/make_proteomics_v2_source.py": [
+  "/scratch/ch29576/proteomics_aspen",
+  "/scratch/ch29576/ms2lsg_wt_proteomics/pipeline/out/lsg_pool_idesia.tsv.gz",
+  "/scratch/ch29576/ms2lsg_wt_proteomics/analyses/proteomics_translation_evidence/results/aspen_detection_by_class.tsv"
+ ],
+ "scripts/make_structure_source.py": [
+  "/scratch/ch29576/foldseek/results"
+ ],
+ "scripts/make_td_pair_ks_source.py": [
+  "/scratch/ch29576/ms1-dup/data/09_td_pairs/td_union_20260831/union_pairs_final.csv"
+ ],
+ "scripts/make_wgd_combined_call_source.py": [
+  "/scratch/ch29576/ms1-dup/.claude/worktrees/talk-td-act/data/57_gamma_branch/painting_v3/results/ks_topology_pairs_{hap}.tsv.gz"
+ ],
+ "scripts/make_wgd_pairs_source.py": [
+  "/scratch/ch29576/ms1-dup/data/54_v8_freeze_20260825/wgd_anchor_pairs_v8_reordered_20260902.csv"
+ ],
+ "scripts/patch_dup_v9_and_pav.py": [
+  "/Users/chenhsieh/Library/CloudStorage/OneDrive-UniversityofGeorgia/01_work/MS1_2026"
+ ],
+ "scripts/patch_gene_model.py": [
+  "/scratch/ch29576/pb_rnaseq_wt/analyses/piggyback_rnaseq_junctions/out_idesia"
+ ],
+ "scripts/patch_structure.py": [
+  "/scratch/ch29576/atlas_structure_ca",
+  "/scratch/ch29576/foldseek/results",
+  "/scratch/ch29576/ms2-lsg/analyses/esmfold_secondary_structure/results/secondary_structure_summary.tsv"
+ ],
+ "scripts/patch_syntelog_categories.py": [
+  "/scratch/ch29576/ms1-dup",
+  "~/ms1-dup"
+ ],
+ "scripts/preflight.py": [
+  "/scratch/ch29576/ms2_genespace/workdir/bed/Ptrxalhap1.bed",
+  "/scratch/ch29576/ms2_genespace/workdir/bed/Ptrxalhap2.bed",
+  "/scratch/ch29576/ms2_genespace/step7_diff_20260901/diff_all_genes.tsv",
+  "/scratch/ch29576/ms2_genespace/tier3_input_v2_20260901_runA/pangenes_long_RAW.tsv.gz",
+  "/scratch/ch29576/genera/output/hap1/genera_717hap1_v5.1/80863_gene_ages.tsv",
+  "/scratch/ch29576/genera/output/hap2/genera_717hap2_v5.1/80863_gene_ages.tsv",
+  "/scratch/ch29576/ms2_genespace/expression/COLUMN_LEVEL_sample_metadata.csv",
+  "/scratch/ch29576/ms2_genespace/expression/combined_tpm_k21_rounded_20260814_study_sorted.csv",
+  "/scratch/ch29576/genome_resources/pangenome/input/717Official/annotation/PtremulaxPopulusalbaHAP1_717_v5.1.annotation_info.txt",
+  "/scratch/ch29576/synt_ks/syntelog_ks.csv",
+  "/scratch/ch29576/ms1-dup/ms1-figures/data/dupclass_membership_v8.csv",
+  "/scratch/ch29576/ms1-dup/data/09_td_pairs/td_union_20260831/union_genes_final.csv",
+  "/scratch/ch29576/ms1-dup/data/54_v8_freeze_20260825/perturbation_per_gene_v8.csv",
+  "/scratch/ch29576/ms2-lsg/analyses/strict_control_audit/results/predicted_disorder_genomewide.tsv",
+  "/scratch/ch29576/ms2-lsg/analyses/esmfold_secondary_structure/results/secondary_structure_summary.tsv",
+  "/scratch/ch29576/ms2-lsg/analyses/proteomics_translation_evidence/results/tier1_pxd064017_by_gene.tsv",
+  "/work/cjtlab/717Official/annotation/PtremulaxPopulusalbaHAP1_717_v5.1.gene_exons.gff3",
+  "/work/cjtlab/717Official/annotation/PtremulaxPopulusalbaHAP1_717_v5.1.repeatmasked_assembly_v5.0.gff3",
+  "/scratch/ch29576/ms2_genespace/workdir_local_47798208/syntenicHits/Ptrichocarpa_vs_Ptrxalhap1.synHits.txt.gz"
+ ],
+ "scripts/publish_downloads.py": [
+  "~/Library/CloudStorage/OneDrive-UniversityofGeorgia/01_work/fin/dissertation_work/atlas_release_20261013"
+ ],
+ "scripts/refresh_facts.sh": [
+  "/scratch/$USER/ms1-dup}"
+ ]
+}
