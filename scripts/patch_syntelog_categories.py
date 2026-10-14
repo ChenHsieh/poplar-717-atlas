@@ -48,7 +48,7 @@ KS_ADDED = os.path.join(ROOT, "sources", "allele_ks_added.tsv.gz")
 def ms1_repo():
     for p in (os.environ.get("MS1_DUP_REPO"), os.path.join(os.path.dirname(ROOT), "ms1-dup"),
               roots.root('ms1_dup'), os.path.expanduser(roots.root('ms1_dup'))):
-        if p and os.path.isdir(os.path.join(p, ".git")):
+        if p and os.path.exists(os.path.join(p, ".git")):  # a worktree has a .git FILE
             return p
     raise SystemExit("REFUSING: no ms1-dup git clone found (set MS1_DUP_REPO)")
 
