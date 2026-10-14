@@ -31,6 +31,35 @@ samples make up the 222-sample reference panel. On the allele pair page, whose b
 over wild-type controls, each tissue row is linked to its samples in the grid, and the line
 gives both alleles' values. `expression:design-map-agrees` checks the pair page.
 
+## 0.19.0 - 2026-10-14 - Stress response on the 149 curated contrasts; reference-panel samples; search states the page's Arabidopsis hit
+
+No count in the dissertation changed. Built in full on Sapelo2 (all 34 stages, every gate), the first
+complete rebuild on one machine.
+
+**Stress response on the dissertation's contrast set (data).** Each gene's responsiveness (median
+|log2FC| over the contrasts where the gene reaches 5 TPM in either group) is now taken over the 149
+curated perturbation contrasts the dissertation uses, instead of the 117 recommended contrasts of the v4
+panel. The definition is unchanged; the source table reproduces the old 117-contrast values exactly when
+given those contrasts. 49,492 genes carry a value (was 49,289). The manifest states the set
+(`layers.responsiveness`). The wording on the gene page, Expression card and About page still names the
+117-contrast set and is updated separately.
+
+**Reference-panel samples (data).** Each sample in `expr/samples.json` gains `ref222`: true for the 222
+control samples behind the tissue-specificity values (in their nine tissue groups), false otherwise.
+
+**Search states the gene page's Arabidopsis hit (data).** The free-text index used the older Phytozome
+Arabidopsis hits while gene pages show the dissertation's (lab annotation). Now every one of the 59,534 genes
+with an Arabidopsis hit is found by the locus its page shows (was 39,253), and none is also indexed under a
+superseded locus (was 4,495).
+
+**Build (no data effect).** Every build input is found through `scripts/roots.py`; the build refuses an
+ms1-dup or ms2-lsg checkout that lacks the commits in `sources/upstream_pins.json`. A clean rebuild of 0.18.1
+data with the new scripts reproduced every gene record, index and tile byte for byte. Two recorded values that
+lived only in the previous manifest (the abSENSE calibration and the corrections history) are now committed
+sources, so a rebuild keeps them. The provenance file of the PAV layer retired in 0.17.0, which still stated the
+superseded DIAMOND counts and was downloadable, moved to `sources/retired/` and is no longer published.
+
+
 ## 0.18.1 - 2026-10-13 - One tau, array links, how to cite; the old address forwards
 
 No count changed. On the gene records, tau and peak tissue now hold one value.
