@@ -1642,9 +1642,11 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
 // reach their allele through a tandem array, the path that did it. Planted control as below.
 {
   const np = await browser.newPage({ viewport: { width: 1180, height: 900 } });
-  const LEAK = /null\b|undefined\b|\bNaN\b|\[object Object\]/;   // no leading \b: "3 morenull"
+  // No leading \b ("3 morenull"); "is undefined" is prose ("ω is undefined when Ks is 0"), so 05G120200 carries
+  // that sentence and must pass.
+  const LEAK = /null\b|(?<!is )undefined\b|\bNaN\b|\[object Object\]/;
   const hits = [];
-  for (const gid of ['PtXaTreH.01G009600', 'PtXaTreH.10G046700', 'PtXaTreH.08G070200']) {
+  for (const gid of ['PtXaTreH.01G009600', 'PtXaTreH.10G046700', 'PtXaTreH.08G070200', 'PtXaTreH.05G120200']) {
     await np.goto(`${base}/#/gene/${gid}`, { waitUntil: 'networkidle' });
     await np.waitForTimeout(1500);
     const t = await np.evaluate(() => document.querySelector('#view').innerText);
@@ -1655,7 +1657,7 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
   const ok = !hits.length && sees;
   if (!ok) failures++;
   console.log(`\n### genepage:no-leaked-null  ${ok ? 'OK' : 'FAIL'}`);
-  console.log(`   3 gene pages scanned; positive control detected: ${sees}`);
+  console.log(`   4 gene pages scanned; positive control detected: ${sees}`);
   hits.forEach((h) => console.log('   !! ' + h));
   await np.close();
 }
