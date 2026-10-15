@@ -3315,6 +3315,33 @@ for (const scheme of ['light', 'dark']) {
   await p.close();
 }
 
+// The older panel's six study 2/3 comparisons pool developing and mature xylem in each arm; every
+// view that prints a comparison's tissue must say so (data.js loadContrasts), and only those six.
+{
+  const p = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto(`${base}/#/gene/PtXaTreH.05G120200`, { waitUntil: 'networkidle' });
+  const r = await p.evaluate(async () => {
+    const { loadContrasts, loadExprVector, getGene } = await import('./js/core/data.js');
+    const { contrastRows } = await import('./js/core/contrastscore.js');
+    const cs = await loadContrasts();
+    const pooled = cs.filter((c) => c.pooled);
+    // the label reaches the scored rows every view prints (gene card, scrubber)
+    const rows = contrastRows(await loadExprVector(await getGene('PtXaTreH.05G120200')), cs);
+    const scoredPooled = rows.filter((x) => /pooled/.test(x.tissue)).length;
+    return { n: pooled.length, scoredPooled, ids: pooled.map((c) => c.id.split('.')[0]).join(','),
+      labels: [...new Set(pooled.map((c) => c.tissue))], others: cs.filter((c) => !c.pooled && /pooled/.test(c.tissue)).length };
+  });
+  const shown = r.scoredPooled === 6;
+  const ok = !errs.length && r.n === 6 && r.ids === 's2,s2,s2,s2,s3,s3' && r.others === 0
+    && r.labels.length === 1 && r.labels[0] === 'xylem (developing + mature, pooled)' && shown;
+  if (!ok) failures++;
+  console.log(`\n### contrasts:pooled-sites-named  ${ok ? 'OK' : 'FAIL'}  ${JSON.stringify(r)} scored rows labelled: ${shown}`);
+  errs.forEach((e) => console.log('   !! ' + e));
+  await p.close();
+}
+
 // Search engine (0.21): each kind of query lands on the gene a reader means, the dropdown is a
 // working combobox from the keyboard, and no query reads a gene file. The positive control drops
 // the "cesa8" token from its shard; the same assertion must then fail, or it proves nothing.

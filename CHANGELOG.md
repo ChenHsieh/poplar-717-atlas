@@ -22,8 +22,15 @@ table and the readouts show the site. No data changed. The six comparisons the a
 these studies (`data/expr/contrasts.json`, from the older v4 191-contrast panel) put 4 developing
 and 4 mature samples in each arm; the comparisons table now says "developing xylem + mature
 xylem, pooled". The dissertation's curated contrast set (ms1-dup data/60), which the 149-contrast
-stress responsiveness is computed on, already splits them by site (4 vs 4), so no gene's
-responsiveness pooled the sites. New check `study:xylem-sites`, which fails on the previous build.
+stress responsiveness is computed on, already splits them by site (4 vs 4), so no current gene
+value pooled the sites. Four of those six were among the 117 recommended contrasts behind the
+pre-0.19.0 responsiveness (s2 drought vs control, long and short day; s3 continuous and
+discontinuous abscisic acid vs control), so values before 0.19.0 included site-pooled arms; the
+two s2 short-day vs long-day rows were not recommended. `loadContrasts` now names the pooling on
+those six wherever a comparison's tissue is printed (gene Expression card, scrubber, study
+pages): "xylem (developing + mature, pooled)". New checks `study:xylem-sites`, which fails on the
+previous build, and `contrasts:pooled-sites-named` (exactly the six, and the label reaches the
+scored rows).
 
 ## The 3D model draws helices and strands
 

@@ -1,3 +1,4 @@
+import { sampleTissue } from './studydesigns.js';
 // Data access. The gene ID encodes its own shard, so there is no index file to load.
 //
 // MIRRORS scripts/build_data.py:shard_of() EXACTLY. If you change one, change the other --
@@ -659,7 +660,22 @@ export const loadLocusIndex = (hap, chr) => fetchJSON(`data/locus/index/${hap}/$
 
 /** The 191-contrast panel, sample labels already resolved to their fixed index in
  *  samples.json / any raw expression vector. One small fetch, loaded once. */
-export const loadContrasts = () => fetchJSON('data/expr/contrasts.json');
+let _contrasts = null;
+export const loadContrasts = () => _contrasts || (_contrasts = Promise.all([
+  fetchJSON('data/expr/contrasts.json'), loadExprSamples(),
+]).then(([cs, samples]) => {
+  // Six comparisons of the older panel (studies 2 and 3) put developing and mature xylem in the
+  // same arm, though the tissue fields call both "xylem". Name that on every view that prints
+  // a comparison's tissue, from the samples themselves (sampleTissue), so it cannot go stale.
+  for (const c of cs) {
+    const sites = new Set((c.ctrl || []).concat(c.pert || []).map((i) => samples[i] && sampleTissue(samples[i])));
+    if (sites.size > 1 && !c.pooled) {
+      c.pooled = [...sites];
+      c.tissue = `${c.tissue} (${[...sites].map((t) => t.replace(/\s*xylem$/, '')).join(' + ')}, pooled)`;
+    }
+  }
+  return cs;
+}).catch((e) => { _contrasts = null; throw e; }));
 
 /** One copy-search locus (scripts/patch_copies.py): every copy of a tandem array on both
  *  haplotypes, found in the genome sequence. `manifest.copies.genes` says which genes have one. */
