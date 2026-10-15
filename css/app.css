@@ -692,3 +692,19 @@ h2.sect:first-child { margin-top: 2px; }
 .hits .hit-desc strong { color: var(--ink); font-weight: 600; }
 .hits .hits-note { display: block; padding: 6px 10px; font-size: 12.5px; }
 .hits .hits-all { font-weight: 600; color: var(--accent-ink); border-top: 1px solid var(--line); }
+
+/* Skip link: hidden until focused. */
+.skip { position: absolute; left: 8px; top: -60px; z-index: 100; padding: 8px 12px; background: var(--panel);
+  color: var(--ink); border: 2px solid var(--accent-ink); }
+.skip:focus { top: 8px; }
+#view:focus, #view h1:focus, [tabindex="-1"]:focus { outline: none; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto !important; } }
+
+/* #/changes: one row per release, version and date in a narrow left column. */
+.changes { list-style: none; padding: 0; margin: 18px 0 0; max-width: 860px; }
+.change { display: grid; grid-template-columns: 150px 1fr; gap: 6px 22px; padding: 16px 0; border-top: 1px solid var(--line); }
+.change-when { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.change h2 { margin: 0 0 6px; font-size: 18px; }
+.change ul { margin: 0; padding-left: 18px; line-height: 1.55; max-width: 68ch; }
+.change li + li { margin-top: 4px; }
+@media (max-width: 600px) { .change { grid-template-columns: 1fr; } .change-when { flex-direction: row; gap: 10px; } }

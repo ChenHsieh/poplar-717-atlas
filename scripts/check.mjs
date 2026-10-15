@@ -1900,7 +1900,7 @@ for (const [name, gid, want] of [
 {
   const INTERNAL = /(?:^|[^A-Za-z0-9])v(?:[5-9]|1[0-2])(?![0-9.])|\bmaster v?\d|\bmaster (?:duplication )?table\b|\bCJ\b|\bcj_[a-z]|\b\d{2,3}_[a-z][a-z0-9]*_[a-z0-9_]+|ms1-dup|ms2-lsg|\bMS[12]\b|\broute C\b|FACTS_|Sapelo|\bChen\b|TODO \d|\/scratch\/|TD-associated PAV|PAV \(whole array\)|Chapters? [23]\b|dissertation chapter/i;
   const routes = ['/', '/browse', '/arrays', '/array/HAP1_U00120', '/pair/PtXaTreH.05G120200', '/map/hap1/Chr01',
-    '/karyotype', '/status', '/module/about', '/module/duplication', '/module/phylostrat', '/glossary', '/downloads',
+    '/karyotype', '/status', '/module/about', '/module/duplication', '/module/phylostrat', '/glossary', '/downloads', '/changes',
     '/gene/PtXaTreH.08G070200', '/gene/PtXaAlbH.18G016900', '/gene/PtXaTreH.19G087400',
     '/gene/PtXaAlbH.05G122300', '/gene/PtXaTreH.10G046700', '/gene/PtXaTreH.01G006100', '/family/PtXaTreH.08G070200',
     // (study pages are not scanned: their sample tables print the studies' own sample labels,
@@ -3220,6 +3220,56 @@ for (const scheme of ['light', 'dark']) {
   console.log(`\n### browse:saved-sets  ${ok ? 'OK' : 'FAIL'}  said="${said}" kept=${kept} refused="${refused}" gone=${gone}`);
   errs.forEach((e) => console.log('   !! ' + e));
   await ctx.close();
+}
+
+// Keyboard and screen reader basics (0.21): each page names itself in the tab title, following
+// a link moves focus to the new page's heading, the skip link is the first Tab stop and lands in
+// the page, and a section link on a gene page moves focus to the section. #/changes renders.
+{
+  const p = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto(base + '/#/', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(500);
+  const homeTitle = await p.title();
+  const firstFocus = await p.evaluate(() => document.activeElement === document.body);
+  await p.keyboard.press('Tab');
+  const firstTab = await p.evaluate(() => document.activeElement.className);
+  await p.keyboard.press('Enter');
+  await p.waitForTimeout(200);
+  const afterSkip = await p.evaluate(() => !!document.activeElement.closest('#view'));
+  await p.click('header nav a[href="#/glossary"]');
+  await p.waitForSelector('#view h1');
+  await p.waitForTimeout(300);
+  const g = await p.evaluate(() => ({ t: document.title, f: document.activeElement.tagName + ':' + document.activeElement.textContent }));
+  await p.goto(base + '/#/gene/PtXaTreH.05G120200', { waitUntil: 'networkidle' });
+  await p.waitForSelector('.secnav a');
+  await p.waitForTimeout(500);
+  const geneTitle = await p.title();
+  await p.click('.secnav a >> nth=1');
+  await p.waitForTimeout(300);
+  const secFocus = await p.evaluate(() => document.activeElement.id || document.activeElement.tagName);
+  await p.goto(base + '/#/changes', { waitUntil: 'networkidle' });
+  await p.waitForSelector('[data-changes] .change');
+  const ch = await p.evaluate(() => ({ t: document.title, n: document.querySelectorAll('.change').length,
+    first: document.querySelector('.change .mono').textContent }));
+  await p.setViewportSize({ width: 390, height: 844 });
+  await p.waitForTimeout(200);
+  const overflow = await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  await p.screenshot({ path: `${outdir}/changes-phone.png` });
+  const parts = {
+    homeTitle: homeTitle === '717 gene atlas' || / · 717 gene atlas$/.test(homeTitle),
+    noFocusStealOnLoad: firstFocus, skipFirst: /\bskip\b/.test(firstTab), skipLands: afterSkip,
+    glossaryTitle: g.t === 'Glossary · 717 gene atlas', glossaryFocus: g.f === 'H1:Glossary',
+    geneTitle: geneTitle.startsWith('PtXaTreH.05G120200'), sectionFocus: /^sec-/.test(secFocus),
+    changes: ch.t === 'What changed · 717 gene atlas' && ch.n >= 8 && /^0\.\d+/.test(ch.first), phoneFits: !overflow,
+  };
+  const ok = !errs.length && Object.values(parts).every(Boolean);
+  if (!ok) failures++;
+  console.log(`\n### a11y:titles-focus-skip  ${ok ? 'OK' : 'FAIL'}  ${Object.entries(parts).filter(([, v]) => !v).map(([k]) => k).join(' ') || 'all parts'}`);
+  if (!ok) console.log(`   home="${homeTitle}" tab="${firstTab}" glossary=${JSON.stringify(g)} gene="${geneTitle}" sec=${secFocus} changes=${JSON.stringify(ch)}`);
+  errs.forEach((e) => console.log('   !! ' + e));
+  await p.close();
 }
 
 // Search engine (0.21): each kind of query lands on the gene a reader means, the dropdown is a

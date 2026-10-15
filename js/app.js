@@ -1,4 +1,4 @@
-import { el, clear, fmt } from './core/dom.js';
+import { el, clear, fmt, jumpTo } from './core/dom.js';
 import { studyMeta, cleanCitation } from './core/cite.js';
 import { getGene, loadManifest, hapLabel, loadExprStudies,
          loadExprSamples, searchGenesRanked, loadFacets, facetRow, arrayAlleles, dataVersion,
@@ -6,6 +6,7 @@ import { getGene, loadManifest, hapLabel, loadExprStudies,
 import { fastaRecord, downloadText } from './core/fasta.js';
 import { paperExpr, paperHighest, lsgStatus, qcBanner, isQcFlagged, releaseLine, CONTACT, REPO_URL } from './core/paper.js';
 import { glossaryView } from './modules/glossary.js';
+import { changesView } from './modules/changes.js';
 import { downloadsView } from './modules/downloads.js';
 import { linkHub, brush } from './core/designmap.js';
 import { designOf, designDrawing, contrastList, studyContrasts, sampleSelection } from './core/studydesign.js';
@@ -446,7 +447,7 @@ function glanceCard(g, man) {
       `${L.name} · ${side('HAP1', s1)} · ${side('HAP2', s2)} `,
       el('a', { href: `#/copies/${cp}`, onclick: (ev) => {
         const c = document.querySelector('[data-card="copies"]');
-        if (c) { ev.preventDefault(); c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        if (c) { ev.preventDefault(); jumpTo(c); }
       } }, 'see the copies \u2193'))]);
   }
   if (!bits.length) return null;
@@ -567,8 +568,7 @@ function sectionNav(bands) {
   // Anchor scrolling by hash would fight the hash router, so move the page directly.
   links.forEach((a, i) => a.addEventListener('click', (ev) => {
     ev.preventDefault();
-    const h = document.getElementById('sec-' + bands[i].id);
-    if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    jumpTo(document.getElementById('sec-' + bands[i].id));
   }));
 
   // Mark the band the reader is currently inside: the LAST heading that has passed under the
@@ -919,6 +919,12 @@ route(/^\/status$/, async (navigation) => {
   markNav();
 });
 
+route(/^\/changes$/, async (navigation) => {
+  const { setView } = scopedView(navigation);
+  setView(changesView());
+  markNav();
+});
+
 route(/^\/glossary$/, async (navigation) => {
   const { setView } = scopedView(navigation);
   setView(glossaryView(await loadManifest()));
@@ -1168,6 +1174,12 @@ route(/^\/study\/(\d+)$/, async (idStr, navigation) => {
   nav.append(el('a', { href: '#/glossary' }, 'Glossary'), el('a', { href: '#/downloads' }, 'Downloads'));
   if (about && about.overview) nav.append(el('a', { href: '#/module/about' }, about.label));
   initSearch();
+  // Skip link: the hash belongs to the router, so it moves focus itself.
+  document.querySelector('.skip')?.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    const v = document.getElementById('view');
+    jumpTo(v.querySelector('h1') || v);
+  });
   start();
   markNav();
   // Stamp the data version into the footer so a reader can tell which build they are looking at.
