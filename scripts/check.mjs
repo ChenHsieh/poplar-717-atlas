@@ -3190,6 +3190,38 @@ for (const scheme of ['light', 'dark']) {
   await p.close();
 }
 
+// Saved sets: saving says so beside the button, the set survives a reload, a wrong file is
+// refused in words, and removing it works -- all without a console error.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1180, height: 900 } });
+  const p = await ctx.newPage();
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+  await p.goto(base + '/#/browse', { waitUntil: 'networkidle' });
+  await p.waitForSelector('#view .stat .n');
+  await p.selectOption('label[data-filter="hap"] select', 'hap2');
+  await p.waitForTimeout(300);
+  await p.click('button:has-text("Save as set")');
+  const said = await p.$eval('[data-browse-action-status]', (x) => x.textContent);
+  await p.reload({ waitUntil: 'networkidle' });
+  await p.waitForSelector('#view .stat .n');
+  await p.evaluate(() => { document.querySelector('.bz-sets').open = true; });
+  const kept = await p.$eval('.bz-sets', (x) => x.innerText.includes('hap=hap2'));
+  await p.setInputFiles('#saved-sets-import', { name: 'x.json', mimeType: 'application/json', buffer: Buffer.from('{"nope":1}') });
+  await p.waitForTimeout(300);
+  const refused = await p.$eval('.bz-sets .card > p', (x) => x.textContent);
+  await p.click('.bz-sets button:has-text("Remove")');
+  await p.waitForTimeout(300);
+  const gone = await p.$eval('.bz-sets', (x) => ![...x.querySelectorAll('tbody tr')].some((r) => r.innerText.includes('hap=hap2')));
+  const ok = !errs.length && /^Saved “hap=hap2” \(31,823 genes\)/.test(said) && kept && gone
+    && /not a saved-sets export/.test(refused);
+  if (!ok) failures++;
+  console.log(`\n### browse:saved-sets  ${ok ? 'OK' : 'FAIL'}  said="${said}" kept=${kept} refused="${refused}" gone=${gone}`);
+  errs.forEach((e) => console.log('   !! ' + e));
+  await ctx.close();
+}
+
 // Search engine (0.21): each kind of query lands on the gene a reader means, the dropdown is a
 // working combobox from the keyboard, and no query reads a gene file. The positive control drops
 // the "cesa8" token from its shard; the same assertion must then fail, or it proves nothing.

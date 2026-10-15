@@ -757,9 +757,14 @@ export async function browseView(navigation) {
           });
           renderSets();
           const persistence = storageStatus();
-          setSavedSetStatus(`Saved “${set.name}” (${fmt(set.ids.length)} genes). ${persistence.message}`);
+          const msg = `Saved “${set.name}” (${fmt(set.ids.length)} genes). ${persistence.message}`;
+          setSavedSetStatus(msg);
+          // The saved-sets list sits below the table, folded; say so beside the button too.
+          actStatus.textContent = `${msg} It is listed under Saved sets, below the table.`;
+          setsFold.open = true;
         } catch (error) {
           setSavedSetStatus(error?.message || 'Could not save this gene set.');
+          actStatus.textContent = error?.message || 'Could not save this gene set.';
         }
       },
       class: 'btn',
@@ -843,6 +848,11 @@ export async function browseView(navigation) {
   syncSide();
   mq.addEventListener?.('change', syncSide);
   onDispose(root, () => mq.removeEventListener?.('change', syncSide));
+  const setsFold = el('details', { class: 'card-fold bz-sets' },
+    el('summary', {}, el('span', { class: 'fold-title' }, 'Saved sets'),
+      el('span', { class: 'fold-why' }, 'gene IDs, filters and data version, kept in this browser')),
+    el('div', { class: 'card' },
+      savedSetActions, savedSetStatus, setsHolder));
   root.append(el('div', { class: 'bz-layout' },
     side,
     el('div', { class: 'bz-main' },
@@ -851,11 +861,7 @@ export async function browseView(navigation) {
       actStatus,
       el('div', { class: 'card bz-results' }, tableHolder, pager),
       notes,
-      el('details', { class: 'card-fold bz-sets' },
-        el('summary', {}, el('span', { class: 'fold-title' }, 'Saved sets'),
-          el('span', { class: 'fold-why' }, 'gene IDs, filters and data version, kept in this browser')),
-        el('div', { class: 'card' },
-          savedSetActions, savedSetStatus, setsHolder)))));
+      setsFold)));
 
   const [facets, ids] = await Promise.all([loadFacets(), loadGeneIndex()]);
   if (navigation && !navigation.isCurrent()) return root;
