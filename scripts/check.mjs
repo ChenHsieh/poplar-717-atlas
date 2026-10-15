@@ -3090,9 +3090,10 @@ for (const scheme of ['light', 'dark']) {
   });
   await p.goto(base + '/#/gene/PtXaTreH.01G000200', { waitUntil: 'networkidle' });
   await p.waitForSelector('[data-protein-fasta]');
-  const none = await p.$eval('[data-protein-fasta]', (b) => b.textContent);
   const [dl2] = await Promise.all([p.waitForEvent('download', { timeout: 20000 }), p.click('[data-protein-fasta]')]);
   const seq2 = (await (await import('fs')).promises.readFile(await dl2.path(), 'utf8')).split('\n').slice(1).join('').trim();
+  // the button states the length once it has read the sequence
+  const none = await p.$eval('[data-protein-fasta]', (b) => b.textContent);
   const stated = Number((none.match(/\((\d+) aa\)/) || [])[1]);
   const ok = !errs.length && text.startsWith('>PtXaTreH.05G120200 ') && /^[A-Z*]+$/.test(seq)
     && seq.length === want && /^[A-Z*]+$/.test(seq2) && seq2.length === stated && stated > 0;
