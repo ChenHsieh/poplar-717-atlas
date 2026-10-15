@@ -1812,6 +1812,63 @@ await check('gene-xc-absent', '#/gene/PtXaTreH.01G000300',
   await xp.close();
 }
 
+// Tandem cross-checks (dup.xt): one gene per outcome on the Duplication card, and Browse's counts
+// against the manifest with a planted flipped facet row the comparison must catch.
+for (const [name, gid, want] of [
+  ['all-three', 'PtXaTreH.01G000400', 'All three published tandem-duplication tools also call it tandem'],
+  ['some', 'PtXaTreH.01G000300', 'Two of three published tools call it tandem'],
+  ['nearby', 'PtXaTreH.01G004300', 'a nearby copy (proximal'],
+  ['none', 'PtXaTreH.01G005600', 'None of three published tandem tools'],
+  ['tools-only', 'PtXaTreH.01G017400', 'the dissertation’s curated tandem set does not include it']]) {
+  const tp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  await tp.goto(`${base}/#/gene/${gid}`, { waitUntil: 'networkidle' });
+  await tp.waitForTimeout(800);
+  const t = await tp.evaluate(() => { const dt = [...document.querySelectorAll('[data-card=duplication] dt')].find((d) => d.textContent === 'Published tools');
+    return dt ? dt.nextElementSibling.textContent : ''; });
+  const ok = t.includes(want) && t.includes('not part of the dissertation’s call');
+  if (!ok) failures++;
+  console.log(`\n### gene-xt-${name}  ${ok ? 'OK' : 'FAIL'}`);
+  if (!ok) console.log(`   !! ${gid}: "${t.slice(0, 160)}"`);
+  await tp.close();
+}
+{
+  const xp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  await xp.goto(`${base}/#/`, { waitUntil: 'networkidle' });
+  const man = await xp.evaluate(async () => (await (await fetch('data/meta/manifest.json')).json()).dup_crosscheck);
+  const OUT = ['all_three', 'some', 'nearby_copy_only', 'none', 'tools_only'];
+  const bad = [], counts = {};
+  const countOf = async (page, h, o) => {
+    await page.goto(`${base}/#/browse?hap=${h}&xtandem=${o}`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.bz-count', { timeout: 15000 });
+    await page.waitForTimeout(400);
+    return +(await page.$eval('.bz-count', (e) => e.textContent)).match(/^([\d,]+)/)[1].replace(/,/g, '');
+  };
+  for (const h of ['hap1', 'hap2']) {
+    for (const o of OUT) {
+      const n = await countOf(xp, h, o);
+      counts[`${h}/${o}`] = n;
+      if (n !== man.per_haplotype[o][h.toUpperCase()]) bad.push(`${h} ${o}: Browse ${n}, manifest ${man.per_haplotype[o][h.toUpperCase()]}`);
+    }
+  }
+  const cp = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  await cp.route('**/data/index/facets.json*', async (route) => {
+    const res = await route.fetch();
+    const f = await res.json();
+    const c = Object.fromEntries(f.cols.map((n, i) => [n, i]));
+    const k = f.rows.findIndex((r) => r[c.hap] === 0 && r[c.xt] === 0);
+    f.rows[k][c.xt] = 4;
+    await route.fulfill({ response: res, body: JSON.stringify(f) });
+  });
+  const sees = (await countOf(cp, 'hap1', 'tools_only')) !== man.per_haplotype.tools_only.HAP1;
+  await cp.close();
+  const ok = !bad.length && sees;
+  if (!ok) failures++;
+  console.log(`\n### browse:xtandem-counts  ${ok ? 'OK' : 'FAIL'}`);
+  console.log(`   ${JSON.stringify(counts)}; a planted flipped row is caught: ${sees}`);
+  bad.forEach((e) => console.log('   !! ' + e));
+  await xp.close();
+}
+
 // A null handed to the browser's own append() is printed as the word "null". These two genes
 // reach their allele through a tandem array, the path that did it. Planted control as below.
 {

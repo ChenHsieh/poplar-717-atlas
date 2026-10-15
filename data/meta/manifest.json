@@ -331,6 +331,44 @@
   },
   "what": "Summaries recomputed from the gene records, on the dissertation's gene basis: quality-filtered gene models, each haplotype separately."
  },
+ "dup_crosscheck": {
+  "callers": {
+   "DupGen_finder": 1,
+   "MCScanX": 2,
+   "doubletrouble": 4
+  },
+  "outcomes": [
+   "all_three",
+   "some",
+   "nearby_copy_only",
+   "none",
+   "tools_only"
+  ],
+  "per_haplotype": {
+   "all_three": {
+    "HAP1": 3000,
+    "HAP2": 2921
+   },
+   "nearby_copy_only": {
+    "HAP1": 1732,
+    "HAP2": 1558
+   },
+   "none": {
+    "HAP1": 815,
+    "HAP2": 807
+   },
+   "some": {
+    "HAP1": 1116,
+    "HAP2": 1099
+   },
+   "tools_only": {
+    "HAP1": 38,
+    "HAP2": 52
+   }
+  },
+  "source_sha256": "f116df4992f2d4384c3560239e006909aba87e76cae346bd9005c55a19a307f5",
+  "what": "whether three published duplication callers also call a gene tandem; a cross-check, never part of the dissertation's call"
+ },
  "duplicate_coexpr": {
   "basis": "Pearson r on log2(ComBat-corrected TPM + 1) over 652 samples -- the same matrix the neighbour co-expression (nb) uses, because a 652-sample correlation spans 28 studies and is therefore a cross-study comparison.",
   "coverage": "A pair needs BOTH partners in the ComBat matrix (59,599 of 63,960 genes), so 7,707 of 32,333 duplicate pairs have no value. Absence means 'not comparable', not 'uncorrelated'.",
@@ -431,7 +469,7 @@
   }
  },
  "facets": {
-  "bytes": 3958664,
+  "bytes": 4137411,
   "cols": [
    "hap",
    "chr",
@@ -457,7 +495,8 @@
    "qc",
    "tok",
    "psg",
-   "xa"
+   "xa",
+   "xt"
   ],
   "n_rows": 63960
  },

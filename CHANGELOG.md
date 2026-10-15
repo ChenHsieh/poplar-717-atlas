@@ -9,7 +9,19 @@ lives in the `VERSION` file, which `build_data.py` stamps into the manifest and
 `scripts/check_version.py` holds equal to `CITATION.cff` and to the newest versioned
 heading here. Unversioned headings are skipped by that check by design.
 
-## 0.20.0 - 2026-10-14 - Do other gene-age methods agree? A cross-check line on every candidate
+## 0.20.0 - 2026-10-14 - Do other methods agree? Cross-check lines for gene age and tandem duplication
+
+**New per-gene field `dup.xt` on 13,186 genes (data).** The Duplication card says whether three
+published tandem callers, run on the same annotation (DupGen_finder, MCScanX and
+doubletrouble), also call the gene tandem. Of the dissertation's tandem genes, all three tools
+agree on 3,000 of 6,663 HAP1 and 2,921 of 6,385 HAP2; one or two tools on 1,116 and 1,099; the
+tools call a further 1,732 and 1,558 a nearby copy (proximal: close by, with other genes
+between, which the dissertation's rule counts as part of one array); and none of the tools
+calls 815 and 807 either. 38 HAP1 and 52 HAP2 genes the tools call tandem are not in the
+dissertation's set. The line is worded as a difference of definition and says it is a
+cross-check, not part of the call; no duplication field changed (the patch stage refuses if one
+does). Browse gains "Published tandem tools". The whole-genome duplication comparison is held
+back: the tools report collinear blocks of any age, not the dissertation's two dated events.
 
 **New per-gene field `ps.xc` on the 776 HAP1 and 835 HAP2 candidates (data).** Each candidate's
 gene-age card now says whether independent methods agree with its call. Six checks were run on

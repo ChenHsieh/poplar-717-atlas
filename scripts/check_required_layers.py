@@ -122,6 +122,18 @@ def check_gene_age_crosscheck(checks, records):
                  f"{len(have):,} genes carry one, {len(cand):,} candidates")
 
 
+def check_dup_crosscheck(checks, records):
+    """Every quality-filtered gene in the tandem cross-check source carries its row, nothing else does."""
+    rows = {r["gene_id"]: (int(r["t"]), int(r["x"])) for r in gz_rows(ROOT / "sources" / "dup_tandem_crosscheck.tsv.gz")}
+    want = {g for g, (_h, rec) in records.items() if g in rows and rec.get("dup") is not None
+            and not (rec.get("rel") or {}).get("qc")}
+    have = {g: (rec["dup"]["xt"]["t"], rec["dup"]["xt"]["x"]) for g, (_h, rec) in records.items()
+            if (rec.get("dup") or {}).get("xt")}
+    checks.check("tandem cross-checks equal sources/dup_tandem_crosscheck.tsv.gz on quality-filtered genes",
+                 set(have) == want and all(have[g] == rows[g] for g in have),
+                 f"{len(have):,} genes carry one, {len(want):,} expected")
+
+
 def check_wgd_pairs(checks, records):
     rows = gz_rows(ROOT / "sources" / "wgd_pairs.tsv.gz")
     expected = Counter()
@@ -474,6 +486,7 @@ def main():
     check_expression_ranges(checks, records, manifest)
     check_wgd_pairs(checks, records)
     check_gene_age_crosscheck(checks, records)
+    check_dup_crosscheck(checks, records)
     check_gene_model(checks, records, manifest)
     check_peptide_detail(checks, records, manifest)
     check_promoter_positions(checks, records, manifest)

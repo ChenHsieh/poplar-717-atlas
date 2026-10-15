@@ -281,7 +281,7 @@
   {
    "name": "no embargoed LSG candidate label in any published file",
    "ok": true,
-   "detail": "1404 text files"
+   "detail": "1407 text files"
   },
   {
    "name": "ancestral karyotype counts match the placement coverage, per haplotype",
@@ -431,12 +431,12 @@
   {
    "name": "the validator covers every facet column",
    "ok": true,
-   "detail": "validator reproduces 25 of 25 columns -- add the new one here"
+   "detail": "validator reproduces 26 of 26 columns -- add the new one here"
   },
   {
    "name": "facet values match the gene shards (all rows, all columns)",
    "ok": true,
-   "detail": "63960 rows x 25 cols"
+   "detail": "63960 rows x 26 cols"
   },
   {
    "name": "every gene with an ESMFold model has a 3D model, and no other gene does",

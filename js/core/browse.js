@@ -41,6 +41,10 @@ export const FILTERS = [
     test: (r, v) => r.xa >= 0 && ['agree', 'search_sensitive', 'disagree'][r.xa] === v },
   { id: 'ps_min', label: 'Phylostratum ≥', kind: 'number', placeholder: '18',
     test: (r, v) => r.ps != null && r.ps >= +v },
+  // Cross-check against three published tandem callers; never part of the dissertation's set.
+  { id: 'xtandem', label: 'Published tandem tools', kind: 'select',
+    options: ['all_three', 'some', 'nearby_copy_only', 'none', 'tools_only'],
+    test: (r, v) => r.xt >= 0 && ['all_three', 'some', 'nearby_copy_only', 'none', 'tools_only'][r.xt] === v },
   // exact, not >=: a stratum bar on the phylostratigraphy page means THAT stratum
   { id: 'ps', label: 'Phylostratum =', kind: 'number', placeholder: '18',
     test: (r, v) => r.ps === +v },
@@ -125,7 +129,8 @@ export const FILTERS = [
 // Display names for option values. The values themselves stay as they are, because they are
 // URL parameters and saved links depend on them; only the label follows the dissertation's
 // names for the two whole-genome events (aWGT, sWGD).
-const OPTION_LABEL = { search_sensitive: 'search-sensitive', salicoid: 'sWGD', gamma: 'aWGT', aWGD_era: 'aWGT era', not_classified: 'not classified (quality-flagged)',
+const OPTION_LABEL = { search_sensitive: 'search-sensitive', all_three: 'all three call it tandem', some: 'one or two call it tandem',
+  nearby_copy_only: 'a nearby copy only (proximal)', none: 'none calls it tandem or nearby', tools_only: 'tools tandem, not in the dissertation\u2019s set', salicoid: 'sWGD', gamma: 'aWGT', aWGD_era: 'aWGT era', not_classified: 'not classified (quality-flagged)',
   final_set: 'in the final LSG set', candidate_excluded: 'candidate, excluded from the final set', not_a_candidate: 'not a candidate',
   C: 'C (singleton)', D: 'D (dispersed only)',
   ...Object.fromEntries(Object.entries(CATEGORY).map(([k, c]) => [k, c.name])) };
@@ -135,7 +140,7 @@ const optLabel = (v) => OPTION_LABEL[v]
 export const FILTER_GROUPS = [
   { id: 'where', label: 'Genome', ids: ['hap', 'chr', 'allele', 'rel', 'qc'] },
   { id: 'age', label: 'Age and conservation', ids: ['lsg', 'xage', 'ps_min', 'cls'] },
-  { id: 'dup', label: 'Duplication', ids: ['tandem', 'wgd9', 'dup'] },
+  { id: 'dup', label: 'Duplication', ids: ['tandem', 'xtandem', 'wgd9', 'dup'] },
   { id: 'expr', label: 'Expression', ids: ['top', 'tau_min', 'tok', 'xin'] },
   { id: 'func', label: 'Function and protein', ids: ['at', 'ms'] },
   { id: 'sel', label: 'Selection against P. trichocarpa', ids: ['w_min', 'w_max'] },
@@ -146,6 +151,7 @@ const HINTS = {
   cls: 'GENESPACE class across the 12-genome panel, which lacks P. alba',
   lsg: 'the dissertation\u2019s final set, 583 HAP1 / 621 HAP2, out of 776 / 835 candidates',
   xage: 'cross-checks on candidates, run after the dissertation\u2019s analysis; they never change its set',
+  xtandem: 'DupGen_finder, MCScanX and doubletrouble on the same annotation; a cross-check, not part of the dissertation\u2019s tandem set',
   qc: 'gene models set aside as pseudogene-like or degenerate; choose "no" to match the dissertation\u2019s counts',
   dup: 'S sWGD, A aWGT, T tandem, D dispersed, C singleton',
   tok: 'the dissertation counts tissue-specific genes among these only',
@@ -173,6 +179,7 @@ const KEYS = {
   xin: (r) => r.xin, qc: (r) => [r.qc ? 'yes' : 'no'], tok: (r) => [r.tok ? 'yes' : 'no'], dup: (r) => [r.dup],
   lsg: (r) => [['not_a_candidate', 'final_set', 'candidate_excluded'][r.lsg]],
   xage: (r) => (r.xa >= 0 ? [['agree', 'search_sensitive', 'disagree'][r.xa]] : []),
+  xtandem: (r) => (r.xt >= 0 ? [['all_three', 'some', 'nearby_copy_only', 'none', 'tools_only'][r.xt]] : []),
   wgd: (r) => wgdKeys(r.wgd), wgd9: (r) => wgdKeys(r.wgd9), rel: (r) => [r.rel || 'not_classified'],
 };
 function wgdKeys(w) {

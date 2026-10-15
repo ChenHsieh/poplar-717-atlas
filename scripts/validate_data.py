@@ -920,6 +920,7 @@ def main():
                 # re-derived from the found bits, not copied from ps.xc.v: Pfam (4) or structure
                 # (32) -> disagree; any other check (1, 2, 8, 16) -> search-sensitive
                 ((2 if ps["xc"]["f"] & 36 else 1 if ps["xc"]["f"] & 27 else 0) if ps.get("xc") else -1),
+                (lambda d: ((0 if d['xt']['t'] == 7 else 1 if d['xt']['t'] else 2 if d['xt']['x'] else 3) if d.get('td') else (4 if d['xt']['t'] else -1)) if d.get('xt') else -1)(r.get("dup") or {}),
             ]
 
         # zip() truncates to the shorter list, so a column added to build_facets.py without

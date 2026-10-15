@@ -44,6 +44,8 @@ def main():
     BITS = {"phylostratr": 1, "deeper_profile_search": 2, "pfam": 4, "unmasked_search": 8, "blastp_only": 16, "structure": 32}
     xc_sets = {s: {h: {o: 0 for o in OUT} for h in ("HAP1", "HAP2")} for s in ("final", "pool", "excluded")}
     xc_found = {h: {k: 0 for k in BITS} for h in ("HAP1", "HAP2")}
+    XT = ("all_three", "some", "nearby_copy_only", "none", "tools_only")
+    xt_n = {k: {"HAP1": 0, "HAP2": 0} for k in XT}
     for hap, gid, rec in shards():
         n += 1
         by_chr[f"{hap}/{rec['chr']}"] += 1
@@ -58,6 +60,12 @@ def main():
             unstable += 1
         if rec.get("allele"):
             n_allele += 1
+        d = rec.get("dup") or {}
+        if d.get("xt"):
+            x = d["xt"]
+            c = (0 if x["t"] == 7 else 1 if x["t"] else 2 if x["x"] else 3) if d.get("td") else (4 if x["t"] else -1)
+            if c >= 0:
+                xt_n[XT[c]][hap.upper()] += 1
         if ps.get("xc"):
             h, o, fin = hap.upper(), OUT[ps["xc"]["v"]], bool((ps.get("fin") or {}).get("s"))
             xc_sets["pool"][h][o] += 1
@@ -78,6 +86,7 @@ def main():
         "annotation.n_allele": (man.get("annotation", {}).get("n_allele"), n_allele),
         "gene_age_crosscheck.per_set": ((man.get("gene_age_crosscheck") or {}).get("per_set"),
                                         dict(xc_sets, final_found=xc_found)),
+        "dup_crosscheck.per_haplotype": ((man.get("dup_crosscheck") or {}).get("per_haplotype"), xt_n),
     }
     stale = []
     for key, (shipped, recomputed) in want.items():
