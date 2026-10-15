@@ -223,7 +223,7 @@ export const loadExprStudies = () => fetchJSON('data/expr/studies.json');
  *  container change, not a quantisation, so nothing downstream needs to know.
  *
  *  ~1.1 KB per gene instead of the 786 KB bucket that carried 250 genes to draw one card. */
-async function fetchRangeJSON(path, off, len) {
+async function fetchRangeJSON(path, off, len, validate = isSampleVector) {
   if (DATA_VERSION === null) await loadManifest();
   const key = `${dataCacheKey(path)}#${off}+${len}`;
   if (cache.has(key)) return cache.get(key);
@@ -250,12 +250,26 @@ async function fetchRangeJSON(path, off, len) {
     ? await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
     : new TextDecoder().decode(buf);
   const j = JSON.parse(text);
-  if (!Array.isArray(j) || (SAMPLE_COUNT != null && j.length !== SAMPLE_COUNT)
-      || j.some((v) => typeof v !== 'number' || !Number.isFinite(v))) {
-    throw new Error(`range payload for ${path} is not a ${SAMPLE_COUNT || 'valid'}-sample numeric vector`);
-  }
+  const why = validate(j);
+  if (why) throw new Error(`range payload for ${path} ${why}`);
   cache.set(key, j);
   return j;
+}
+
+/** null when `j` is a valid expression vector, else what is wrong with it. */
+function isSampleVector(j) {
+  return (!Array.isArray(j) || (SAMPLE_COUNT != null && j.length !== SAMPLE_COUNT)
+      || j.some((v) => typeof v !== 'number' || !Number.isFinite(v)))
+    ? `is not a ${SAMPLE_COUNT || 'valid'}-sample numeric vector` : null;
+}
+
+/** Protein, CDS, transcript and genomic span for one gene (data/seq, one range read). */
+export async function loadSequences(gene) {
+  if (!gene || !gene.sq) return null;
+  const hap = gene.id.startsWith('PtXaTreH') ? 'hap1' : 'hap2';
+  return fetchRangeJSON(`data/seq/seq_${hap}.gzb`, gene.sq[0], gene.sq[1], (j) =>
+    (j && ['p', 'c', 't', 'g'].every((k) => typeof j[k] === 'string' && j[k].length) ? null
+      : 'is not a sequence record'));
 }
 
 export const loadExprBucket = (bucketKey) => fetchJSON(`data/expr/buckets/${bucketKey}.json`);

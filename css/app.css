@@ -673,3 +673,13 @@ h2.sect:first-child { margin-top: 2px; }
   padding: 12px 14px; background: var(--panel); color: var(--ink); }
 .sd-sheet::backdrop { background: rgba(0,0,0,0.35); }
 .sd-sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+
+/* Sequences card and Browse FASTA. */
+.seq-table td { vertical-align: middle; }
+.seq-actions { white-space: nowrap; text-align: right; }
+.seq-actions .btn { margin-left: 6px; min-height: 34px; }
+.seq-peek { margin-top: 10px; }
+.seq-pre { font-size: 12px; line-height: 1.45; white-space: pre; overflow-x: auto; max-height: 260px;
+  background: var(--panel-2); padding: 8px 10px; border-radius: 4px; margin: 6px 0 0; }
+.bz-fasta { display: inline-flex; gap: 6px; align-items: center; }
+.bz-fasta select { min-height: 34px; font: inherit; }

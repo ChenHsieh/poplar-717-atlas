@@ -1,8 +1,9 @@
 import { el, clear, fmt } from './core/dom.js';
 import { studyMeta, cleanCitation } from './core/cite.js';
 import { getGene, loadManifest, hapLabel, loadExprStudies,
-         loadExprSamples, searchGenesRanked, loadFacets, facetRow, arrayAlleles, loadStructure, dataVersion,
-         normalizeQuery, loadContrasts, loadExprVector } from './core/data.js';
+         loadExprSamples, searchGenesRanked, loadFacets, facetRow, arrayAlleles, dataVersion,
+         normalizeQuery, loadContrasts, loadExprVector, loadSequences } from './core/data.js';
+import { fastaRecord, downloadText } from './core/fasta.js';
 import { paperExpr, paperHighest, lsgStatus, qcBanner, isQcFlagged, releaseLine, CONTACT, REPO_URL } from './core/paper.js';
 import { glossaryView } from './modules/glossary.js';
 import { downloadsView } from './modules/downloads.js';
@@ -734,16 +735,10 @@ function geneHeader(g, kb) {
     faBtn.disabled = true;
     faBtn.textContent = 'Fetching…';
     try {
-      const s = await loadStructure(g.id);
-      if (!s || !s.seq) { faBtn.textContent = 'No protein model for this gene'; return; }
-      const body = s.seq.replace(/(.{60})/g, '$1\n').replace(/\n$/, '');
-      const text = `>${g.id} ${hapLabel(g.hap)} ${g.chr}:${g.start}-${g.end}(${g.strand || '?'}) `
-        + `len=${s.seq.length} source=ESMFold input sequence, 717 atlas v${dataVersion()}\n${body}\n`;
-      const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
-      const a = el('a', { href: url, download: `${g.id}.faa` });
-      document.body.append(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-      faBtn.textContent = `Protein FASTA (${s.seq.length} aa)`;
+      const s = await loadSequences(g);
+      if (!s) { faBtn.textContent = 'No sequence record for this gene'; return; }
+      downloadText(`${g.id}.protein.faa`, fastaRecord(g, 'p', s.p));
+      faBtn.textContent = `Protein FASTA (${s.p.length} aa)`;
       faBtn.disabled = false;
     } catch { faBtn.textContent = 'Could not fetch the sequence'; }
   });

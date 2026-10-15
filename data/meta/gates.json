@@ -1,6 +1,6 @@
 {
  "data_version": "0.20.0",
- "n_checks": 99,
+ "n_checks": 100,
  "n_failed": 0,
  "checks": [
   {
@@ -422,6 +422,11 @@
    "name": "desc.json decodes to each gene's own description",
    "ok": true,
    "detail": "60,372 described"
+  },
+  {
+   "name": "every gene has its sequences, the ranges tile each file, and sampled CDS translate to their proteins",
+   "ok": true,
+   "detail": ""
   },
   {
    "name": "gene-age cross-checks sit on exactly the candidates, with consistent bits",

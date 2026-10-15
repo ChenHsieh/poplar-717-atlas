@@ -926,6 +926,36 @@ def main():
         # zip() truncates to the shorter list, so a column added to build_facets.py without
         # being added here would be compared against nothing and pass silently. Assert the
         # widths agree first -- the check below is only meaningful if they do.
+        # Sequences: every gene points into its haplotype's sequence file, the ranges tile the
+        # file exactly (no gap, no overlap), and a sample of records decodes to a protein that
+        # its own CDS translates to (an independent check of build_sequences.py's gate).
+        import zlib as _z
+        seq_bad = []
+        for hap in ("hap1", "hap2"):
+            path = os.path.join(ROOT, "data", "seq", f"seq_{hap}.gzb")
+            if not os.path.exists(path):
+                seq_bad.append(f"{path} missing"); continue
+            blob = open(path, "rb").read()
+            spans = sorted((rec.get("sq") or [None, None])[0:2] + [gid] for gid, (h, _, rec) in genes.items() if h == hap)
+            if any(s[0] is None for s in spans):
+                seq_bad.append(f"{hap}: {sum(s[0] is None for s in spans)} genes without sq"); continue
+            pos = 0
+            for off, n, gid in spans:
+                if off != pos:
+                    seq_bad.append(f"{hap}: gap or overlap at {gid}"); break
+                pos = off + n
+            if pos != len(blob):
+                seq_bad.append(f"{hap}: ranges end at {pos}, file is {len(blob)} bytes")
+            codon = {a + b + c: "FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG"[16 * i + 4 * j + k]
+                     for i, a in enumerate("TCAG") for j, b in enumerate("TCAG") for k, c in enumerate("TCAG")}
+            for off, n, gid in spans[::max(1, len(spans) // 200)]:
+                r = json.loads(_z.decompress(blob[off:off + n], 31))
+                tr = "".join(codon.get(r["c"][i:i + 3].upper(), "X") for i in range(0, len(r["c"]) - 2, 3)).rstrip("*")
+                if tr != r["p"]:
+                    seq_bad.append(f"{gid}: CDS does not translate to the protein")
+        check("every gene has its sequences, the ranges tile each file, and sampled CDS translate to their proteins",
+              not seq_bad, "; ".join(seq_bad[:4]))
+
         # Gene-age cross-checks: only on candidates, every candidate has one, found is within
         # ran, and the HAP1-only checks never appear as run on a HAP2 gene.
         xc_bad = []

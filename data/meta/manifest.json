@@ -1347,6 +1347,59 @@
    "HAP2": 235
   }
  },
+ "sequences": {
+  "fields": {
+   "c": "CDS",
+   "g": "genomic span on the gene's strand",
+   "p": "protein (no terminal stop)",
+   "t": "transcript with UTRs"
+  },
+  "haplotypes": {
+   "hap1": {
+    "bytes": 54966597,
+    "genes": 32137
+   },
+   "hap2": {
+    "bytes": 54562759,
+    "genes": 31823
+   }
+  },
+  "sources": {
+   "hap1_cds": {
+    "file": "PtremulaxPopulusalbaHAP1_717_v5.1.cds_primaryTranscriptOnly.fa",
+    "sha256": "b9fe92eeb204aea83133a4f7b40840c99f54bb30295a466fdc188bc20a1fa52f"
+   },
+   "hap1_genome": {
+    "file": "PtremulaxPopulusalbaHAP1_717_v5.0.fa",
+    "sha256": "c5bbb970e9ca35d303e03f501a504ff264419666f44dab8e2dde5ef37107fde3"
+   },
+   "hap1_protein": {
+    "file": "PtremulaxPopulusalbaHAP1_717_v5.1.protein_primaryTranscriptOnly.fa",
+    "sha256": "6222b4642419257374924b352fb07a18a302454839b3c0c38d801b41b0f2e895"
+   },
+   "hap1_transcript": {
+    "file": "PtremulaxPopulusalbaHAP1_717_v5.1.transcript_primaryTranscriptOnly.fa",
+    "sha256": "d874a8102e204cf6f4b0aa89a14f4fb13e1d3201636dee74fabab4c8112cf24d"
+   },
+   "hap2_cds": {
+    "file": "PtremulaxPopulusalbaHAP2_716_v5.1.cds_primaryTranscriptOnly.fa",
+    "sha256": "3d4764720952870fa71d93d7ebe5ffbd2eeab5452653d76935fa379535b71ce9"
+   },
+   "hap2_genome": {
+    "file": "PtremulaxPopulusalbaHAP2_716_v5.0.fa",
+    "sha256": "cb63144c11d4d4e5dcbbac1e6a499c68f8f482afc5bdbae96f4ab69e4fa56fa2"
+   },
+   "hap2_protein": {
+    "file": "PtremulaxPopulusalbaHAP2_716_v5.1.protein_primaryTranscriptOnly.fa",
+    "sha256": "765f921dc538c20d1723f6bb7136602ccd629423e4cd987534e08507ee5e1f2f"
+   },
+   "hap2_transcript": {
+    "file": "PtremulaxPopulusalbaHAP2_716_v5.1.transcript_primaryTranscriptOnly.fa",
+    "sha256": "3fc61859a6403940d2d54e2e58b90ca39e9230d7d9acda70e16afad2b3ffb059"
+   }
+  },
+  "what": "protein, CDS, transcript and genomic gene span for every gene, from the Phytozome v5.1 primary transcripts on the v5.0 assembly"
+ },
  "shards": {
   "hap1/Chr01/0": 249,
   "hap1/Chr01/1": 250,
