@@ -13,7 +13,7 @@ function geneCard(g) {
   loadSequences(g).then((s) => {
     body.replaceChildren(
       el('table', { class: 'data seq-table' },
-        el('thead', {}, el('tr', {}, el('th', {}, 'Sequence'), el('th', { class: 'num' }, 'Length'), el('th', {}, 'What it is'), el('th', {}, ''))),
+        el('thead', {}, el('tr', {}, el('th', {}, 'Sequence'), el('th', { class: 'num' }, 'Length'), el('th', {}, ''))),
         el('tbody', {}, ...KINDS.map(([k, name, unit, ext, what]) => {
           const copy = el('button', { type: 'button', class: 'btn', 'data-seq-copy': k }, 'Copy');
           copy.addEventListener('click', async () => {
@@ -23,8 +23,8 @@ function geneCard(g) {
           });
           const dl = el('button', { type: 'button', class: 'btn', 'data-seq-download': k }, 'FASTA');
           dl.addEventListener('click', () => downloadText(`${g.id}.${k === 'p' ? 'protein' : name.toLowerCase()}.${ext}`, fastaRecord(g, k, s[k])));
-          return el('tr', {}, el('td', {}, el('strong', {}, name)), el('td', { class: 'num mono' }, `${fmt(s[k].length)} ${unit}`),
-            el('td', { class: 'muted', style: 'font-size:12.5px' }, what), el('td', { class: 'seq-actions' }, copy, dl));
+          return el('tr', {}, el('td', {}, el('strong', {}, name), el('span', { class: 'muted seq-what' }, what)),
+            el('td', { class: 'num mono' }, `${fmt(s[k].length)} ${unit}`), el('td', { class: 'seq-actions' }, copy, dl));
         }))),
       el('details', { class: 'seq-peek' }, el('summary', {}, 'Show the protein'),
         el('pre', { class: 'mono seq-pre' }, s.p.replace(/(.{60})/g, '$1\n'))),

@@ -3072,8 +3072,8 @@ for (const scheme of ['light', 'dark']) {
 }
 
 // Protein FASTA from the gene header: the downloaded sequence must have the residue count the
-// gene record states (prot.ss.n, from the same ESMFold model), and a gene with no model must
-// say so rather than download an empty file.
+// gene record states (prot.ss.n, from the ESMFold model of the same protein), and since 0.21 a
+// gene with no 3D model downloads its annotated protein too, at the length its button states.
 {
   const ctx = await browser.newContext({ viewport: { width: 1180, height: 900 }, acceptDownloads: true });
   const p = await ctx.newPage();
@@ -3089,11 +3089,13 @@ for (const scheme of ['light', 'dark']) {
     return r['PtXaTreH.05G120200'].prot.ss.n;
   });
   await p.goto(base + '/#/gene/PtXaTreH.01G000200', { waitUntil: 'networkidle' });
-  await p.click('[data-protein-fasta]');
-  await p.waitForTimeout(1500);
+  await p.waitForSelector('[data-protein-fasta]');
   const none = await p.$eval('[data-protein-fasta]', (b) => b.textContent);
+  const [dl2] = await Promise.all([p.waitForEvent('download', { timeout: 20000 }), p.click('[data-protein-fasta]')]);
+  const seq2 = (await (await import('fs')).promises.readFile(await dl2.path(), 'utf8')).split('\n').slice(1).join('').trim();
+  const stated = Number((none.match(/\((\d+) aa\)/) || [])[1]);
   const ok = !errs.length && text.startsWith('>PtXaTreH.05G120200 ') && /^[A-Z*]+$/.test(seq)
-    && seq.length === want && /No protein model/.test(none);
+    && seq.length === want && /^[A-Z*]+$/.test(seq2) && seq2.length === stated && stated > 0;
   if (!ok) failures++;
   console.log(`\n### gene:protein-fasta  ${ok ? 'OK' : 'FAIL'}  ${seq.length} aa vs record ${want}; no-model button: "${none}"`);
   errs.forEach((e) => console.log('   !! ' + e));
@@ -3101,7 +3103,7 @@ for (const scheme of ['light', 'dark']) {
 }
 
 // Browse protein FASTA: refuses a whole-genome selection, and for a pasted list writes one
-// record per modelled gene in selection order with the unmodelled ones named at the end.
+// record per gene (every gene has an annotated protein since 0.21).
 {
   const ctx = await browser.newContext({ viewport: { width: 1180, height: 900 }, acceptDownloads: true });
   const p = await ctx.newPage();
@@ -3118,9 +3120,8 @@ for (const scheme of ['light', 'dark']) {
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('[data-browse-fasta]')]);
   const text = await (await import('fs')).promises.readFile(await dl.path(), 'utf8');
   const heads = text.split('\n').filter((l) => l.startsWith('>')).map((l) => l.split(' ')[0].slice(1));
-  const ok = !errs.length && /limited to 300/.test(refused) && heads.length === 2
-    && heads.includes('PtXaTreH.05G120200') && heads.includes('PtXaAlbH.05G122300')
-    && /no protein model for 1 gene\(s\): PtXaTreH\.01G000200/.test(text);
+  const ok = !errs.length && /limited to 2,000/.test(refused) && heads.length === 3
+    && ['PtXaTreH.05G120200', 'PtXaTreH.01G000200', 'PtXaAlbH.05G122300'].every((g) => heads.includes(g));
   if (!ok) failures++;
   console.log(`\n### browse:protein-fasta  ${ok ? 'OK' : 'FAIL'}  records=${heads.join(',')}  refused="${refused.slice(0, 60)}"`);
   errs.forEach((e) => console.log('   !! ' + e));

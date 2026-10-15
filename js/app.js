@@ -134,7 +134,7 @@ function initSearch() {
     const mine = ++seq;
     lastQuery = ''; lastTotal = 0;
     clearTimeout(timer);
-    if (q.length < 2) return close();
+    if (q.length < 3) return close();
     // A complete 717 gene ID needs no search: Enter opens it straight away.
     timer = setTimeout(() => run(q, mine), 120);
   });
@@ -150,7 +150,7 @@ function initSearch() {
     if (active >= 0 && o[active]) { o[active].click(); return; }
     const id = normalizeQuery(q);
     if (/^PtXa(Tre|Alb)H\.\w+$/.test(id)) { open('#/gene/' + id); return; }
-    if (q.length < 2) return invalidateAndClose();
+    if (q.length < 3) return invalidateAndClose();
     // One unambiguous hit opens; anything else goes to the comparison page.
     if (lastQuery === q && lastTotal === 1) { const a = hits.querySelector('a[href^="#/gene/"]'); if (a) { a.click(); return; } }
     goToResults(q);
