@@ -39,6 +39,11 @@ def main():
     n = 0
     by_chr, ps_rank, syn_cls = Counter(), Counter(), Counter()
     changed = unstable = n_allele = 0
+    # gene-age cross-check outcomes per set, as patch_gene_age_crosscheck.py writes them
+    OUT = ("agree", "search_sensitive", "disagree")
+    BITS = {"phylostratr": 1, "deeper_profile_search": 2, "pfam": 4, "unmasked_search": 8, "blastp_only": 16, "structure": 32}
+    xc_sets = {s: {h: {o: 0 for o in OUT} for h in ("HAP1", "HAP2")} for s in ("final", "pool", "excluded")}
+    xc_found = {h: {k: 0 for k in BITS} for h in ("HAP1", "HAP2")}
     for hap, gid, rec in shards():
         n += 1
         by_chr[f"{hap}/{rec['chr']}"] += 1
@@ -53,6 +58,13 @@ def main():
             unstable += 1
         if rec.get("allele"):
             n_allele += 1
+        if ps.get("xc"):
+            h, o, fin = hap.upper(), OUT[ps["xc"]["v"]], bool((ps.get("fin") or {}).get("s"))
+            xc_sets["pool"][h][o] += 1
+            xc_sets["final" if fin else "excluded"][h][o] += 1
+            if fin:
+                for k, b in BITS.items():
+                    xc_found[h][k] += bool(ps["xc"]["f"] & b)
 
     want = {
         "n_genes": (man.get("n_genes"), n),
@@ -64,6 +76,8 @@ def main():
         # genes carrying an allele partner; the home page shows half of it as "allele pairs".
         # Stayed at the old map's 51,862 for a release after the allele switch (2026-10-03).
         "annotation.n_allele": (man.get("annotation", {}).get("n_allele"), n_allele),
+        "gene_age_crosscheck.per_set": ((man.get("gene_age_crosscheck") or {}).get("per_set"),
+                                        dict(xc_sets, final_found=xc_found)),
     }
     stale = []
     for key, (shipped, recomputed) in want.items():
