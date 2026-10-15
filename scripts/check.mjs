@@ -1846,7 +1846,9 @@ await check('gene-xc-absent', '#/gene/PtXaTreH.01G000300',
     '/karyotype', '/status', '/module/about', '/module/duplication', '/module/phylostrat', '/glossary', '/downloads',
     '/gene/PtXaTreH.08G070200', '/gene/PtXaAlbH.18G016900', '/gene/PtXaTreH.19G087400',
     '/gene/PtXaAlbH.05G122300', '/gene/PtXaTreH.10G046700', '/gene/PtXaTreH.01G006100', '/family/PtXaTreH.08G070200',
-    '/gene/PtXaTreH.10G204200', '/gene/PtXaAlbH.01G053900', '/gene/PtXaTreH.01G018800', '/study/12', '/study/17'];
+    // (study pages are not scanned: their sample tables print the studies' own sample labels,
+    // such as 17_apical_bud_spring_a_rep1, which match the folder-name pattern by shape)
+    '/gene/PtXaTreH.10G204200', '/gene/PtXaAlbH.01G053900', '/gene/PtXaTreH.01G018800'];
   const ip = await browser.newPage({ viewport: { width: 1180, height: 900 } });
   const hits = [];
   for (const r of routes) {
