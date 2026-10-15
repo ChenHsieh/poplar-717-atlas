@@ -2218,7 +2218,7 @@ await check('gene-promoter-tata-false', '#/gene/PtXaTreH.05G120200',
   await sp.waitForTimeout(1000);
   const stext = await viewText(sp);
   const rows = await sp.$$eval('table.compare tbody tr', (trs) => trs.length);
-  const ok = /compare them all/.test(seeAllText) && stext.includes('matches')
+  const ok = /compared side by side/.test(seeAllText) && stext.includes('matches')
     && rows > 20 && stext.includes('page 1 of') && !serrs.length;
   if (!ok) failures++;
   console.log(`
@@ -3188,6 +3188,64 @@ for (const scheme of ['light', 'dark']) {
   console.log(`\n### browse:gene-list  ${ok ? 'OK' : 'FAIL'}  listed=${listed} +hap2=${withHap}  note="${note}"`);
   errs.forEach((e) => console.log('   !! ' + e));
   await p.close();
+}
+
+// Search engine (0.21): each kind of query lands on the gene a reader means, the dropdown is a
+// working combobox from the keyboard, and no query reads a gene file. The positive control drops
+// the "cesa8" token from its shard; the same assertion must then fail, or it proves nothing.
+{
+  async function ask(p, q) {
+    await p.fill('#q', '');
+    await p.fill('#q', q);
+    await p.waitForSelector(`#hits[data-query="${q}"]`, { timeout: 20000 }).catch(() => {});
+    return p.evaluate(() => ({
+      opts: [...document.querySelectorAll('#hits [role=option]')].map((a) => a.textContent.trim()),
+      notes: [...document.querySelectorAll('#hits .hits-note')].map((n) => n.textContent).join(' / '),
+      status: document.getElementById('hits-status').textContent }));
+  }
+  const cesa = (r) => r.opts.length > 0 && /CESA8: Arabidopsis gene name/.test(r.opts[0]);
+  const p = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  let geneFiles = 0;
+  p.on('request', (r) => { if (/\/data\/genes\//.test(r.url())) geneFiles++; });
+  await p.goto(base + '/#/', { waitUntil: 'networkidle' });
+  const res = {};
+  for (const q of ['CESA8', 'irx1', 'AT1G20440', 'Potri.001G000400', 'cellulose synthase', 'dehydrogenaze', 'qwertyzz'])
+    res[q] = await ask(p, q);
+  const filesAfterQueries = geneFiles;
+  const okCesa = cesa(res.CESA8);
+  const okIrx = /IRX1: /.test(res.irx1.opts[0] || '');
+  const okAt = res.AT1G20440.opts.some((o) => o.startsWith('PtXaTreH.')) && res.AT1G20440.opts.some((o) => o.startsWith('PtXaAlbH.'));
+  const okPotri = res['Potri.001G000400'].opts.some((o) => /P\. trichocarpa ortholog: potri\.001g000400/i.test(o));
+  const okWords = res['cellulose synthase'].opts.length >= 10 && !res['cellulose synthase'].notes;
+  const okTypo = /dehydrogenaze → dehydrogenase/.test(res.dehydrogenaze.notes) && res.dehydrogenaze.opts.length > 0;
+  const okNone = res.qwertyzz.opts.length === 0 && /Nothing matches/.test(res.qwertyzz.notes) && res.qwertyzz.status === 'no results';
+  // keyboard: ArrowDown marks the first option active, Enter opens it
+  await ask(p, 'CESA8');
+  await p.press('#q', 'ArrowDown');
+  const kb = await p.evaluate(() => ({ exp: document.getElementById('q').getAttribute('aria-expanded'),
+    act: document.getElementById('q').getAttribute('aria-activedescendant'),
+    sel: document.querySelector('#hits [aria-selected=true]')?.id || null }));
+  await p.press('#q', 'Enter');
+  await p.waitForTimeout(500);
+  const okKb = kb.exp === 'true' && kb.act === 'hit-0' && kb.sel === 'hit-0' && /^#\/gene\/PtXa/.test(await p.evaluate(() => location.hash));
+  await p.close();
+  // positive control
+  const pc = await browser.newPage({ viewport: { width: 1180, height: 900 } });
+  await pc.route('**/data/index/search/c.json*', async (route) => {
+    const r = await route.fetch(); const j = await r.json(); delete j.cesa8;
+    await route.fulfill({ response: r, body: JSON.stringify(j) });
+  });
+  await pc.goto(base + '/#/', { waitUntil: 'networkidle' });
+  const ctrl = cesa(await ask(pc, 'CESA8'));
+  await pc.close();
+  const parts = { okCesa, okIrx, okAt, okPotri, okWords, okTypo, okNone, okKb, noGeneFiles: filesAfterQueries === 0, controlFails: !ctrl };
+  const ok = !errs.length && Object.values(parts).every(Boolean);
+  if (!ok) failures++;
+  console.log(`\n### search:engine  ${ok ? 'OK' : 'FAIL'}  ${Object.entries(parts).filter(([, v]) => !v).map(([k]) => k).join(' ') || 'all parts'}`);
+  if (!ok) for (const [q, r] of Object.entries(res)) console.log(`   ${q}: ${r.status} | ${r.notes} | ${r.opts.slice(0, 2).join(' || ').slice(0, 220)}`);
+  errs.forEach((e) => console.log('   !! ' + e));
 }
 
 await browser.close();

@@ -683,3 +683,12 @@ h2.sect:first-child { margin-top: 2px; }
   background: var(--panel-2); padding: 8px 10px; border-radius: 4px; margin: 6px 0 0; }
 .bz-fasta { display: inline-flex; gap: 6px; align-items: center; }
 .bz-fasta select { min-height: 34px; font: inherit; }
+
+/* Search dropdown (combobox). */
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.hits [role=option] { display: flex; gap: 10px; align-items: baseline; }
+.hits [role=option][aria-selected=true] { background: var(--accent-soft); outline: 2px solid var(--accent-ink); outline-offset: -2px; }
+.hits .hit-desc { color: var(--ink-2); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.hits .hit-desc strong { color: var(--ink); font-weight: 600; }
+.hits .hits-note { display: block; padding: 6px 10px; font-size: 12.5px; }
+.hits .hits-all { font-weight: 600; color: var(--accent-ink); border-top: 1px solid var(--line); }

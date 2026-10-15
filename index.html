@@ -80,8 +80,11 @@
   <nav><a href="#/">Home</a><a href="#/browse">Browse</a><a href="#/map">Map</a></nav>
   <div class="grow"></div>
   <div class="search">
-    <input id="q" type="search" placeholder="Gene ID or name, Potri ID, AT locus, Pfam…" autocomplete="off" spellcheck="false">
-    <div id="hits" class="hits" style="display:none"></div>
+    <label for="q" class="vh">Search genes</label>
+    <input id="q" type="search" placeholder="Gene ID, name, Potri ID, AT locus, Pfam, words…" autocomplete="off" spellcheck="false"
+      role="combobox" aria-expanded="false" aria-controls="hits" aria-autocomplete="list">
+    <div id="hits" class="hits" role="listbox" aria-label="Search suggestions" style="display:none"></div>
+    <p id="hits-status" class="vh" role="status" aria-live="polite"></p>
   </div>
 </header>
 <main id="view"><div class="empty">Loading…</div></main>

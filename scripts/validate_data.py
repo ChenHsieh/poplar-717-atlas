@@ -10,7 +10,7 @@ pointer would 404 only for the unlucky gene; an allele link to a nonexistent gen
 dead end a reader hits before a maintainer does.
 """
 import argparse
-import gzip, json, os, re, struct, subprocess, sys
+import glob, gzip, json, os, re, struct, subprocess, sys
 from collections import Counter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1058,13 +1058,40 @@ def main():
               sha is not None and sha == cman.get("source_sha256"),
               "source missing" if sha is None else f"{sha[:12]} vs manifest {str(cman.get('source_sha256'))[:12]}")
 
+    # Search shards: {token: {"ids": [...], "f": [field bits]}} (older builds: a bare id list).
     sdir = f"{DATA}/index/search"
-    oob = 0
+    oob = shape = 0
+    at_tok = re.compile(r"^at[1-5cm]g\d{5}$")
+    at_of = {}
     for fn in sorted(os.listdir(sdir)):
-        for tok, ids in json.load(open(os.path.join(sdir, fn))).items():
-            if ids and (ids[0] < 0 or ids[-1] >= len(idx)):
+        for tok, v in json.load(open(os.path.join(sdir, fn))).items():
+            ids = v if isinstance(v, list) else v.get("ids", [])
+            if not isinstance(v, list) and len(v.get("f", [])) != len(ids):
+                shape += 1
+            if ids and (min(ids) < 0 or max(ids) >= len(idx)):
                 oob += 1
+            if at_tok.match(tok):
+                # field bit 4 = Arabidopsis locus. A description that names a locus ("At2g23090-like"
+                # domain) is a description match and is labelled as one, so it is not counted here.
+                marks = [4] * len(ids) if isinstance(v, list) else v["f"]
+                for i, b in zip(ids, marks):
+                    if b & 4:
+                        at_of.setdefault(i, set()).add(tok)
     check("search postings are in range", oob == 0, f"{oob} tokens out of range")
+    check("search postings carry one field mark per gene", shape == 0, f"{shape} tokens with mismatched marks")
+    # 0.19.0 invariant: a gene whose page names an Arabidopsis locus is found under exactly that locus.
+    pos = {g: i for i, g in enumerate(idx)}
+    page_at = {}
+    for f in glob.glob(f"{DATA}/genes/hap*/**/*.json", recursive=True):
+        for g, r in json.load(open(f)).items():
+            a = (r.get("ann") or {}).get("at") if isinstance(r, dict) else None
+            if a:
+                page_at[g] = a.lower()
+    miss = [g for g, a in page_at.items() if a not in at_of.get(pos[g], set())]
+    stale = [g for g, a in page_at.items() if at_of.get(pos[g], set()) - {a}]
+    check("search finds every gene under the Arabidopsis locus its page names, and no other locus",
+          page_at and not miss and not stale,
+          f"{len(page_at)} genes; {len(miss)} not findable, {len(stale)} under another locus")
 
     # Publish the verdicts. Written even when a gate fails -- a build that shipped with a
     # known failure should say so on the site, not hide it.

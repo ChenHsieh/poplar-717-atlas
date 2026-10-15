@@ -2,7 +2,7 @@ import { el, clear, fmt } from './core/dom.js';
 import { studyMeta, cleanCitation } from './core/cite.js';
 import { getGene, loadManifest, hapLabel, loadExprStudies,
          loadExprSamples, searchGenesRanked, loadFacets, facetRow, arrayAlleles, dataVersion,
-         normalizeQuery, loadContrasts, loadExprVector, loadSequences } from './core/data.js';
+         normalizeQuery, loadContrasts, loadExprVector, loadSequences, loadDescIndex, loadGeneIndex } from './core/data.js';
 import { fastaRecord, downloadText } from './core/fasta.js';
 import { paperExpr, paperHighest, lsgStatus, qcBanner, isQcFlagged, releaseLine, CONTACT, REPO_URL } from './core/paper.js';
 import { glossaryView } from './modules/glossary.js';
@@ -18,7 +18,7 @@ import { route, start, navigate, query } from './core/router.js';
 import { disposeTree, onDispose } from './core/lifecycle.js';
 import { browseView, browseHref, FILTERS } from './core/browse.js';
 import { QUESTIONS, countQuestion } from './core/questions.js';
-import { searchResultsView } from './core/search.js';
+import { searchResultsView, whyLabel } from './core/search.js';
 import { renderMap } from './modules/genomemap.js';
 import { pairView } from './modules/pair.js';
 import { karyotypeView } from './modules/karyotype.js';
@@ -55,111 +55,106 @@ const DROPDOWN_SHOWN = 24;
 function initSearch() {
   const input = document.getElementById('q');
   const hits = document.getElementById('hits');
+  const status = document.getElementById('hits-status');
   let seq = 0;
-  let lastCompletedQuery = '';
+  let timer = null;
+  let active = -1;
+  let lastQuery = '';
   let lastTotal = 0;
-  let blurTimer = null;
 
+  const options = () => [...hits.querySelectorAll('[role=option]')];
+  const setActive = (k) => {
+    const o = options();
+    o.forEach((x, j) => x.setAttribute('aria-selected', j === k ? 'true' : 'false'));
+    active = k;
+    if (k >= 0 && o[k]) { input.setAttribute('aria-activedescendant', o[k].id); o[k].scrollIntoView({ block: 'nearest' }); }
+    else input.removeAttribute('aria-activedescendant');
+  };
   const close = () => {
     hits.style.display = 'none';
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
+    active = -1;
     delete hits.dataset.query;
     clear(hits);
   };
-  const invalidateAndClose = () => {
-    ++seq;
-    lastCompletedQuery = '';
-    lastTotal = 0;
-    close();
-  };
-  input.addEventListener('blur', () => {
-    if (blurTimer !== null) clearTimeout(blurTimer);
-    blurTimer = setTimeout(() => {
-      blurTimer = null;
-      invalidateAndClose();
-    }, 150);
-  });
-  input.addEventListener('focus', () => {
-    if (blurTimer !== null) {
-      clearTimeout(blurTimer);
-      blurTimer = null;
+  const invalidateAndClose = () => { ++seq; lastQuery = ''; lastTotal = 0; clearTimeout(timer); close(); };
+  // Focus stays in the input (the combobox pattern), so leaving the input closes the list unless
+  // the pointer went down on an option (handled by mousedown preventDefault below).
+  input.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== input) invalidateAndClose(); }, 120));
+  hits.addEventListener('mousedown', (e) => e.preventDefault());
+
+  const goToResults = (q) => { invalidateAndClose(); input.blur(); navigate(`/search/${encodeURIComponent(q)}`); };
+  const open = (href) => { invalidateAndClose(); input.value = ''; navigate(href.slice(1)); };
+
+  async function run(q, mine) {
+    try {
+      const [res, desc, geneIdx] = await Promise.all([searchGenesRanked(q), loadDescIndex(), loadGeneIndex()]);
+      if (mine !== seq || input.value.trim() !== q) return;
+      const pos = new Map(geneIdx.map((id, i) => [id, i]));
+      lastQuery = q; lastTotal = res.total;
+      clear(hits);
+      if (res.corrected.length) {
+        hits.append(el('span', { class: 'muted hits-note' }, `Showing close spellings: ${res.corrected.map(([w, t]) => `${w} → ${t}`).join(', ')}`));
+      }
+      if (res.partial) hits.append(el('span', { class: 'muted hits-note' }, res.missing.length
+        ? `No gene matches every word (not found anywhere: ${res.missing.join(', ')}); showing genes that match the others.`
+        : 'No single gene matches every word; showing genes that match the most of them.'));
+      if (!res.total) {
+        hits.append(el('span', { class: 'muted hits-note' }, `Nothing matches “${q}”. Try a gene ID, a P. trichocarpa or Arabidopsis ID, a gene name or a word from a description.`));
+      }
+      res.ids.slice(0, DROPDOWN_SHOWN).forEach((id, k) => {
+        const d = desc[pos.get(id)] || '';
+        const w = whyLabel(res.why.get(id));
+        hits.append(el('a', { href: '#/gene/' + id, id: `hit-${k}`, role: 'option', 'aria-selected': 'false',
+          onclick: (e) => { e.preventDefault(); open('#/gene/' + id); } },
+          el('span', { class: 'mono' }, id),
+          el('span', { class: 'hit-desc' }, w ? el('strong', {}, w + (d ? '. ' : '')) : null, d.slice(0, 80))));
+      });
+      if (res.total > DROPDOWN_SHOWN) {
+        hits.append(el('a', { href: `#/search/${encodeURIComponent(q)}`, id: `hit-all`, role: 'option', 'aria-selected': 'false', class: 'hits-all',
+          onclick: (e) => { e.preventDefault(); goToResults(q); } }, `All ${fmt(res.total)} results for “${q}”, compared side by side →`));
+      }
+      hits.dataset.query = q;     // which query this list answers (a slower, older search never overwrites it)
+      hits.style.display = 'block';
+      input.setAttribute('aria-expanded', 'true');
+      setActive(-1);
+      status.textContent = res.total ? `${fmt(res.total)} result${res.total === 1 ? '' : 's'}; use the arrow keys to choose` : 'no results';
+    } catch {
+      if (mine !== seq) return;
+      clear(hits).append(el('span', { class: 'muted hits-note' }, 'Search is unavailable. Try again.'));
+      hits.style.display = 'block';
     }
-  });
+  }
 
-  const goToResults = (rawQuery = input.value) => {
-    const q = rawQuery.trim();
-    if (q.length < 3) return close();
-    close();
-    navigate(`/search/${encodeURIComponent(q)}`);
-  };
-
-  input.addEventListener('input', async () => {
+  // A short pause before searching, so typing "dehydrin" runs one search, not six.
+  input.addEventListener('input', () => {
     const q = input.value.trim();
     const mine = ++seq;
-    // A valid result from an earlier query must never become the Enter target for this one.
-    lastCompletedQuery = '';
-    lastTotal = 0;
-    if (q.length < 3) return close();
-
-    try {
-      const { ids, total } = await searchGenesRanked(q);
-      if (mine !== seq || input.value.trim() !== q) return;
-      const shown = ids.slice(0, DROPDOWN_SHOWN);
-      // Fetch descriptions concurrently, then check again: this used to append one stale
-      // row at a time while a reader was already typing a different query.
-      const rows = await Promise.all(shown.map(async (id) => {
-        const g = await getGene(id);
-        const note = g && g.ann && (g.ann.d || g.ann.atd);
-        return { id, note };
-      }));
-      if (mine !== seq || input.value.trim() !== q) return;
-
-      lastCompletedQuery = q;
-      lastTotal = total;
-      clear(hits);
-      hits.dataset.query = q;
-      if (!rows.length) {
-        hits.append(el('span', { class: 'muted' }, `Nothing matches "${q}"`));
-      } else {
-        for (const { id, note } of rows) {
-          hits.append(el('a', { href: '#/gene/' + id, onclick: invalidateAndClose },
-            el('span', {}, id),
-            note ? el('span', { class: 'muted', style: 'font-family:inherit' }, `  ${note.slice(0, 54)}`) : null));
-        }
-        // "too many results" hand-off: a dropdown row can show an id and one line of
-        // description, which is not enough to tell two paralogs apart. The results page
-        // carries synteny class, duplication class, PS and peak tissue side by side instead.
-        if (total > rows.length) {
-          hits.append(el('a', {
-            href: `#/search/${encodeURIComponent(q)}`,
-            onclick: (e) => { e.preventDefault(); goToResults(q); },
-            style: 'font-weight:600;color:var(--accent);border-top:1px solid var(--line)',
-          }, `${fmt(total)} results for "${q}", compare them all →`));
-        }
-      }
-      hits.style.display = 'block';
-    } catch {
-      if (mine !== seq || input.value.trim() !== q) return;
-      clear(hits);
-      hits.dataset.query = q;
-      hits.append(el('span', { class: 'muted' }, 'Search is unavailable. Try again.'));
-      hits.style.display = 'block';
-    }
+    lastQuery = ''; lastTotal = 0;
+    clearTimeout(timer);
+    if (q.length < 2) return close();
+    // A complete 717 gene ID needs no search: Enter opens it straight away.
+    timer = setTimeout(() => run(q, mine), 120);
   });
 
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const q = input.value.trim();
-      if (q.length < 3) return invalidateAndClose();
-      // Ambiguous queries go to the comparison page rather than blindly opening the top
-      // hit, which for a common word like "kinase" would land on an arbitrary gene.
-      if (lastCompletedQuery === q && lastTotal <= DROPDOWN_SHOWN) {
-        const a = hits.querySelector('a[href^="#/gene/"]');
-        if (a) { invalidateAndClose(); return navigate(a.getAttribute('href').slice(1)); }
-      }
-      return goToResults(q);
-    }
-    if (e.key === 'Escape') invalidateAndClose();
+    const o = options();
+    if (e.key === 'ArrowDown' && o.length) { e.preventDefault(); setActive(Math.min(o.length - 1, active + 1)); return; }
+    if (e.key === 'ArrowUp' && o.length) { e.preventDefault(); setActive(Math.max(-1, active - 1)); return; }
+    if (e.key === 'Escape') { invalidateAndClose(); return; }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const q = input.value.trim();
+    if (active >= 0 && o[active]) { o[active].click(); return; }
+    const id = normalizeQuery(q);
+    if (/^PtXa(Tre|Alb)H\.\w+$/.test(id)) { open('#/gene/' + id); return; }
+    if (q.length < 2) return invalidateAndClose();
+    // One unambiguous hit opens; anything else goes to the comparison page.
+    if (lastQuery === q && lastTotal === 1) { const a = hits.querySelector('a[href^="#/gene/"]'); if (a) { a.click(); return; } }
+    goToResults(q);
   });
+  window.addEventListener('hashchange', () => { if (document.activeElement !== input) invalidateAndClose(); });
 }
 
 function markNav() {
