@@ -3406,6 +3406,52 @@ for (const scheme of ['light', 'dark']) {
   await p.close();
 }
 
+// Expression metadata and the Tissues view (2026-10-17). Study labels come from the citations:
+// two authors are named ("Kins & Janz"), an institution is given as written, and a title holding
+// "P. alba." keeps its real journal. Unpublished studies link their data set, never a bare dash.
+// Every sample states its depth. The Tissues view's recomputed mean must equal the record's for
+// every tissue, its statistic cells are filled, and the mean sort orders the rows.
+{
+  const p = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  const labels = await p.goto(`${base}/#/`, { waitUntil: 'networkidle' }).then(() => p.evaluate(async () => {
+    const { studyMeta } = await import('./js/core/cite.js');
+    const s = await (await fetch('data/expr/studies.json')).json();
+    const m = (k) => studyMeta(s[k].citation);
+    return { s2: m('2').firstAuthor, s8: m('8').firstAuthor, s20: m('20').journal, s25: m('25').journal,
+      s31: m('31').journal, s1: m('1').firstAuthor, nullAuthors: Object.keys(s).filter((k) => !m(k).firstAuthor || !m(k).year) };
+  }));
+  const labOk = labels.s2 === 'Kins & Janz' && labels.s8 === 'University of Georgia' && labels.s1 === 'Georgii et al.'
+    && labels.s20 === 'International Journal of Molecular Sciences' && labels.s25 === 'Plant, Cell & Environment'
+    && labels.s31 === 'The Plant Journal' && labels.nullAuthors.length === 0;
+  await p.goto(`${base}/#/module/expression`, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(800);
+  const paperCol = await p.evaluate(() => [...document.querySelectorAll('tr')].map((tr) => tr.lastElementChild?.textContent.trim()));
+  const dataSets = paperCol.filter((t) => t === 'data set').length;
+  const bareDash = paperCol.filter((t) => t === '–').length;
+  await p.goto(`${base}/#/study/26`, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(800);
+  const s26 = await p.evaluate(() => [...document.querySelectorAll('tr[data-i]')].map((tr) => tr.children[7]?.textContent.trim()));
+  const depthOk = s26.length === 18 && s26.every((t) => /^[\d.,]+/.test(t) && t !== '–');
+  await p.goto(`${base}/#/gene/PtXaTreH.19G110500`, { waitUntil: 'networkidle' });
+  await p.waitForSelector('[data-paper-expr] tr[data-mean-check]', { timeout: 20000 });
+  const t = await p.evaluate(() => [...document.querySelectorAll('[data-paper-expr] tbody tr')].map((tr) => ({
+    t: tr.dataset.tissue, rec: +tr.dataset.mean, chk: tr.dataset.meanCheck ? +tr.dataset.meanCheck : null,
+    filled: ['median', 'range', 'studies'].every((k) => tr.querySelector(`[data-stat="${k}"]`).textContent.trim() !== '') })));
+  const meanOk = t.length === 9 && t.every((r) => r.chk != null && Math.abs(r.chk - r.rec) <= 0.011 && r.filled);
+  await p.click('[data-pt-sort="mean"]');
+  const sorted = await p.evaluate(() => [...document.querySelectorAll('[data-paper-expr] tbody tr')].map((tr) => +tr.dataset.mean));
+  const sortOk = sorted.every((v, i) => i === 0 || v <= sorted[i - 1]);
+  const parts = { labOk, dataSets: dataSets === 5, noBareDash: bareDash === 0, depthOk, meanOk, sortOk };
+  const ok = !errs.length && Object.values(parts).every(Boolean);
+  if (!ok) failures++;
+  console.log(`\n### expression:metadata-and-tissue-stats  ${ok ? 'OK' : 'FAIL'}  ${Object.entries(parts).filter(([, v]) => !v).map(([k]) => k).join(' ') || 'all parts'}`);
+  if (!ok) console.log('   ' + JSON.stringify({ labels, dataSets, bareDash, s26: s26.slice(0, 3), t: t.slice(0, 3) }));
+  errs.forEach((e) => console.log('   !! ' + e));
+  await p.close();
+}
+
 // Search engine (0.21): each kind of query lands on the gene a reader means, the dropdown is a
 // working combobox from the keyboard, and no query reads a gene file. The positive control drops
 // the "cesa8" token from its shard; the same assertion must then fail, or it proves nothing.

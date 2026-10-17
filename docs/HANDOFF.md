@@ -111,7 +111,10 @@ repository had used 618 of the account's 637 Actions minutes in two weeks), so r
 locally or on Sapelo2 before pushing here, and push once per session. The old address
 chenhsieh.github.io/poplar-717-atlas is served from this repository's `gh-pages` branch:
 `redirect/index.html` as `index.html` and `404.html`, a static redirect to the lab address that never
-needs rebuilding. Do not run `publish_lab.py` in a sparse checkout.
+needs rebuilding. Do not run `publish_lab.py` in a sparse checkout. Commit regenerated `data/`
+only at releases (this repository's history already holds 5.69 GB of past data versions against
+646 MB of current files), never use Git LFS, and keep heavy analysis outputs on `/work` with a
+pointer.
 
 Known leftovers are listed at the end of the 0.18.0 CHANGELOG entry.
 
