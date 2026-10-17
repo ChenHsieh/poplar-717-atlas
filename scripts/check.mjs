@@ -144,7 +144,7 @@ await check('study-1', '#/study/1',
 // URL ("Set the title in italics...", "If the lab prefers personal attribution..."). The page
 // shows the reference and stops at its link; the paper title leads where one parses cleanly.
 await check('study-citation-clean-4', '#/study/4',
-  { expect: ['Transcription profiling of Populus', 'Jakobi et al. 2020', 'E-MTAB-8683'],
+  { expect: ['Transcription profiling of Populus', 'Jakobi & Janz 2020', 'E-MTAB-8683'],
     forbid: ['If you prefer', 'reverse-italicized', 'Set the title'], wait: 1000 });
 await check('study-citation-clean-8', '#/study/8',
   { expect: ['Study 8', 'PRJNA275366'], forbid: ['Asterisks', 'If the lab prefers', 'inferred from'], wait: 1000 });
@@ -1570,13 +1570,14 @@ for (const gid of ['PtXaAlbH.02G097300', 'PtXaTreH.12G041900']) {
     await dp.mouse.move(0, 0);
     const rows = await dp.evaluate(() => [...document.querySelectorAll('[data-paper-expr] tbody tr[data-ids]')].map((tr) => {
       tr.dispatchEvent(new FocusEvent('focus'));
-      const o = { t: tr.dataset.tissue, mean: +tr.cells[1].textContent.replace(/,/g, ''), n: tr.cells[2].textContent.trim(),
+      const o = { t: tr.dataset.tissue, mean: +tr.cells[1].textContent.replace(/,/g, ''), n: 'n=' + tr.querySelector('[data-stat="n"]').textContent.trim(),
         read: document.querySelector('[data-dmap] .dmap-readout').textContent };
       tr.dispatchEvent(new FocusEvent('blur'));
       return o;
     }));
     const agree = (r, read) => { const m = /: (\d+) samples.*mean ([\d,.]+) TPM/.exec(read);
-      return !!m && `n=${m[1]}` === r.n && Math.abs(+m[2].replace(/,/g, '') - r.mean) <= Math.max(0.011, 0.002 * r.mean); };
+      // the table shows means to one decimal (0.22.1), so agreement is to that precision
+      return !!m && `n=${m[1]}` === r.n && Math.abs(+m[2].replace(/,/g, '') - r.mean) <= Math.max(0.051, 0.002 * r.mean); };
     rows.forEach((r, i) => {
       refRows++;
       if (!agree(r, r.read)) bad.push(`${gid} reference row ${r.t}: ${r.n}, mean ${r.mean}; readout "${r.read.slice(0, 120)}"`);
