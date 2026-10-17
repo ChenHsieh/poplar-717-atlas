@@ -105,10 +105,13 @@ The raw expression matrix and the analysis code are never placed there.
 Release, as done for 0.18.0: commit on a branch; data gates; `check_dissertation.py`;
 `assemble_site.py` + artifact gates + `check.mjs` against the staged tree; push to `main` here;
 then `publish_lab.py --lab <fresh full clone of the lab repo> --ref HEAD`, look at the commit,
-push it. The lab repo's own `checks` run then triggers its Pages deploy. In THIS repository the
-same Pages workflow publishes `redirect/index.html` instead of the site (a step conditional on the
-repository name), so chenhsieh.github.io/poplar-717-atlas forwards to the lab address. Do not run
-`publish_lab.py` in a sparse checkout.
+push it. The lab repo's own `checks` run then triggers its Pages deploy. Since 2026-10-17 both
+workflows run ONLY in the lab repository (every job is guarded on the repository name; the private
+repository had used 618 of the account's 637 Actions minutes in two weeks), so run `check.mjs`
+locally or on Sapelo2 before pushing here, and push once per session. The old address
+chenhsieh.github.io/poplar-717-atlas is served from this repository's `gh-pages` branch:
+`redirect/index.html` as `index.html` and `404.html`, a static redirect to the lab address that never
+needs rebuilding. Do not run `publish_lab.py` in a sparse checkout.
 
 Known leftovers are listed at the end of the 0.18.0 CHANGELOG entry.
 
