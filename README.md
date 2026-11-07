@@ -1,13 +1,9 @@
-# Poplar 717 gene atlas (development history, archived)
+# Moved: 717 Gene Hub
 
-**This repository has moved.** The atlas is now developed and published from the Tsai lab's
-repository, which is the canonical source:
+**This repository is deprecated and archived.** Development continues in the lab repository,
+[TsailabBioinformatics/717-gene-hub](https://github.com/TsailabBioinformatics/717-gene-hub).
 
-- Code and data: https://github.com/TsailabBioinformatics/poplar-717-atlas
-- Live site: https://tsailabbioinformatics.github.io/poplar-717-atlas/
+The website is now at https://tsailabbioinformatics.github.io/717-gene-hub/ (formerly the Poplar 717
+gene atlas). The old address of this repository's site forwards there.
 
-This repository is kept, read-only, for the development history up to October 2026. Its old web
-address (chenhsieh.github.io/poplar-717-atlas) forwards to the live site, keeping the page you
-asked for.
-
-Please open issues and send corrections to the lab repository.
+Please cite and link the new address.
